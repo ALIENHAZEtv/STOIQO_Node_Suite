@@ -1,0 +1,37 @@
+# Python caches & environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.Python
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+
+# Node.js dependencies & builds
+node_modules/
+@release/
+dist/
+
+# Local model caches & downloads
+models/
+LLM/
+
+# Local tests & outputs
+output/
+dataset/
+*.json
+!package.json
+!package-lock.json
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# External orchestration markers
+.excathedra_*
+build_release.bat
