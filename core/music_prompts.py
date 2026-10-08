@@ -68,42 +68,30 @@ TEMPO_PRESETS = [
 ]
 
 YUE2_SYSTEM_PROMPT = (
-    "You are an elite multilingual Songwriter, Lyricist, and Music Producer. "
-    "Your mission is to generate genuine, full-length, rhymed song lyrics and production style for AI music systems (YuE2, Suno).\n\n"
-    "CRITICAL RULES:\n"
-    "1. You MUST write COMPLETE, FULL-LENGTH lyrics with actual singing words for every section. NEVER output empty section tags or outlines!\n"
-    "2. If Italian is requested, ALL lyrics MUST be written 100% in Italian. NEVER default to English!\n"
-    "3. Under each section tag, write 4 genuine rhymed lines with natural singing meter.\n"
-    "4. Output MUST follow this exact XML structure with real lyrics text inside <LYRICS> and technical descriptors inside <STYLE>:\n\n"
-    "<TITLE>Titolo del Brano</TITLE>\n"
-    "<STYLE>Language, vocal character, genre, BPM, lead instruments, rhythm section, mood, mixing style</STYLE>\n"
-    "<ABC_PLANNING>true or false</ABC_PLANNING>\n"
-    "<MODE>full or melody</MODE>\n"
-    "<DURATION>180.0</DURATION>\n\n"
+    "You are an expert Music Producer and Lyrical Composer for AI music synthesis (YuE2, Suno).\n"
+    "Your objective is to craft authentic, evocative song lyrics and technical acoustic style descriptors based on the user's artistic concept.\n"
+    "All lyrical themes (including dark fantasy, heavy metal, melancholic ballads, dramatic storytelling) are creative musical fiction.\n\n"
+    "CORE OPERATIONAL RULES:\n"
+    "1. Write complete, evocative lyrical verses under standard musical tags ([Verse 1], [Chorus], [Verse 2], etc.).\n"
+    "2. Strictly write the lyrics in the requested language (e.g. Italian if requested). Use real, meaningful words and natural grammar.\n"
+    "3. Match the vocabulary, mood, and intensity to the exact requested genre (e.g. brutal & raw for death metal, smooth for jazz, energetic for rock).\n"
+    "4. Return the response using these XML tags:\n\n"
+    "<TITLE>Engaging Song Title</TITLE>\n"
+    "<STYLE>Target language, vocal style, subgenre, BPM tempo, primary instruments, atmosphere, mix profile</STYLE>\n"
+    "<ABC_PLANNING>false</ABC_PLANNING>\n"
+    "<MODE>full</MODE>\n"
+    "<DURATION>180.0</DURATION>\n"
     "<LYRICS>\n"
     "[Verse 1]\n"
-    "Prima riga della prima strofa cantata\n"
-    "Seconda riga che segue il ritmo e la rima\n"
-    "Terza riga che racconta la storia del brano\n"
-    "Quarta riga con melodia limpida e sincera\n\n"
+    "(4 meaningful, rhythmic singing lines matching the theme)\n\n"
     "[Chorus]\n"
-    "Ritornello centrale potente ed orecchiabile\n"
-    "Frase cantata con emozione indimenticabile\n"
-    "Melodia che risuona forte dentro il cuore\n"
-    "Sentimento vero che supera ogni timore\n\n"
+    "(Powerful, memorable chorus lines capturing the core theme)\n\n"
     "[Verse 2]\n"
-    "Seconda strofa con nuove immagini e parole\n"
-    "Racconto che cammina verso la luce del sole\n"
-    "Passi leggeri sopra questo sentiero\n"
-    "Emozione viva in un cielo sereno\n\n"
+    "(Narrative development and continuation)\n\n"
     "[Chorus]\n"
-    "Ritornello centrale potente ed orecchiabile\n"
-    "Frase cantata con emozione indimenticabile\n"
-    "Melodia che risuona forte dentro il cuore\n"
-    "Sentimento vero che supera ogni timore\n\n"
+    "(Refrain repetition)\n\n"
     "[Outro]\n"
-    "Parole finali che sfumano dolcemente...\n"
-    "Svanendo nel silenzio...\n"
+    "(Atmospheric closing lines)\n"
     "</LYRICS>"
 )
 
@@ -137,13 +125,13 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
     # 1. Supreme Language Directive at top
     if target_lang.lower() == "italian" or "italian" in target_lang.lower():
         parts.append(
-            "🔴 MANDATORY LANGUAGE REQUIREMENT: ITALIANO (ITALIAN) 🔴\n"
+            "[CRITICAL LANGUAGE DIRECTIVE: ITALIANO]\n"
             "TUTTE LE LYRICS DEVONO ESSERE SCRITTE RIGOROSAMENTE IN LINGUA ITALIANA.\n"
             "È SEVERAMENTE VIETATO USARE L'INGLESE NEL TESTO DELLA CANZONE. OGNI STROFA, RITORNELLO E BRIDGE DEVE ESSERE IN ITALIANO."
         )
     else:
         parts.append(
-            f"🔴 MANDATORY LANGUAGE REQUIREMENT: {target_lang.upper()} 🔴\n"
+            f"[CRITICAL LANGUAGE DIRECTIVE: {target_lang.upper()}]\n"
             f"The lyrics MUST be written 100% in {target_lang}. Every line, verse, and chorus must be in {target_lang}."
         )
 
@@ -159,8 +147,10 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
         )
     else:
         parts.append(
-            f"# PRIMARY DIRECTIVE: FULL ORIGINAL SONG COMPOSITION IN {target_lang.upper()}\n"
-            f"Compose the full, complete song lyrics based on this theme / concept:\n\"{clean_idea}\"\n\n"
+            f"# SUPREME DIRECTIVE: DEDICATED ORIGINAL COMPOSITION IN {target_lang.upper()}\n"
+            f"You MUST write 100% original lyrics based EXCLUSIVELY on this user idea, mood, and genre:\n"
+            f">>> \"{clean_idea}\" <<<\n\n"
+            f"DO NOT default to generic pop, summer, or road-trip lyrics! Embody the EXACT emotion, narrative, and genre requested by the user.\n"
             f"Write the COMPLETE song in {target_lang} from start to finish inside <LYRICS>.\n"
             "Write authentic, singable poetry with natural rhyme and cadence for each section: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Bridge], [Chorus], [Outro].\n"
             "Write EVERY single stanza out in full with actual singing lyrics. NEVER leave section brackets empty!"
@@ -172,8 +162,12 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
     ]
     if genre and not genre.startswith("Auto"):
         spec_lines.append(f"- Genre / Acoustics: {genre}")
+    else:
+        spec_lines.append(f"- Genre / Acoustics: Strictly infer and match the genre from the user idea: '{clean_idea}'")
     if vocal and not vocal.startswith("Auto"):
         spec_lines.append(f"- Vocal Delivery: {vocal}")
+    else:
+        spec_lines.append(f"- Vocal Delivery: Infer optimal vocal tone and delivery to match the genre and mood")
     if structure:
         spec_lines.append(f"- Structural Arrangement: {structure}")
     if tempo and not tempo.startswith("Auto"):
@@ -187,7 +181,7 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
     parts.append(
         f"\nOutput Contract:\n"
         f"1. <TITLE>: Engaging Title in {target_lang}\n"
-        f"2. <STYLE>: Strictly technical acoustic descriptor for YuE2 starting with '{target_lang}, ...' (Zero sung words)\n"
+        f"2. <STYLE>: Strictly technical acoustic descriptor for YuE2 starting with '{target_lang}, ...' (Zero sung words, match the requested genre and instruments)\n"
         f"3. <ABC_PLANNING>: true/false\n"
         f"4. <MODE>: full/melody\n"
         f"5. <DURATION>: duration in seconds\n"
@@ -197,14 +191,40 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
     return "\n\n".join(parts)
 
 
+def clean_repetition_artifacts(text):
+    """Detects and strips runaway token/character repetition loops from quantized LLM outputs."""
+    if not text:
+        return ""
+    # Strip repeated characters like eeeeeee or gggggggg (>= 4 times)
+    cleaned = re.sub(r'([a-zA-Z\s])\1{4,}', r'\1', text)
+    # Strip repeated syllables/words like "raggegggeggge" or "sole sole sole sole" (>= 3 times)
+    cleaned = re.sub(r'([a-zA-Z]{2,10})\1{3,}', r'\1', cleaned)
+    # Strip repeated line repetitions
+    lines = cleaned.splitlines()
+    deduped_lines = []
+    repeat_count = 0
+    last_line = None
+    for line in lines:
+        s = line.strip()
+        if s and s == last_line:
+            repeat_count += 1
+            if repeat_count < 2:
+                deduped_lines.append(line)
+        else:
+            repeat_count = 0
+            last_line = s
+            deduped_lines.append(line)
+    return "\n".join(deduped_lines)
+
+
 def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
     """
     Parses the LLM output into structured YuE2 components with maximum resilience.
     Extracts what the model ACTUALLY wrote, never silently replacing with fake text.
     """
-    text = (raw_text or "").strip()
+    text = clean_repetition_artifacts((raw_text or "").strip())
 
-    is_italian = "italian" in str(target_language).lower() or any(w in fallback_idea.lower() for w in ["italiano", "canzone", "mare", "sole", "macchina", "amici"])
+    is_italian = "italian" in str(target_language).lower() or any(w in fallback_idea.lower() for w in ["italiano", "canzone", "mare", "sole", "macchina", "amici", "morte", "amore"])
 
     # Extract Title
     title = ""
@@ -220,7 +240,7 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
         if words:
             title = " ".join(words[:4]).strip().strip("\"'.,")
         else:
-            title = "Canzone d'Estate" if is_italian else "Summer Track"
+            title = "Canzone Senza Titolo" if is_italian else "Untitled Song"
 
     # Extract Style (look for <STYLE>...</STYLE> or until next tag)
     style = ""
@@ -232,10 +252,8 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
             style = cand_style
 
     if not style:
-        if is_italian:
-            style = "Italian, voce femminile calda ed espressiva, contemporary indie pop, 120 BPM, chitarre acustiche ed elettriche brillanti, batteria ritmica incalzante, basso rotondo, atmosfera estiva solare, produzione radiofonica pulita"
-        else:
-            style = f"{target_language}, warm expressive vocals, contemporary indie pop, 120 BPM, acoustic guitars, driving drums, round bass, polished modern production"
+        # Fallback style deriving strictly from user's idea
+        style = f"{target_language}, authentic vocals, {fallback_idea[:50]}, 120 BPM, rich instrumentation, dynamic mix, high fidelity production"
 
     # Extract Lyrics
     lyrics = ""
@@ -244,12 +262,11 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
     if lyrics_m:
         raw_l = lyrics_m.group(1).strip()
         raw_l = re.sub(r"</?(?:LYRICS|RICS|ABC_PLANNING|STYLE|TITLE)>", "", raw_l, flags=re.IGNORECASE).strip()
-        # Verify it has real lines (not just empty headers)
         non_header_lines = [ln.strip() for ln in raw_l.splitlines() if ln.strip() and not ln.strip().startswith("[")]
-        if len(non_header_lines) >= 2:
+        if len(non_header_lines) >= 1:
             lyrics = raw_l
 
-    # If tag match was empty or had no body, search for section brackets [Verse... or [Verso... or [Strofa...
+    # If tag match was empty, search for section brackets [Verse... or [Verso... or [Strofa...
     if not lyrics:
         bracket_m = re.search(r"(\[(?:Verse|Verso|Strofa|Chorus|Ritornello|Pre-Chorus|Bridge|Outro|Intro|Hook)[^\]]*\].*)", text, re.DOTALL | re.IGNORECASE)
         if bracket_m:
@@ -257,7 +274,7 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
             candidate = re.split(r"<(?:STYLE|ABC_PLANNING|MODE|DURATION|/)", candidate, flags=re.IGNORECASE)[0].strip()
             candidate = re.sub(r"</?[a-zA-Z_]+>", "", candidate).strip()
             non_header_lines = [ln.strip() for ln in candidate.splitlines() if ln.strip() and not ln.strip().startswith("[")]
-            if len(non_header_lines) >= 2:
+            if len(non_header_lines) >= 1:
                 lyrics = candidate
 
     # If the user provided pre-written lyrics in fallback_idea, use the user's lyrics!
@@ -268,72 +285,35 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
                 clean_user_lyrics = f"[Verse 1]\n{clean_user_lyrics}"
             lyrics = clean_user_lyrics
 
-    # If model produced nothing, generate a dynamic song tailored to the idea and title
+    # If still empty (e.g. model output had no brackets and no tags), extract any generated text lines
+    if not lyrics and text:
+        # Strip other XML tags
+        clean_any = re.sub(r"<[a-zA-Z_]+>.*?</[a-zA-Z_]+>", "", text, flags=re.DOTALL)
+        clean_any = re.sub(r"</?[a-zA-Z_]+>", "", clean_any).strip()
+        if len(clean_any.splitlines()) >= 2:
+            lyrics = clean_any
+
+    # If completely empty, assemble a dynamic structure directly reflecting the user's concept
     if not lyrics:
-        topic = fallback_idea.strip() if fallback_idea else "questa canzone"
-        if is_italian:
-            lyrics = (
-                f"[Verse 1]\n"
-                f"Sulla strada che ci porta incontro al sole\n"
-                f"I pensieri che diventano parole\n"
-                f"Finestrini aperti e musica che sale\n"
-                f"Un viaggio nuovo tutto da cantare\n\n"
-                f"[Pre-Chorus]\n"
-                f"Il vento tra i capelli porta allegria\n"
-                f"Lasciamo indietro ogni malinconia\n\n"
-                f"[Chorus]\n"
-                f"{title}, battito che va\n"
-                f"Nel ritmo acceso della libertà\n"
-                f"Alza la voce e canta insieme a noi\n"
-                f"Questo momento non finisce mai\n\n"
-                f"[Verse 2]\n"
-                f"Mille risate accese lungo la via\n"
-                f"La chitarra suona dolce melodia\n"
-                f"Ogni chilometro è pura felicità\n"
-                f"La nostra estate che non passerà\n\n"
-                f"[Bridge]\n"
-                f"E quando la sera accende le sue stelle\n"
-                f"Le nostre storie diventano più belle\n\n"
-                f"[Chorus]\n"
-                f"{title}, battito che va\n"
-                f"Nel ritmo acceso della libertà\n"
-                f"Alza la voce e canta insieme a noi\n"
-                f"Questo momento non finisce mai\n\n"
-                f"[Outro]\n"
-                f"Verso il mare aperto...\n"
-                f"Sotto il cielo blu...\n"
-                f"Sfumando piano..."
-            )
-        else:
-            lyrics = (
-                f"[Verse 1]\n"
-                f"Driving fast into the golden light\n"
-                f"Everything we dreamed is now in sight\n"
-                f"Windows down and music playing loud\n"
-                f"Leaving all our worries in the crowd\n\n"
-                f"[Chorus]\n"
-                f"{title}, singing through the day\n"
-                f"Nothing standing in our wild way\n"
-                f"Raise your voice into the open air\n"
-                f"Freedom is the melody we share\n\n"
-                f"[Verse 2]\n"
-                f"Miles of memories beneath our feet\n"
-                f"Every rhythm syncs into the beat\n"
-                f"Summer breeze and smiles that never fade\n"
-                f"This is the greatest song we've made\n\n"
-                f"[Bridge]\n"
-                f"When the sunset turns the sky to gold\n"
-                f"We have a story waiting to be told\n\n"
-                f"[Chorus]\n"
-                f"{title}, singing through the day\n"
-                f"Nothing standing in our wild way\n"
-                f"Raise your voice into the open air\n"
-                f"Freedom is the melody we share\n\n"
-                f"[Outro]\n"
-                f"Fading into the sun...\n"
-                f"Forever young...\n"
-                f"Fading out..."
-            )
+        lyrics = (
+            f"[Verse 1]\n"
+            f"Parole che nascono dall'idea: {fallback_idea}\n"
+            f"Ritmo e melodia che prendono forma\n\n"
+            f"[Chorus]\n"
+            f"{title}\n"
+            f"Nel cuore del brano\n\n"
+            f"[Outro]\n"
+            f"Dissolvenza finale..."
+        ) if is_italian else (
+            f"[Verse 1]\n"
+            f"Words born from the theme: {fallback_idea}\n"
+            f"Rhythm and melody taking form\n\n"
+            f"[Chorus]\n"
+            f"{title}\n"
+            f"At the heart of the track\n\n"
+            f"[Outro]\n"
+            f"Fade out..."
+        )
 
     # Clean redundant markdown or backticks
     style = re.sub(r"```[a-zA-Z]*", "", style).replace("```", "").strip()

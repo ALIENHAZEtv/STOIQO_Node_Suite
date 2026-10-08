@@ -22,6 +22,29 @@ import folder_paths
 import comfy.model_management as mm
 import comfy.utils
 
+# ── Resilient safetensors safe_open compatibility patch ───────────────────────
+try:
+    import safetensors
+    _orig_safe_open = getattr(safetensors, "safe_open", None)
+    if _orig_safe_open is not None:
+        def _resilient_safe_open(*args, **kwargs):
+            try:
+                return _orig_safe_open(*args, **kwargs)
+            except TypeError as te:
+                if "backend" in str(te):
+                    kwargs.pop("backend", None)
+                    return _orig_safe_open(*args, **kwargs)
+                raise
+        safetensors.safe_open = _resilient_safe_open
+        try:
+            import transformers.modeling_utils as tf_mod
+            if hasattr(tf_mod, "safe_open"):
+                tf_mod.safe_open = _resilient_safe_open
+        except Exception:
+            pass
+except Exception:
+    pass
+
 try:
     from server import PromptServer
 except ImportError:
@@ -350,7 +373,7 @@ class ModelManager:
             if existing_snap:
                 load_target = existing_snap
                 is_local = True
-                print(f"[STOIQO] ✅ Model already present locally! Loaded from: {load_target}")
+                print(f"[STOIQO] [OK] Model already present locally! Loaded from: {load_target}")
                 print("[STOIQO] Network download bypassed — loading directly from disk.")
 
         # ── Step 2: Download only if NOT found anywhere locally ────────────────

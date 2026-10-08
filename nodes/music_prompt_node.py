@@ -63,14 +63,14 @@ class StoiqoMusicPromptEngineNode:
                 "genre": (
                     GENRE_PRESETS,
                     {
-                        "default": GENRE_PRESETS[1],
+                        "default": GENRE_PRESETS[0],
                         "tooltip": "Musical genre and acoustic characteristics.",
                     },
                 ),
                 "vocal_type": (
                     VOCAL_PRESETS,
                     {
-                        "default": VOCAL_PRESETS[1],
+                        "default": VOCAL_PRESETS[0],
                         "tooltip": "Singing voice style, gender, and timbre.",
                     },
                 ),
@@ -136,6 +136,16 @@ class StoiqoMusicPromptEngineNode:
                         "tooltip": "Creativity and lyrical variation (0.6-0.8 recommended).",
                     },
                 ),
+                "repetition_penalty": (
+                    "FLOAT",
+                    {
+                        "default": 1.18,
+                        "min": 1.0,
+                        "max": 2.0,
+                        "step": 0.02,
+                        "tooltip": "Penalizes repetitive rhymes and looped tokens (1.15-1.25 recommended for 4-bit models).",
+                    },
+                ),
                 "max_new_tokens": (
                     "INT",
                     {
@@ -168,7 +178,8 @@ class StoiqoMusicPromptEngineNode:
         stoiqo_model=None,
         seed=0,
         temperature=0.70,
-        max_new_tokens=1024,
+        repetition_penalty=1.18,
+        max_new_tokens=1536,
     ):
         clean_idea = (idea or "").strip()
         if not clean_idea:
@@ -211,7 +222,7 @@ class StoiqoMusicPromptEngineNode:
             max_new_tokens=max_new_tokens,
             temperature=temperature,
             top_p=0.90,
-            repetition_penalty=1.05,
+            repetition_penalty=repetition_penalty,
             is_multi_image=False,
         )
 
