@@ -515,6 +515,8 @@ class ModelManager:
                 trust_remote_code=True,
                 local_files_only=is_local_target,
             )
+        if hasattr(self.processor, "tokenizer") and self.processor.tokenizer is not None:
+            self.processor.tokenizer.padding_side = "left"
         self.current_model_repo = model_repo
         self.current_cache_key = (model_repo, quantization, chosen_attn)
         self.current_attn = chosen_attn
@@ -585,8 +587,8 @@ class ModelManager:
         if system_prompt.strip():
             messages.append({"role": "system", "content": system_prompt.strip()})
 
-        content_list = []
         if pil_images is not None:
+            content_list = []
             if is_multi_image and isinstance(pil_images, list):
                 for idx, img in enumerate(pil_images):
                     content_list.append({"type": "text", "text": f"<Image {idx + 1}>:"})
@@ -594,34 +596,54 @@ class ModelManager:
             else:
                 content_list.append({"type": "image", "image": pil_images})
 
-        content_list.append({"type": "text", "text": task_prompt})
+            content_list.append({"type": "text", "text": task_prompt})
 
-        messages.append({
-            "role": "user",
-            "content": content_list,
-        })
+            messages.append({
+                "role": "user",
+                "content": content_list,
+            })
 
-        text = self.processor.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
+            text = self.processor.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
 
-        image_inputs, _ = process_vision_info(messages)
-        proc_kwargs = {
-            "text": [text],
-            "padding": True,
-            "return_tensors": "pt",
-        }
-        if image_inputs is not None:
-            proc_kwargs["images"] = image_inputs
+            image_inputs, _ = process_vision_info(messages)
+            proc_kwargs = {
+                "text": [text],
+                "images": image_inputs,
+                "padding": True,
+                "return_tensors": "pt",
+            }
+        else:
+            messages.append({
+                "role": "user",
+                "content": task_prompt,
+            })
+
+            text = self.processor.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+            proc_kwargs = {
+                "text": [text],
+                "padding": False,
+                "return_tensors": "pt",
+            }
 
         inputs = self.processor(**proc_kwargs).to(next(self.model.parameters()).device)
 
         gen_kwargs = {"max_new_tokens": max_new_tokens}
+        # Suppress known Qwen hallucination glitch token (18724 = ' addCriterion')
+        if hasattr(self.processor, "tokenizer") and self.processor.tokenizer is not None:
+            vocab_size = getattr(self.processor.tokenizer, "vocab_size", 151643)
+            if 18724 < vocab_size:
+                gen_kwargs["suppress_tokens"] = [18724]
+
         if repetition_penalty and repetition_penalty != 1.0:
             gen_kwargs["repetition_penalty"] = repetition_penalty
         if temperature > 0:
             gen_kwargs["do_sample"] = True
             gen_kwargs["temperature"] = temperature
+            gen_kwargs["top_k"] = 50
             if top_p and 0.0 < top_p < 1.0:
                 gen_kwargs["top_p"] = top_p
         else:

@@ -129,21 +129,21 @@ class StoiqoMusicPromptEngineNode:
                 "temperature": (
                     "FLOAT",
                     {
-                        "default": 0.70,
+                        "default": 0.65,
                         "min": 0.1,
                         "max": 1.5,
                         "step": 0.05,
-                        "tooltip": "Creativity and lyrical variation (0.6-0.8 recommended).",
+                        "tooltip": "Creativity and lyrical variation (0.60-0.70 recommended for lyrical coherence).",
                     },
                 ),
                 "repetition_penalty": (
                     "FLOAT",
                     {
-                        "default": 1.18,
+                        "default": 1.02,
                         "min": 1.0,
-                        "max": 2.0,
-                        "step": 0.02,
-                        "tooltip": "Penalizes repetitive rhymes and looped tokens (1.15-1.25 recommended for 4-bit models).",
+                        "max": 1.5,
+                        "step": 0.01,
+                        "tooltip": "Penalizes repetitive loops without degrading poetic vocabulary (1.01-1.04 recommended).",
                     },
                 ),
                 "max_new_tokens": (
@@ -177,8 +177,8 @@ class StoiqoMusicPromptEngineNode:
         custom_directives="",
         stoiqo_model=None,
         seed=0,
-        temperature=0.70,
-        repetition_penalty=1.18,
+        temperature=0.65,
+        repetition_penalty=1.02,
         max_new_tokens=1536,
     ):
         clean_idea = (idea or "").strip()
@@ -202,7 +202,7 @@ class StoiqoMusicPromptEngineNode:
             except Exception as e:
                 print(f"[STOIQO Music] Warning converting cover image: {e}")
 
-        # Build task prompt
+        # Build task prompt with multimodal grounding awareness
         task_prompt = build_music_task_prompt(
             idea=clean_idea,
             genre=genre,
@@ -211,6 +211,7 @@ class StoiqoMusicPromptEngineNode:
             structure=structure,
             tempo=tempo,
             custom_directives=custom_directives,
+            has_image=(img_pil is not None),
         )
 
         print(f"[STOIQO Music] Generating music style & lyrics for: '{clean_idea[:60]}'...")
