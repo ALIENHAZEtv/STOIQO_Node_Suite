@@ -18,9 +18,16 @@ from transformers import (
 import time
 from tqdm.auto import tqdm
 
-import folder_paths
-import comfy.model_management as mm
-import comfy.utils
+try:
+    import folder_paths
+except ImportError:
+    folder_paths = None
+
+try:
+    import comfy.model_management as mm
+    import comfy.utils
+except ImportError:
+    mm = None
 
 # ── Resilient safetensors safe_open compatibility patch ───────────────────────
 try:

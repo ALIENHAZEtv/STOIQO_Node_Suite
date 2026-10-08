@@ -14,7 +14,7 @@ from .config import (
     BATCH_MODES,
     SYSTEM_PROMPT_MODES,
 )
-from .system_prompts import (
+from .image import (
     SYSTEM_PROMPT_PRESETS,
     CUSTOM_SYSTEM_PROMPT_KEY,
     SYSTEM_PROMPT_CHOICES,
@@ -24,20 +24,16 @@ from .system_prompts import (
     BASE_MULTI_IMAGE_PROMPT,
     LEGACY_SYSTEM_PROMPT_ALIASES,
     resolve_system_prompt,
-)
-from .prompt_types import (
     PROMPT_TYPES,
     PROMPT_TYPE_DIRECTIVES,
     resolve_prompt_type,
     CAPTION_STYLES,
     STYLE_PROMPTS,
-)
-from .styles import (
     ARTISTIC_STYLES,
     ARTISTIC_STYLE_DIRECTIVES,
     resolve_artistic_style,
 )
-from .music_prompts import (
+from .music import (
     GENRE_PRESETS,
     VOCAL_PRESETS,
     LANGUAGE_PRESETS,

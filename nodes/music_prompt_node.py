@@ -12,7 +12,7 @@ import torch
 from PIL import Image
 
 try:
-    from ..core import (
+    from ..core.music import (
         GENRE_PRESETS,
         VOCAL_PRESETS,
         LANGUAGE_PRESETS,
@@ -27,11 +27,10 @@ try:
         parse_music_response,
         clean_user_custom_lyrics,
         clean_user_custom_directives,
-        tensor_to_pil,
-        ModelManager,
     )
+    from ..core import tensor_to_pil, ModelManager
 except (ImportError, ValueError):
-    from core import (
+    from core.music import (
         GENRE_PRESETS,
         VOCAL_PRESETS,
         LANGUAGE_PRESETS,
@@ -46,9 +45,8 @@ except (ImportError, ValueError):
         parse_music_response,
         clean_user_custom_lyrics,
         clean_user_custom_directives,
-        tensor_to_pil,
-        ModelManager,
     )
+    from core import tensor_to_pil, ModelManager
 
 
 class StoiqoMusicPromptEngineNode:

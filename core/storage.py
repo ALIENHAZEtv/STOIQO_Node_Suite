@@ -6,13 +6,17 @@ and tracing upstream ComfyUI prompt graphs to detect original filenames.
 
 import os
 import json
-import folder_paths
+try:
+    import folder_paths
+except ImportError:
+    folder_paths = None
 
 
 def resolve_output_dir(output_dir):
     """Resolves output directory relative to ComfyUI's standard output folder."""
+    base_dir = folder_paths.get_output_directory() if (folder_paths and hasattr(folder_paths, "get_output_directory")) else os.path.join(os.getcwd(), "output")
     if not output_dir or not output_dir.strip():
-        return folder_paths.get_output_directory()
+        return base_dir
     clean_dir = output_dir.strip()
     if os.path.isabs(clean_dir):
         return clean_dir
@@ -20,8 +24,8 @@ def resolve_output_dir(output_dir):
     if norm.lower().startswith("output"):
         norm = norm[6:].lstrip(".\\/")
     if not norm:
-        return folder_paths.get_output_directory()
-    return os.path.join(folder_paths.get_output_directory(), norm)
+        return base_dir
+    return os.path.join(base_dir, norm)
 
 
 def save_artifacts(
