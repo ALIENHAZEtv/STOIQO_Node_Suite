@@ -250,12 +250,32 @@ def clean_repetition_artifacts(text):
     return "\n".join(deduped_lines)
 
 
+def normalize_lyrics_sections(text):
+    """Converts any rogue XML section tags (<Verse 1>, <Chorus>, etc.) into standard bracket sections."""
+    if not text:
+        return ""
+    def repl_tag(m):
+        tag_type = m.group(1).capitalize()
+        num = m.group(2).strip() if m.group(2) else ""
+        if num:
+            return f"\n[{tag_type} {num}]\n"
+        return f"\n[{tag_type}]\n"
+
+    # Convert opening section tags: <Verse 1>, <Verse>, <Chorus>, <Bridge>, etc.
+    res = re.sub(r"<\s*(Verse|Chorus|Bridge|Outro|Intro|Pre-Chorus|Hook|Strofa|Ritornello)\s*([0-9]*)\s*>", repl_tag, text, flags=re.IGNORECASE)
+    # Strip all closing tags like </verse>, </chorus>, </lyrics>, etc.
+    res = re.sub(r"<\s*/\s*[a-zA-Z0-9_\s:]+>", "", res)
+    return res
+
+
 def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
     """
     Parses the LLM output into structured YuE2 components with maximum resilience.
-    Extracts what the model ACTUALLY wrote, never silently replacing with fake text.
+    Extracts what the model ACTUALLY wrote, converting XML tags to brackets and NEVER inventing fake lyrics.
     """
     text = clean_repetition_artifacts((raw_text or "").strip())
+    # Pre-normalize rogue XML section tags into bracket sections
+    normalized_text = normalize_lyrics_sections(text)
 
     is_italian = "italian" in str(target_language).lower() or any(w in fallback_idea.lower() for w in ["italiano", "canzone", "mare", "sole", "macchina", "amici", "morte", "amore"])
 
@@ -268,7 +288,6 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
             title = cand_t
 
     if not title:
-        # Infer title from fallback idea
         words = fallback_idea.split()
         if words:
             title = " ".join(words[:4]).strip().strip("\"'.,")
@@ -285,32 +304,31 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
             style = cand_style
 
     if not style:
-        # Fallback style deriving strictly from user's idea
         style = f"{target_language}, authentic vocals, {fallback_idea[:50]}, 120 BPM, rich instrumentation, dynamic mix, high fidelity production"
 
     # Extract Lyrics
     lyrics = ""
-    # Priority A: Look for first musical section bracket ([Verse..., [Intro..., [Chorus..., [Strofa...)
-    bracket_m = re.search(r"(\[(?:Verse|Verso|Strofa|Chorus|Ritornello|Pre-Chorus|Bridge|Outro|Intro|Hook)[^\]]*\].*)", text, re.DOTALL | re.IGNORECASE)
-    if bracket_m:
-        candidate = bracket_m.group(1)
-        # Cut off at closing or subsequent technical XML tags
-        candidate = re.split(r"<(?:STYLE|ABC_PLANNING|MODE|DURATION|/LYRICS|/RICS)", candidate, flags=re.IGNORECASE)[0].strip()
-        non_header_lines = [ln.strip() for ln in candidate.splitlines() if ln.strip() and not ln.strip().startswith("[")]
+
+    # Priority A: Look inside <LYRICS> or <RICS> in normalized text
+    lyrics_m = re.search(r"<(?:LYRICS|RICS)>(.*?)(?:</(?:LYRICS|RICS)>|<ABC_PLANNING>|<STYLE>|$)", normalized_text, re.DOTALL | re.IGNORECASE)
+    if lyrics_m:
+        cand_l = lyrics_m.group(1).strip()
+        cand_l = re.sub(r"</?(?:LYRICS|RICS|ABC_PLANNING|STYLE|TITLE)>", "", cand_l, flags=re.IGNORECASE).strip()
+        non_header_lines = [ln.strip() for ln in cand_l.splitlines() if ln.strip() and not ln.strip().startswith("[")]
         if len(non_header_lines) >= 1:
-            lyrics = candidate
+            lyrics = cand_l
 
-    # Priority B: If no section bracket found at start, look inside <LYRICS> or <RICS> tags
+    # Priority B: Look for first musical section bracket ([Verse..., [Intro..., [Chorus..., [Strofa...)
     if not lyrics:
-        lyrics_m = re.search(r"<(?:LYRICS|RICS)>(.*?)(?:</(?:LYRICS|RICS)>|</ABC_PLANNING>|<STYLE>|$)", text, re.DOTALL | re.IGNORECASE)
-        if lyrics_m:
-            raw_l = lyrics_m.group(1).strip()
-            raw_l = re.sub(r"</?(?:LYRICS|RICS|ABC_PLANNING|STYLE|TITLE)>", "", raw_l, flags=re.IGNORECASE).strip()
-            non_header_lines = [ln.strip() for ln in raw_l.splitlines() if ln.strip() and not ln.strip().startswith("[")]
+        bracket_m = re.search(r"(\[(?:Verse|Verso|Strofa|Chorus|Ritornello|Pre-Chorus|Bridge|Outro|Intro|Hook)[^\]]*\].*)", normalized_text, re.DOTALL | re.IGNORECASE)
+        if bracket_m:
+            candidate = bracket_m.group(1)
+            candidate = re.split(r"<(?:STYLE|ABC_PLANNING|MODE|DURATION|/LYRICS|/RICS)", candidate, flags=re.IGNORECASE)[0].strip()
+            non_header_lines = [ln.strip() for ln in candidate.splitlines() if ln.strip() and not ln.strip().startswith("[")]
             if len(non_header_lines) >= 1:
-                lyrics = raw_l
+                lyrics = candidate
 
-    # If the user provided pre-written lyrics in fallback_idea, use the user's lyrics!
+    # Priority C: If the user provided pre-written lyrics in fallback_idea, use the user's lyrics!
     if not lyrics and fallback_idea:
         if detect_existing_lyrics(fallback_idea):
             clean_user_lyrics = fallback_idea.strip()
@@ -318,37 +336,14 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
                 clean_user_lyrics = f"[Verse 1]\n{clean_user_lyrics}"
             lyrics = clean_user_lyrics
 
-    # If still empty (e.g. model output had no brackets and no tags), extract any generated text lines
+    # Priority D: If still empty, extract whatever text the model actually generated without technical tags
     if not lyrics and text:
-        # Strip other XML tags
-        clean_any = re.sub(r"<[a-zA-Z_]+>.*?</[a-zA-Z_]+>", "", text, flags=re.DOTALL)
-        clean_any = re.sub(r"</?[a-zA-Z_]+>", "", clean_any).strip()
-        if len(clean_any.splitlines()) >= 2:
-            lyrics = clean_any
+        clean_raw = re.sub(r"<[a-zA-Z_0-9:]+>.*?</[a-zA-Z_0-9:]+>", "", text, flags=re.DOTALL)
+        clean_raw = re.sub(r"</?[a-zA-Z_0-9:]+>", "", clean_raw).strip()
+        if clean_raw:
+            lyrics = clean_raw
 
-    # If completely empty, assemble a dynamic structure directly reflecting the user's concept
-    if not lyrics:
-        lyrics = (
-            f"[Verse 1]\n"
-            f"Parole che nascono dall'idea: {fallback_idea}\n"
-            f"Ritmo e melodia che prendono forma\n\n"
-            f"[Chorus]\n"
-            f"{title}\n"
-            f"Nel cuore del brano\n\n"
-            f"[Outro]\n"
-            f"Dissolvenza finale..."
-        ) if is_italian else (
-            f"[Verse 1]\n"
-            f"Words born from the theme: {fallback_idea}\n"
-            f"Rhythm and melody taking form\n\n"
-            f"[Chorus]\n"
-            f"{title}\n"
-            f"At the heart of the track\n\n"
-            f"[Outro]\n"
-            f"Fade out..."
-        )
-
-    # Clean residual XML tags and markdown code fences
+    # Clean residual XML tags and markdown code fences from lyrics and style
     lyrics = re.sub(r"</?[a-zA-Z_0-9:]+>", "", lyrics)
     lyrics = re.sub(r"```[a-zA-Z]*", "", lyrics).replace("```", "").replace("`XML", "").replace("`xml", "").strip()
     style = re.sub(r"</?[a-zA-Z_0-9:]+>", "", style)
