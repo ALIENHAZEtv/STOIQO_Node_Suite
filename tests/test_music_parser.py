@@ -221,7 +221,41 @@ non ci fermiamo più nel buio
         self.assertIn("Notte di Luna", parsed["title"])
         self.assertIn("Sotto le luci al neon", parsed["lyrics"])
 
+    def test_reject_corrupted_deserialization_tokens(self):
+        raw_llm = """[TITLE]
+Death Metal Love
+
+[STYLE]
+Death metal, 110 BPM, growl vocals, heavy guitars
+
+[LYRICS]
+[Verse 1]
+Nelle ombre del silenzio profondo
+Brucia il sangue che non si arrende
+[Chorus]
+L'amore e la morte si fondono insieme
+Oltre il buio di questa terra
+"""
+        parsed_rand = parse_music_response(
+            raw_llm,
+            fallback_idea="death metal",
+            target_language="Italian",
+            custom_lyrics="randomize",
+        )
+        self.assertNotIn("randomize", parsed_rand["lyrics"])
+        self.assertIn("Nelle ombre del silenzio", parsed_rand["lyrics"])
+
+        parsed_float = parse_music_response(
+            raw_llm,
+            fallback_idea="death metal",
+            target_language="Italian",
+            custom_lyrics="0.7",
+        )
+        self.assertNotIn("0.7", parsed_float["lyrics"])
+        self.assertIn("Nelle ombre del silenzio", parsed_float["lyrics"])
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

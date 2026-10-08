@@ -185,11 +185,48 @@ def resolve_music_system_prompt(choice, custom_text=""):
     return MUSIC_SYSTEM_PROMPT_PRESETS.get(choice, YUE2_SYSTEM_PROMPT)
 
 
+def clean_user_custom_lyrics(text):
+    """
+    Validates user-provided custom lyrics, rejecting deserialized LiteGraph UI tokens
+    such as 'randomize', 'fixed', 'increment', or stray numbers from corrupted workflow states.
+    """
+    if not text:
+        return ""
+    t = text.strip()
+    if t.lower() in ["randomize", "fixed", "increment", "decrement", "none", "null", "undefined"]:
+        return ""
+    try:
+        float(t)
+        return ""
+    except ValueError:
+        pass
+    return t
+
+
+def clean_user_custom_directives(text):
+    """
+    Validates user custom directives, rejecting stray numbers or LiteGraph UI control tokens.
+    """
+    if not text:
+        return ""
+    t = text.strip()
+    if t.lower() in ["randomize", "fixed", "increment", "decrement", "none", "null", "undefined"]:
+        return ""
+    try:
+        float(t)
+        return ""
+    except ValueError:
+        pass
+    return t
+
+
 def detect_existing_lyrics(text):
     """Checks if the user input contains pre-written lyrics or poetry."""
     if not text:
         return False
     t = text.strip()
+    if t.lower() in ["randomize", "fixed", "increment", "decrement"]:
+        return False
     if any(marker in t.lower() for marker in ["[verse", "[chorus", "[bridge", "[intro", "[outro", "[hook", "[strofa", "[ritornello"]):
         return True
     lines = [line.strip() for line in t.splitlines() if line.strip()]
@@ -213,9 +250,10 @@ def build_music_task_prompt(
 ):
     """Constructs the targeted user task prompt with platinum songwriting standards, strict rhyming schemes, and optional custom lyrics."""
     clean_idea = (idea or "").strip()
-    clean_custom_lyrics = (custom_lyrics or "").strip()
-    is_existing_lyrics = bool(clean_custom_lyrics) or detect_existing_lyrics(clean_idea) or detect_existing_lyrics(custom_directives)
-    effective_lyrics = clean_custom_lyrics if clean_custom_lyrics else (clean_idea if detect_existing_lyrics(clean_idea) else custom_directives)
+    clean_custom_lyrics = clean_user_custom_lyrics(custom_lyrics)
+    clean_custom_directives = clean_user_custom_directives(custom_directives)
+    is_existing_lyrics = bool(clean_custom_lyrics) or detect_existing_lyrics(clean_idea) or detect_existing_lyrics(clean_custom_directives)
+    effective_lyrics = clean_custom_lyrics if clean_custom_lyrics else (clean_idea if detect_existing_lyrics(clean_idea) else clean_custom_directives)
 
     # 1. Language determination: dropdown selection takes strict precedence
     if language and not language.startswith("Auto"):
@@ -508,8 +546,9 @@ def parse_music_response(
                 lyrics = candidate
 
     # Priority 0: If the user provided pre-written lyrics directly via custom_lyrics, preserve them 100% verbatim
-    if custom_lyrics and custom_lyrics.strip():
-        lyrics = custom_lyrics.strip()
+    valid_custom_lyrics = clean_user_custom_lyrics(custom_lyrics)
+    if valid_custom_lyrics:
+        lyrics = valid_custom_lyrics
     else:
         if not lyrics and fallback_idea:
             if detect_existing_lyrics(fallback_idea):

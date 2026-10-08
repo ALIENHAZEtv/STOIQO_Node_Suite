@@ -24,14 +24,22 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
         { targetWidget: "genre", num: "3", title: "GENRE & ACOUSTICS", color: "#a855f7" },
         { targetWidget: "vocal_type", num: "4", title: "VOCALS & LANGUAGE", color: "#38bdf8" },
         { targetWidget: "structure", num: "5", title: "STRUCTURE & TEMPO", color: "#eab308" },
-        { targetWidget: "seed", num: "6", title: "GENERATION & SAMPLING", color: "#10b981" },
+        { targetWidget: "custom_lyrics", num: "6", title: "CUSTOM LYRICS & DIRECTIVES (OPTIONAL)", color: "#818cf8" },
+        { targetWidget: "seed", num: "7", title: "GENERATION & SAMPLING", color: "#10b981" },
     ];
 
     const MULTILINE_HEIGHTS = {
         "idea": 76,
         "custom_system_prompt": 68,
-        "custom_lyrics": 80,
+        "custom_lyrics": 72,
         "custom_directives": 54,
+    };
+
+    const PLACEHOLDERS = {
+        "idea": "Song theme, story, or emotion (e.g. 'A death metal song about...')...",
+        "custom_system_prompt": "Active only when system_prompt = 'Custom'. Write your custom AI music producer system instructions here...",
+        "custom_lyrics": "Optional: Write or paste your own lyrics. Leave blank for full AI lyric generation...",
+        "custom_directives": "Optional constraints (e.g. 'acoustic cello solo', 'no drums in verse 1')...",
     };
 
     function setupNodeInstance(node) {
@@ -43,6 +51,18 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
 
         if (node.size && node.size[0] < MIN_NODE_WIDTH) {
             node.size[0] = MIN_NODE_WIDTH;
+        }
+
+        // 0. Sanitize shifted LiteGraph deserialization tokens (e.g. "randomize", "fixed", numbers)
+        for (const wName of ["custom_lyrics", "custom_directives", "custom_system_prompt"]) {
+            const w = node.widgets?.find(item => item.name === wName);
+            if (w) {
+                const rawVal = String(w.value || "").trim().toLowerCase();
+                if (["randomize", "fixed", "increment", "decrement"].includes(rawVal) || (!isNaN(Number(rawVal)) && rawVal.length > 0)) {
+                    w.value = "";
+                    if (w.inputEl) w.inputEl.value = "";
+                }
+            }
         }
 
         // 1. Style multiline inputs
@@ -62,6 +82,9 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
                     el.style.resize = "none";
                     el.style.fontSize = "11.5px";
                     el.style.lineHeight = "1.45";
+                    if (PLACEHOLDERS[wName]) {
+                        el.placeholder = PLACEHOLDERS[wName];
+                    }
                 };
 
                 if (w.inputEl) {
@@ -151,7 +174,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
         // 4. Ensure Live Preview Widgets Exist (Style & Lyrics HUD)
         let styleDisplay = node.widgets.find(w => w.name === "preview_style");
         if (!styleDisplay) {
-            const styleDivider = new StoiqoSectionDividerWidget("7", "YUE2 OUTPUT: STYLE DESCRIPTOR", "#06b6d4");
+            const styleDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: STYLE DESCRIPTOR", "#06b6d4");
             node.widgets.push(styleDivider);
 
             if (typeof ComfyWidgets !== "undefined" && ComfyWidgets["STRING"]) {
@@ -206,7 +229,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
 
         let lyricsDisplay = node.widgets.find(w => w.name === "preview_lyrics");
         if (!lyricsDisplay) {
-            const lyricsDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ec4899");
+            const lyricsDivider = new StoiqoSectionDividerWidget("9", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ec4899");
             node.widgets.push(lyricsDivider);
 
             if (typeof ComfyWidgets !== "undefined" && ComfyWidgets["STRING"]) {

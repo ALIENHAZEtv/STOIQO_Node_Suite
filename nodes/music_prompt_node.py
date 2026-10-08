@@ -25,6 +25,8 @@ try:
         resolve_music_system_prompt,
         build_music_task_prompt,
         parse_music_response,
+        clean_user_custom_lyrics,
+        clean_user_custom_directives,
         tensor_to_pil,
         ModelManager,
     )
@@ -42,6 +44,8 @@ except (ImportError, ValueError):
         resolve_music_system_prompt,
         build_music_task_prompt,
         parse_music_response,
+        clean_user_custom_lyrics,
+        clean_user_custom_directives,
         tensor_to_pil,
         ModelManager,
     )
@@ -126,13 +130,8 @@ class StoiqoMusicPromptEngineNode:
                     {
                         "multiline": True,
                         "default": "",
+                        "placeholder": "Optional: Write or paste your own lyrics. Leave blank for AI lyric generation...",
                         "tooltip": "Optional: Write or paste your own lyrics. When provided, the node preserves your lyrics 100% exactly as written, while the AI analyzes them to formulate the matching YuE2 Style prompt, BPM, Duration, and Mode.",
-                    },
-                ),
-                "cover_image": (
-                    "IMAGE",
-                    {
-                        "tooltip": "Optional visual inspiration (album cover, concept art). The model analyzes its mood and aesthetic.",
                     },
                 ),
                 "custom_directives": (
@@ -140,7 +139,14 @@ class StoiqoMusicPromptEngineNode:
                     {
                         "multiline": True,
                         "default": "",
+                        "placeholder": "Optional constraints (e.g. 'incorporate acoustic cello', 'no drums in verse 1')...",
                         "tooltip": "Specific constraints, e.g. 'incorporate acoustic cello', 'mention character name Alex', 'no drums in verse 1'.",
+                    },
+                ),
+                "cover_image": (
+                    "IMAGE",
+                    {
+                        "tooltip": "Optional visual inspiration (album cover, concept art). The model analyzes its mood and aesthetic.",
                     },
                 ),
                 "stoiqo_model": (
@@ -237,6 +243,10 @@ class StoiqoMusicPromptEngineNode:
             except Exception as e:
                 print(f"[STOIQO Music] Warning converting cover image: {e}")
 
+        # Sanitize any shifted widget values from LiteGraph deserialization (e.g. 'randomize', numbers)
+        clean_lyrics_in = clean_user_custom_lyrics(custom_lyrics)
+        clean_directives_in = clean_user_custom_directives(custom_directives)
+
         # Resolve active system prompt (preset or custom manual override)
         active_system_prompt = resolve_music_system_prompt(system_prompt, custom_system_prompt)
 
@@ -248,9 +258,9 @@ class StoiqoMusicPromptEngineNode:
             language=language,
             structure=structure,
             tempo=tempo,
-            custom_directives=custom_directives,
+            custom_directives=clean_directives_in,
             has_image=(img_pil is not None),
-            custom_lyrics=custom_lyrics,
+            custom_lyrics=clean_lyrics_in,
         )
 
         print(f"[STOIQO Music] Generating music style & lyrics for: '{clean_idea[:60]}'...")
@@ -279,7 +289,7 @@ class StoiqoMusicPromptEngineNode:
             vocal=vocal_type,
             tempo=tempo,
             structure=structure,
-            custom_lyrics=custom_lyrics,
+            custom_lyrics=clean_lyrics_in,
         )
 
         # Word & char counts
