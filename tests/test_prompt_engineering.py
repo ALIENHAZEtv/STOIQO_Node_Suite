@@ -12,24 +12,18 @@ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-import importlib.util
-
-spec = importlib.util.spec_from_file_location(
-    "music_prompts", os.path.join(root, "core", "music_prompts.py")
+from core.music import (
+    build_music_task_prompt,
+    YUE2_SYSTEM_PROMPT,
+    GENRE_PRESETS,
+    VOCAL_PRESETS,
+    LANGUAGE_PRESETS,
+    SONG_STRUCTURES,
+    TEMPO_PRESETS,
+    MUSIC_SYSTEM_PROMPT_PRESETS,
+    MUSIC_CUSTOM_SYSTEM_PROMPT_KEY,
+    resolve_music_system_prompt,
 )
-music_prompts = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(music_prompts)
-
-build_music_task_prompt = music_prompts.build_music_task_prompt
-YUE2_SYSTEM_PROMPT = music_prompts.YUE2_SYSTEM_PROMPT
-GENRE_PRESETS = music_prompts.GENRE_PRESETS
-VOCAL_PRESETS = music_prompts.VOCAL_PRESETS
-LANGUAGE_PRESETS = music_prompts.LANGUAGE_PRESETS
-SONG_STRUCTURES = music_prompts.SONG_STRUCTURES
-TEMPO_PRESETS = music_prompts.TEMPO_PRESETS
-MUSIC_SYSTEM_PROMPT_PRESETS = music_prompts.MUSIC_SYSTEM_PROMPT_PRESETS
-MUSIC_CUSTOM_SYSTEM_PROMPT_KEY = music_prompts.MUSIC_CUSTOM_SYSTEM_PROMPT_KEY
-resolve_music_system_prompt = music_prompts.resolve_music_system_prompt
 
 
 class TestPromptEngineering(unittest.TestCase):

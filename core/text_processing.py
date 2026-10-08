@@ -6,15 +6,26 @@ surgical negative prompt extraction, and task prompt construction.
 
 import re
 import random
-from .prompt_types import (
-    PROMPT_TYPE_DIRECTIVES,
-    STYLE_PROMPTS,
-    resolve_prompt_type,
-)
-from .styles import (
-    ARTISTIC_STYLE_DIRECTIVES,
-    resolve_artistic_style,
-)
+try:
+    from .image.prompt_types import (
+        PROMPT_TYPE_DIRECTIVES,
+        STYLE_PROMPTS,
+        resolve_prompt_type,
+    )
+    from .image.styles import (
+        ARTISTIC_STYLE_DIRECTIVES,
+        resolve_artistic_style,
+    )
+except (ImportError, ValueError):
+    from core.image.prompt_types import (
+        PROMPT_TYPE_DIRECTIVES,
+        STYLE_PROMPTS,
+        resolve_prompt_type,
+    )
+    from core.image.styles import (
+        ARTISTIC_STYLE_DIRECTIVES,
+        resolve_artistic_style,
+    )
 
 
 def clean_llm_output(text):

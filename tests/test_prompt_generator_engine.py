@@ -15,14 +15,12 @@ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-from core.system_prompts import (
+from core.image import (
     SYSTEM_PROMPT_PRESETS,
     CUSTOM_SYSTEM_PROMPT_KEY,
     TEXT_EXPANSION_SYSTEM_PROMPT,
     MULTI_IMAGE_SYSTEM_PROMPT,
     resolve_system_prompt,
-)
-from core.prompt_types import (
     PROMPT_TYPES,
     PROMPT_TYPE_DIRECTIVES,
     resolve_prompt_type,

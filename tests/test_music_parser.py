@@ -13,18 +13,12 @@ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-import importlib.util
-
-spec = importlib.util.spec_from_file_location(
-    "music_prompts", os.path.join(root, "core", "music_prompts.py")
+from core.music import (
+    parse_music_response,
+    clean_repetition_artifacts,
+    normalize_lyrics_sections,
+    detect_existing_lyrics,
 )
-music_prompts = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(music_prompts)
-
-parse_music_response = music_prompts.parse_music_response
-clean_repetition_artifacts = music_prompts.clean_repetition_artifacts
-normalize_lyrics_sections = music_prompts.normalize_lyrics_sections
-detect_existing_lyrics = music_prompts.detect_existing_lyrics
 
 
 class TestMusicParser(unittest.TestCase):

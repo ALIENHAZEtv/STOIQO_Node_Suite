@@ -15,7 +15,7 @@ if root not in sys.path:
     sys.path.insert(0, root)
 
 from core.model_manager import ModelManager
-from core.music_prompts import (
+from core.music import (
     YUE2_SYSTEM_PROMPT,
     build_music_task_prompt,
     parse_music_response,
