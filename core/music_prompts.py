@@ -112,80 +112,113 @@ def detect_existing_lyrics(text):
 
 
 def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, custom_directives=""):
-    """Constructs the targeted user task prompt for the music engine with strong language enforcement."""
+    """Constructs the targeted user task prompt for the music engine with 100% strict adherence to all UI controls."""
     clean_idea = (idea or "").strip()
     is_existing_lyrics = detect_existing_lyrics(clean_idea) or detect_existing_lyrics(custom_directives)
 
-    target_lang = "Italian" if (not language or language == "Italian" or language.startswith("Auto")) else language.strip()
-    if any(it_word in clean_idea.lower() for it_word in ["italiano", "in italiano", "canzone", "sole", "mare", "notte", "amore", "macchina", "amici"]):
-        target_lang = "Italian"
+    # 1. Strict language determination: dropdown selection is law!
+    if language and not language.startswith("Auto"):
+        target_lang = language.strip()
+    else:
+        # Infer language from idea
+        target_lang = "Italian" if any(it_word in clean_idea.lower() for it_word in ["italiano", "in italiano", "canzone", "sole", "mare", "notte", "amore", "macchina", "amici", "morte", "rabbia"]) else "English"
+
+    is_instrumental = bool(vocal and "instrumental" in vocal.lower())
 
     parts = []
 
     # 1. Supreme Language Directive at top
-    if target_lang.lower() == "italian" or "italian" in target_lang.lower():
-        parts.append(
-            "[CRITICAL LANGUAGE DIRECTIVE: ITALIANO]\n"
-            "TUTTE LE LYRICS DEVONO ESSERE SCRITTE RIGOROSAMENTE IN LINGUA ITALIANA.\n"
-            "È SEVERAMENTE VIETATO USARE L'INGLESE NEL TESTO DELLA CANZONE. OGNI STROFA, RITORNELLO E BRIDGE DEVE ESSERE IN ITALIANO."
-        )
-    else:
-        parts.append(
-            f"[CRITICAL LANGUAGE DIRECTIVE: {target_lang.upper()}]\n"
-            f"The lyrics MUST be written 100% in {target_lang}. Every line, verse, and chorus must be in {target_lang}."
-        )
+    if not is_instrumental:
+        if target_lang.lower() == "italian" or "italian" in target_lang.lower():
+            parts.append(
+                "[CRITICAL LANGUAGE DIRECTIVE: ITALIANO]\n"
+                "TUTTE LE LYRICS DEVONO ESSERE SCRITTE RIGOROSAMENTE IN LINGUA ITALIANA.\n"
+                "È SEVERAMENTE VIETATO USARE L'INGLESE NEL TESTO DELLA CANZONE. OGNI STROFA, RITORNELLO E BRIDGE DEVE ESSERE IN ITALIANO."
+            )
+        else:
+            parts.append(
+                f"[CRITICAL LANGUAGE DIRECTIVE: {target_lang.upper()}]\n"
+                f"The lyrics MUST be written 100% in {target_lang}. Every line, verse, and chorus must be in {target_lang}."
+            )
 
-    # 2. Lyrics Content Directive
-    if is_existing_lyrics:
+    # 2. Extract and enforce arrangement structure
+    struct_sections = []
+    if structure:
+        m_struct = re.search(r"\((.*?)\)", structure)
+        if m_struct:
+            raw_sects = [s.strip() for s in m_struct.group(1).split(",") if s.strip()]
+            struct_sections = [f"[{s}]" for s in raw_sects]
+
+    # 3. Lyrical / Instrumental Content Directive
+    if is_instrumental:
+        parts.append(
+            "# PRIMARY DIRECTIVE: INSTRUMENTAL COMPOSITION (NO SUNG VOCALS)\n"
+            "This track is 100% INSTRUMENTAL. Zero sung lyrics or singing voices allowed.\n"
+            "Inside <LYRICS>, output arrangement acoustic cues (e.g. [Intro] (Lead synth solo), [Climax] (Full orchestral peak), etc.).\n"
+            "Inside <STYLE>, start with 'Instrumental, no vocals...' and detail the lead instruments and rhythm."
+        )
+    elif is_existing_lyrics:
         parts.append(
             "# PRIMARY DIRECTIVE: PRESERVE USER-PROVIDED LYRICS\n"
             "The user supplied the actual lyrics / poem for the song.\n"
             "You MUST preserve all lines and words provided by the user in <LYRICS>.\n"
-            "Format the lines into clean musical sections ([Verse 1], [Chorus], [Verse 2], etc.).\n"
+            "Format the lines into clean musical sections.\n"
             "Do NOT replace or summarize the user's lyrics!\n\n"
             f"USER PROVIDED TEXT / LYRICS:\n\"\"\"\n{clean_idea}\n\"\"\""
         )
     else:
         parts.append(
-            f"# SUPREME DIRECTIVE: DEDICATED ORIGINAL COMPOSITION IN {target_lang.upper()}\n"
-            f"You MUST write 100% original lyrics based EXCLUSIVELY on this user idea, mood, and genre:\n"
+            f"# SUPREME DIRECTIVE: ORIGINAL COMPOSITION IN {target_lang.upper()}\n"
+            f"Write complete, meaningful song lyrics based directly on this user concept:\n"
             f">>> \"{clean_idea}\" <<<\n\n"
-            f"DO NOT default to generic pop, summer, or road-trip lyrics! Embody the EXACT emotion, narrative, and genre requested by the user.\n"
-            f"Write the COMPLETE song in {target_lang} from start to finish inside <LYRICS>.\n"
-            "Write authentic, singable poetry with natural rhyme and cadence for each section: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Bridge], [Chorus], [Outro].\n"
-            "Write EVERY single stanza out in full with actual singing lyrics. NEVER leave section brackets empty!"
+            f"Language: 100% {target_lang}.\n"
+            f"Tone & Mood: Exactly fit the requested style and theme.\n"
+            f"Structure: You MUST follow these layout sections in order: {' -> '.join(struct_sections) if struct_sections else '[Verse 1] -> [Chorus] -> [Verse 2] -> [Chorus] -> [Outro]'}.\n"
+            "Write authentic, singable lines under EACH section tag. NEVER leave section brackets empty!"
         )
 
-    # 3. Technical Specifications
+    # 4. Technical Production Specifications
     spec_lines = [
-        f"- Target Language for Lyrics: {target_lang}",
+        f"- Target Language: {target_lang}",
     ]
     if genre and not genre.startswith("Auto"):
-        spec_lines.append(f"- Genre / Acoustics: {genre}")
+        spec_lines.append(f"- Genre / Acoustics Target: {genre} (The acoustics, genre, and instruments MUST strictly obey this selection)")
     else:
-        spec_lines.append(f"- Genre / Acoustics: Strictly infer and match the genre from the user idea: '{clean_idea}'")
-    if vocal and not vocal.startswith("Auto"):
-        spec_lines.append(f"- Vocal Delivery: {vocal}")
+        spec_lines.append(f"- Genre / Acoustics Target: Inferred directly from concept: '{clean_idea}'")
+
+    if is_instrumental:
+        spec_lines.append("- Vocal Target: Instrumental Only (No singing, purely melodic and acoustic instrumentation)")
+    elif vocal and not vocal.startswith("Auto"):
+        spec_lines.append(f"- Vocal Delivery Target: {vocal} (Voice timbre, gender, and style must match this selection)")
     else:
-        spec_lines.append(f"- Vocal Delivery: Infer optimal vocal tone and delivery to match the genre and mood")
+        spec_lines.append("- Vocal Delivery Target: Inferred optimal delivery matching genre and mood")
+
     if structure:
         spec_lines.append(f"- Structural Arrangement: {structure}")
+
     if tempo and not tempo.startswith("Auto"):
-        spec_lines.append(f"- Tempo Target: {tempo}")
+        spec_lines.append(f"- Tempo Target: {tempo} (Inside <STYLE>, the BPM MUST strictly fall into this range)")
+    else:
+        spec_lines.append("- Tempo Target: Optimal BPM tailored to the genre")
+
     if custom_directives and custom_directives.strip():
-        spec_lines.append(f"- Custom Constraints: {custom_directives.strip()}")
+        parts.append(
+            f"⚠️ STRICT CUSTOM USER CONSTRAINTS (HIGHEST PRIORITY):\n"
+            f"{custom_directives.strip()}\n"
+            f"You MUST obey every single rule above without exception!"
+        )
 
     parts.append("\nProduction Specifications:\n" + "\n".join(spec_lines))
 
-    # 4. Strict Output Format Directive
+    # 5. Output Format Contract
     parts.append(
         f"\nOutput Contract:\n"
         f"1. <TITLE>: Engaging Title in {target_lang}\n"
-        f"2. <STYLE>: Strictly technical acoustic descriptor for YuE2 starting with '{target_lang}, ...' (Zero sung words, match the requested genre and instruments)\n"
+        f"2. <STYLE>: Technical acoustic descriptor for YuE2 starting with '{target_lang}, ...' (Zero sung words, specify BPM, instruments, and mix)\n"
         f"3. <ABC_PLANNING>: true/false\n"
-        f"4. <MODE>: full/melody\n"
-        f"5. <DURATION>: duration in seconds\n"
-        f"6. <LYRICS>: Full sung song lyrics in {target_lang} with section tags [Verse 1], [Chorus], etc."
+        f"4. <MODE>: {'melody' if is_instrumental else 'full'}\n"
+        f"5. <DURATION>: 180.0\n"
+        f"6. <LYRICS>: Full lyrics in {target_lang} organized with section tags."
     )
 
     return "\n\n".join(parts)
@@ -257,25 +290,25 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
 
     # Extract Lyrics
     lyrics = ""
-    # Try tag match first (<LYRICS> or <RICS>)
-    lyrics_m = re.search(r"<(?:LYRICS|RICS)>(.*?)(?:</(?:LYRICS|RICS)>|</ABC_PLANNING>|<STYLE>|$)", text, re.DOTALL | re.IGNORECASE)
-    if lyrics_m:
-        raw_l = lyrics_m.group(1).strip()
-        raw_l = re.sub(r"</?(?:LYRICS|RICS|ABC_PLANNING|STYLE|TITLE)>", "", raw_l, flags=re.IGNORECASE).strip()
-        non_header_lines = [ln.strip() for ln in raw_l.splitlines() if ln.strip() and not ln.strip().startswith("[")]
+    # Priority A: Look for first musical section bracket ([Verse..., [Intro..., [Chorus..., [Strofa...)
+    bracket_m = re.search(r"(\[(?:Verse|Verso|Strofa|Chorus|Ritornello|Pre-Chorus|Bridge|Outro|Intro|Hook)[^\]]*\].*)", text, re.DOTALL | re.IGNORECASE)
+    if bracket_m:
+        candidate = bracket_m.group(1)
+        # Cut off at closing or subsequent technical XML tags
+        candidate = re.split(r"<(?:STYLE|ABC_PLANNING|MODE|DURATION|/LYRICS|/RICS)", candidate, flags=re.IGNORECASE)[0].strip()
+        non_header_lines = [ln.strip() for ln in candidate.splitlines() if ln.strip() and not ln.strip().startswith("[")]
         if len(non_header_lines) >= 1:
-            lyrics = raw_l
+            lyrics = candidate
 
-    # If tag match was empty, search for section brackets [Verse... or [Verso... or [Strofa...
+    # Priority B: If no section bracket found at start, look inside <LYRICS> or <RICS> tags
     if not lyrics:
-        bracket_m = re.search(r"(\[(?:Verse|Verso|Strofa|Chorus|Ritornello|Pre-Chorus|Bridge|Outro|Intro|Hook)[^\]]*\].*)", text, re.DOTALL | re.IGNORECASE)
-        if bracket_m:
-            candidate = bracket_m.group(1)
-            candidate = re.split(r"<(?:STYLE|ABC_PLANNING|MODE|DURATION|/)", candidate, flags=re.IGNORECASE)[0].strip()
-            candidate = re.sub(r"</?[a-zA-Z_]+>", "", candidate).strip()
-            non_header_lines = [ln.strip() for ln in candidate.splitlines() if ln.strip() and not ln.strip().startswith("[")]
+        lyrics_m = re.search(r"<(?:LYRICS|RICS)>(.*?)(?:</(?:LYRICS|RICS)>|</ABC_PLANNING>|<STYLE>|$)", text, re.DOTALL | re.IGNORECASE)
+        if lyrics_m:
+            raw_l = lyrics_m.group(1).strip()
+            raw_l = re.sub(r"</?(?:LYRICS|RICS|ABC_PLANNING|STYLE|TITLE)>", "", raw_l, flags=re.IGNORECASE).strip()
+            non_header_lines = [ln.strip() for ln in raw_l.splitlines() if ln.strip() and not ln.strip().startswith("[")]
             if len(non_header_lines) >= 1:
-                lyrics = candidate
+                lyrics = raw_l
 
     # If the user provided pre-written lyrics in fallback_idea, use the user's lyrics!
     if not lyrics and fallback_idea:
@@ -315,9 +348,11 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
             f"Fade out..."
         )
 
-    # Clean redundant markdown or backticks
+    # Clean residual XML tags and markdown code fences
+    lyrics = re.sub(r"</?[a-zA-Z_0-9:]+>", "", lyrics)
+    lyrics = re.sub(r"```[a-zA-Z]*", "", lyrics).replace("```", "").replace("`XML", "").replace("`xml", "").strip()
+    style = re.sub(r"</?[a-zA-Z_0-9:]+>", "", style)
     style = re.sub(r"```[a-zA-Z]*", "", style).replace("```", "").strip()
-    lyrics = re.sub(r"```[a-zA-Z]*", "", lyrics).replace("```", "").strip()
 
     # Extract ABC Planning
     abc_m = re.search(r"<ABC_PLANNING>(.*?)</ABC_PLANNING>", text, re.DOTALL | re.IGNORECASE)

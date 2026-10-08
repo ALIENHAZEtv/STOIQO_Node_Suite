@@ -560,7 +560,17 @@ class ModelManager:
         top_p=0.9,
         repetition_penalty=1.1,
         is_multi_image=False,
+        seed=None,
     ):
+        if seed is not None and seed >= 0:
+            import random
+            import numpy as np
+            torch.manual_seed(seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(seed)
+            random.seed(seed)
+            np.random.seed(seed % (2**32))
+
         if self.model is None:
             if self.last_load_params is not None:
                 print("[STOIQO] Model was offloaded in Low VRAM mode. Reloading for current inference pass...")

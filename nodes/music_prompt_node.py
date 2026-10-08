@@ -224,6 +224,7 @@ class StoiqoMusicPromptEngineNode:
             top_p=0.90,
             repetition_penalty=repetition_penalty,
             is_multi_image=False,
+            seed=seed,
         )
 
         print(f"[STOIQO Music] Raw LLM output: {len(raw_output)} chars generated.")
