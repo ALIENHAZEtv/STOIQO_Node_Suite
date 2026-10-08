@@ -261,6 +261,13 @@ class StoiqoMusicPromptEngineNode:
             custom_lyrics=clean_lyrics_in,
         )
 
+        # Clamp temperature for structured lyrical generation:
+        # LLMs (especially Qwen2.5-VL-7B) at temp > 0.65 suffer token entropy collapse
+        # and start hallucinating numbers, guitar gauges, and corrupted tokens.
+        eff_temperature = min(max(float(temperature), 0.1), 0.60)
+        if abs(eff_temperature - float(temperature)) > 0.01:
+            print(f"[STOIQO Music] Notice: Clamping temperature from {temperature:.2f} to {eff_temperature:.2f} to ensure coherent, rhyming singable lyrics.")
+
         print(f"[STOIQO Music] Generating music style & lyrics for: '{clean_idea[:60]}'...")
 
         raw_output = active_mgr.generate_single(
@@ -268,7 +275,7 @@ class StoiqoMusicPromptEngineNode:
             task_prompt,
             active_system_prompt,
             max_new_tokens=max_new_tokens,
-            temperature=temperature,
+            temperature=eff_temperature,
             top_p=0.85,
             repetition_penalty=repetition_penalty,
             is_multi_image=False,

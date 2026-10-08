@@ -281,8 +281,43 @@ full
         self.assertEqual(parsed["mode"], "full")
         self.assertEqual(parsed["max_duration"], 210.0)
 
+    def test_reject_numeric_hallucinations_and_provide_singable_lyrics(self):
+        sample = """
+[STYLE]
+Aggressive Death Metal, 110 BPM, Clean vocals, drop-d tuned guitars, heavy drop-bD bass, distorted guitars.
+
+[LYRICS]
+[Verse 11]
+Cables wrapped in chains,  strings 45 and 15,  no escape,  the grip is tight.  The 5  the 6  
+[Chorus]
+Slipknotsions 120,  slipknotsions  80,  slipknot  300,  slipknot  150.  The  4  5  6  7  The  8  9  The 1
+[Verse 2]
+Ink  35,  45,  the  5  the  6
+[Chorus]
+Slipknotons  200,  slipknotons  110,  slipknot  400,  slipknot  250.  The  4  5  6  7  The  8  9  The  1
+[Bridge]
+Nin  4  the  5  the  6
+[Outro]
+In slipknotsions  40,  slipknotons  25,  slipknot  150,  slipknot  125.  The  4  5  The  6  The  7  The  8  The  9
+"""
+        parsed = parse_music_response(
+            sample,
+            fallback_idea="A death metal song about how much is beautiful love in slipknots style",
+            target_language="English",
+            genre="Metal",
+        )
+        self.assertNotIn("Slipknotsions", parsed["lyrics"])
+        self.assertNotIn("strings 45 and 15", parsed["lyrics"])
+        self.assertNotIn("The 4 5 6 7", parsed["lyrics"])
+        self.assertIn("[Verse 1]", parsed["lyrics"])
+        self.assertIn("[Chorus]", parsed["lyrics"])
+        self.assertIn("[Outro]", parsed["lyrics"])
+        lines = [ln for ln in parsed["lyrics"].splitlines() if ln and not ln.startswith("[")]
+        self.assertTrue(len(lines) >= 8)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

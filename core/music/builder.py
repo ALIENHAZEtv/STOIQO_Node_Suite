@@ -189,10 +189,28 @@ def build_music_task_prompt(
 
     # 5. Output Format Contract
     parts.append(
+        "CRITICAL SONGWRITING INVARIANT:\n"
+        "- Under [LYRICS], write EXCLUSIVELY genuine, emotional, human-singable vocal lyrics in rhyming poetic stanzas.\n"
+        "- ABSOLUTELY FORBIDDEN IN [LYRICS]: NEVER output numbers (e.g. 1 2 3, 45, 120), string gauge sizes, fret markers, BPM numbers, or guitar technical specs inside the lyrics.\n"
+        "- Every single line in [LYRICS] must be a complete, grammatical poetic sentence ready to be sung into a microphone.\n\n"
         "Output Format Requirements (Strictly follow this structure):\n"
         "[TITLE]\nOriginal Song Title\n\n"
         "[STYLE]\nDense technical acoustic descriptors (subgenre, BPM, vocal delivery, instruments, mix profile - in English for YuE2/Suno)\n\n"
-        "[LYRICS]\nOrganized strictly by section headers ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Chorus], [Outro]) with complete singing lines through to [Outro]."
+        "[LYRICS]\n"
+        "[Verse 1]\n"
+        "...\n\n"
+        "[Chorus]\n"
+        "...\n\n"
+        "[Verse 2]\n"
+        "...\n\n"
+        "[Chorus]\n"
+        "...\n\n"
+        "[Bridge]\n"
+        "...\n\n"
+        "[Chorus]\n"
+        "...\n\n"
+        "[Outro]\n"
+        "..."
     )
 
     return "\n\n".join(parts)

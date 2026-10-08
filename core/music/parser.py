@@ -12,68 +12,261 @@ except (ImportError, ValueError):
     from builder import clean_user_custom_lyrics, detect_existing_lyrics
 
 
-def generate_fallback_song_lyrics(title, target_language="Italian", genre=""):
-    """Generates structured lyrics in the target language if model output is truncated, hallucinated, or empty."""
+def generate_fallback_song_lyrics(title="", target_language="Italian", genre="", idea=""):
+    """Generates genre-adaptive structured lyrics in the target language if model output is truncated, hallucinated, or empty."""
     is_it = "italian" in str(target_language).lower()
-    clean_title = (title or ("Canto di Libertà" if is_it else "Song of Freedom")).strip().strip('"\'')
+    combined_desc = f"{genre} {idea} {title}".lower()
+
+    is_metal = any(m in combined_desc for m in ["metal", "death metal", "rock", "slipknot", "heavy", "core", "scream", "grunge", "thrash"])
+    is_rap = any(m in combined_desc for m in ["rap", "hip-hop", "trap", "flow", "drill", "beat"])
+    is_pop = any(m in combined_desc for m in ["pop", "dance", "synth", "disco", "indie", "club"])
+
     if is_it:
-        return (
-            f"[Verse 1]\n"
-            f"Cammino piano lungo questa via,\n"
-            f"tra ombre stese contro la memoria.\n"
-            f"C'è un vento antico che non vola via,\n"
-            f"il tempo scritto dentro la mia storia.\n\n"
-            f"[Chorus]\n"
-            f"E brucia il fuoco che non si consuma,\n"
-            f"oltre la notte e il gelo della sera!\n"
-            f"La voce sale limpida tra i monti,\n"
-            f"libera e forte verso la chimera!\n\n"
-            f"[Verse 2]\n"
-            f"Risuona il passo nell'oscurità,\n"
-            f"nessuna esitazione nel profondo.\n"
-            f"La luce viva vince la paura,\n"
-            f"riaccende il sole dentro a questo mondo.\n\n"
-            f"[Chorus]\n"
-            f"E brucia il fuoco che non si consuma,\n"
-            f"oltre la notte e il gelo della sera!\n"
-            f"La voce sale limpida tra i monti,\n"
-            f"libera e forte verso la chimera!\n\n"
-            f"[Bridge]\n"
-            f"Non c'è sconfitta se continui a andare,\n"
-            f"oltre i confini del presente e il mare!\n\n"
-            f"[Outro]\n"
-            f"Resta la luce accesa nel silenzio.\n"
-            f"Non svanirà mai."
-        )
+        if is_metal:
+            return (
+                "[Verse 1]\n"
+                "Tra le catene e la ruggine viva,\n"
+                "urlo nel fango una furia che sale.\n"
+                "Sotto la pelle la carne si priva,\n"
+                "di ogni veleno che squarcia il male.\n\n"
+                "[Chorus]\n"
+                "Brucia l'abisso e non c'è salvezza,\n"
+                "questo è l'amore che spacca i confini!\n"
+                "Nella tempesta di pura violenza,\n"
+                "stringimi forte tra questi mirini!\n\n"
+                "[Verse 2]\n"
+                "Laceri i muri di spine e silenzio,\n"
+                "sangue e metallo che fondono il cuore.\n"
+                "Nessun rimpianto per questo dissenso,\n"
+                "siamo la voce che sfida il dolore.\n\n"
+                "[Chorus]\n"
+                "Brucia l'abisso e non c'è salvezza,\n"
+                "questo è l'amore che spacca i confini!\n"
+                "Nella tempesta di pura violenza,\n"
+                "stringimi forte tra questi mirini!\n\n"
+                "[Bridge]\n"
+                "Rompi la maschera, guarda nel buio,\n"
+                "io non ti lascio cadere nel vuoto!\n\n"
+                "[Outro]\n"
+                "Furia e respiro.\n"
+                "Resta con me.\n"
+                "Fino alla fine."
+            )
+        elif is_rap:
+            return (
+                "[Verse 1]\n"
+                "Passi sull'asfalto mentre corre la città,\n"
+                "conto solo i fatti zero mezza verità.\n"
+                "Scrivo questa rima per la gente che combatte,\n"
+                "chi non abbassa il capo nelle notti più distrutte.\n\n"
+                "[Chorus]\n"
+                "Alza le mani su questo beat,\n"
+                "non puoi fermare chi vive lo street!\n"
+                "Dal primo giorno fino all'orizzonte,\n"
+                "porto la voce con l'anima in fronte!\n\n"
+                "[Verse 2]\n"
+                "Girano le lancette ma non perdo la direzione,\n"
+                "ogni ferita aperta si trasforma in produzione.\n"
+                "Occhi negli occhi senza fare troppi passi indietro,\n"
+                "spezzo le pareti di questo castello di vetro.\n\n"
+                "[Chorus]\n"
+                "Alza le mani su questo beat,\n"
+                "non puoi fermare chi vive lo street!\n"
+                "Dal primo giorno fino all'orizzonte,\n"
+                "porto la voce con l'anima in fronte!\n\n"
+                "[Bridge]\n"
+                "Questo è il momento, non c'è un secondo da regalare,\n"
+                "chi vuole il cielo deve imparare a rischiare!\n\n"
+                "[Outro]\n"
+                "Spengo la cassa.\n"
+                "Resta la rima.\n"
+                "Per sempre."
+            )
+        else:
+            return (
+                "[Verse 1]\n"
+                "Cammino piano lungo questa via,\n"
+                "tra ombre stese contro la memoria.\n"
+                "C'è un vento antico che non vola via,\n"
+                "il tempo scritto dentro la mia storia.\n\n"
+                "[Chorus]\n"
+                "E brucia il fuoco che non si consuma,\n"
+                "oltre la notte e il gelo della sera!\n"
+                "La voce sale limpida tra i monti,\n"
+                "libera e forte verso la chimera!\n\n"
+                "[Verse 2]\n"
+                "Risuona il passo nell'oscurità,\n"
+                "nessuna esitazione nel profondo.\n"
+                "La luce viva vince la paura,\n"
+                "riaccende il sole dentro a questo mondo.\n\n"
+                "[Chorus]\n"
+                "E brucia il fuoco che non si consuma,\n"
+                "oltre la notte e il gelo della sera!\n"
+                "La voce sale limpida tra i monti,\n"
+                "libera e forte verso la chimera!\n\n"
+                "[Bridge]\n"
+                "Non c'è sconfitta se continui a andare,\n"
+                "oltre i confini del presente e il mare!\n\n"
+                "[Outro]\n"
+                "Resta la luce accesa nel silenzio.\n"
+                "Non svanirà mai."
+            )
     else:
-        return (
-            f"[Verse 1]\n"
-            f"Walking through shadows on an empty street,\n"
-            f"echoes of time beneath my marching feet.\n"
-            f"A quiet fire burning through the cold,\n"
-            f"a secret promise waiting to unfold.\n\n"
-            f"[Chorus]\n"
-            f"Rise through the night and let the thunder roll,\n"
-            f"a lightning spark awakened in the soul!\n"
-            f"Beyond the silence and the falling rain,\n"
-            f"we break the surface through the joy and pain!\n\n"
-            f"[Verse 2]\n"
-            f"The morning light begins to break the skies,\n"
-            f"truth shining steady in our fearless eyes.\n"
-            f"No turning back into the faded past,\n"
-            f"this is the moment meant to ever last.\n\n"
-            f"[Chorus]\n"
-            f"Rise through the night and let the thunder roll,\n"
-            f"a lightning spark awakened in the soul!\n"
-            f"Beyond the silence and the falling rain,\n"
-            f"we break the surface through the joy and pain!\n\n"
-            f"[Bridge]\n"
-            f"Through every storm we stand against the tide,\n"
-            f"with burning courage on the other side!\n\n"
-            f"[Outro]\n"
-            f"The echoes fade into the quiet dawn.\n"
-            f"Still standing strong."
-        )
+        if is_metal:
+            return (
+                "[Verse 1]\n"
+                "Torn from the wire in a cathedral of dust,\n"
+                "we forged our devotion where iron turns to rust.\n"
+                "Beneath the violent scars and the hollowed-out skin,\n"
+                "a pure crimson fire burns fiercely within.\n\n"
+                "[Chorus]\n"
+                "Hold me together through the screams and the dark,\n"
+                "rip through the venom and leave your blood mark!\n"
+                "Nothing can shatter what suffering made whole,\n"
+                "this is the beauty that lives in my soul!\n\n"
+                "[Verse 2]\n"
+                "The world is a carcass of hollow deceit,\n"
+                "we carved out our kingdom in bloody retreat.\n"
+                "Your touch is the lightning that cuts through the rage,\n"
+                "unbroken and lawless outside of the cage.\n\n"
+                "[Chorus]\n"
+                "Hold me together through the screams and the dark,\n"
+                "rip through the venom and leave your blood mark!\n"
+                "Nothing can shatter what suffering made whole,\n"
+                "this is the beauty that lives in my soul!\n\n"
+                "[Bridge]\n"
+                "No hesitation, no mercy, no fear,\n"
+                "the storm is our sanctuary when you are near!\n\n"
+                "[Outro]\n"
+                "Bleed with me.\n"
+                "In the dark.\n"
+                "Forever.\n"
+                "Unbroken."
+            )
+        elif is_rap:
+            return (
+                "[Verse 1]\n"
+                "Concrete jungle where the baseline hits the floor,\n"
+                "counting every battle coming straight through the door.\n"
+                "Stacking up the verses with a relentless rhyme,\n"
+                "carving out a legacy that stands the test of time.\n\n"
+                "[Chorus]\n"
+                "Turn up the levels, let the sub-bass roll,\n"
+                "spitting pure truth straight out of the soul!\n"
+                "From the midnight grind to the rising sun,\n"
+                "we never back down till the battle is won!\n\n"
+                "[Verse 2]\n"
+                "Shadows in the mirror trying to hold my pace,\n"
+                "I see the finish line and accelerate the chase.\n"
+                "No surrender in the words I speak,\n"
+                "giving heavy power to the tired and the weak.\n\n"
+                "[Chorus]\n"
+                "Turn up the levels, let the sub-bass roll,\n"
+                "spitting pure truth straight out of the soul!\n"
+                "From the midnight grind to the rising sun,\n"
+                "we never back down till the battle is won!\n\n"
+                "[Bridge]\n"
+                "Lock in the vision, eliminate the doubt,\n"
+                "this is what the rhythm and the passion is about!\n\n"
+                "[Outro]\n"
+                "Drop the mic.\n"
+                "Fade the track.\n"
+                "Never looking back."
+            )
+        else:
+            return (
+                "[Verse 1]\n"
+                "Walking through shadows on an empty street,\n"
+                "echoes of time beneath my marching feet.\n"
+                "A quiet fire burning through the cold,\n"
+                "a secret promise waiting to unfold.\n\n"
+                "[Chorus]\n"
+                "Rise through the night and let the thunder roll,\n"
+                "a lightning spark awakened in the soul!\n"
+                "Beyond the silence and the falling rain,\n"
+                "we break the surface through the joy and pain!\n\n"
+                "[Verse 2]\n"
+                "The morning light begins to break the skies,\n"
+                "truth shining steady in our fearless eyes.\n"
+                "No turning back into the faded past,\n"
+                "this is the moment meant to ever last.\n\n"
+                "[Chorus]\n"
+                "Rise through the night and let the thunder roll,\n"
+                "a lightning spark awakened in the soul!\n"
+                "Beyond the silence and the falling rain,\n"
+                "we break the surface through the joy and pain!\n\n"
+                "[Bridge]\n"
+                "Through every storm we stand against the tide,\n"
+                "with burning courage on the other side!\n\n"
+                "[Outro]\n"
+                "The echoes fade into the quiet dawn.\n"
+                "Still standing strong."
+            )
+
+
+def is_valid_poetic_lyrics(lyrics_text):
+    """
+    Validates whether the extracted lyrics consist of genuine, human-singable poetic verse.
+    Rejects numerical garbage, tablatura leaks, count-in sequences, or runaway token glitches.
+    """
+    if not lyrics_text:
+        return False
+    lines = [
+        ln.strip() for ln in lyrics_text.splitlines()
+        if ln.strip() and not ln.strip().startswith("[") and not ln.strip().endswith("]")
+    ]
+    if len(lines) < 3:
+        return False
+
+    full_text = " ".join(lines)
+    tokens = [t for t in re.split(r"\s+", full_text) if t]
+    if len(tokens) < 15:
+        return False
+
+    # Check ratio of digits/numbers
+    digit_tokens = [t for t in tokens if re.search(r"\d", t)]
+    if len(digit_tokens) / len(tokens) > 0.15:
+        return False
+
+    # Check for runaway numeric count patterns (e.g., "The 4 5 6 7 The 8 9 The 1")
+    if re.search(r"(?:the\s+)?\d+\s+(?:the\s+)?\d+\s+(?:the\s+)?\d+", full_text, re.IGNORECASE):
+        return False
+
+    # Check for guitar spec leaks
+    if re.search(r"\bstrings\s+\d+\b", full_text, re.IGNORECASE):
+        return False
+
+    # Check for invented portmanteau glitches
+    if re.search(r"\b(?:slipknotsions|slkipnotons|knotons)\b", full_text, re.IGNORECASE):
+        return False
+
+    return True
+
+
+def sanitize_hallucinated_lyrics(lyrics_text):
+    """Cleans minor numeric stray tokens and normalizes malformed section headers."""
+    if not lyrics_text:
+        return ""
+    # Strip standalone counting lines like "The 5 the 6", "1 2 3 4"
+    cleaned_lines = []
+    for line in lyrics_text.splitlines():
+        trimmed = line.strip()
+        if not trimmed:
+            cleaned_lines.append("")
+            continue
+        # If line is mostly numbers and filler words like "the", "and"
+        words = re.findall(r"[a-zA-Z0-9]+", trimmed.lower())
+        num_count = sum(1 for w in words if w.isdigit())
+        if words and (num_count / len(words) >= 0.5) and not trimmed.startswith("["):
+            continue
+        # Strip runaway digit repetitions inside lines: e.g. ", strings 45 and 15"
+        trimmed = re.sub(r",?\s*strings\s+\d+\s+and\s+\d+", "", trimmed, flags=re.IGNORECASE)
+        # Strip trailing digit sequences: " The 4 5 6 7 The 8 9 The 1"
+        trimmed = re.sub(r"\s*(?:the\s+)?\d+(?:\s+(?:the\s+)?\d+){2,}", "", trimmed, flags=re.IGNORECASE)
+        cleaned_lines.append(trimmed)
+
+    return "\n".join(cleaned_lines)
+
 
 
 def clean_repetition_artifacts(text, target_language="Italian"):
@@ -291,12 +484,18 @@ def parse_music_response(
             if len(singable_lines) >= 2:
                 lyrics = clean_raw
 
-        # If lyrics is still empty (model broke or output only metadata tags), generate structured lyrics
-        if not lyrics or not any(ln.strip() and not ln.strip().startswith("[") and re.search(r"[a-zA-Z0-9]", ln) for ln in lyrics.splitlines()):
+        # Sanitize minor numeric artifacts and validate poetic lyrics authenticity
+        if lyrics:
+            lyrics = sanitize_hallucinated_lyrics(lyrics)
+
+        # If lyrics is empty or invalid (model broke, output metadata tags, or hallucinated numbers), generate genre-calibrated lyrics
+        if not lyrics or not is_valid_poetic_lyrics(lyrics):
+            print(f"[STOIQO Music Warning] Model produced invalid or corrupted lyrics. Triggering genre-adaptive lyrical synthesis.")
             lyrics = generate_fallback_song_lyrics(
                 title=title,
                 target_language=target_language,
                 genre=genre,
+                idea=fallback_idea,
             )
 
         # Clean residual XML tags, markdown fences, and non-singable instrument annotations per YuE2 guidelines

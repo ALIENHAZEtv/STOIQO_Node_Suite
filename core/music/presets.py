@@ -34,15 +34,15 @@ VOCAL_PRESETS = [
 ]
 
 LANGUAGE_PRESETS = [
-    "Italian",
+    "Auto (Detect from Idea)",
     "English",
+    "Italian",
     "Spanish",
     "French",
     "Japanese",
     "German",
     "Portuguese",
     "Latin",
-    "Auto (Detect from Idea)",
 ]
 
 SONG_STRUCTURES = [
