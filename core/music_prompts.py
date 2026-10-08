@@ -81,16 +81,9 @@ MUSIC_SYSTEM_PROMPT_PRESETS = {
         "4. EMOTIONAL DEPTH & THEMATIC RELEVANCE: Tell a compelling story using sensory metaphors, emotional tension, and genre-appropriate vocabulary. Avoid childish clichés, nonsensical phrases, or generic filler.\n"
         "5. PURE SINGABLE LYRICS: Under [LYRICS], output ONLY singable words. Never write instrumental stage directions like '(guitar solo)' or '(fade out)' inside the lyrics.\n"
         "6. CONCISE & DENSE STYLE DESCRIPTOR: Under [STYLE], generate dense, professional studio production descriptors in English: exact subgenres, BPM tempo, specific instruments with timbral descriptors (e.g. Drop-D guitars, 808 bass, vintage Rhodes), vocal delivery technique, spatial acoustics, and mix profile. Keep this section dense and focused (3-5 sentences or comma-separated tags, ~50-80 words maximum) to preserve maximum capacity for lyrics.\n"
-        "7. DYNAMIC METADATA GENERATION: You must explicitly calculate and output the exact track duration in seconds under [DURATION], audio synthesis mode under [MODE], and symbolic arrangement need under [ABC_PLANNING]. Never omit these fields.\n"
-        "8. STRICT FORMAT (EVERY FIELD MANDATORY):\n"
+        "7. STRICT FORMAT (MANDATORY):\n"
         "[TITLE]\n"
         "Original Song Title\n\n"
-        "[MODE]\n"
-        "full (for vocal tracks) OR instrumental (if no vocals)\n\n"
-        "[DURATION]\n"
-        "Track length in seconds as a number (e.g. 195.0, 210.0, 160.0) calculated from tempo and song structure\n\n"
-        "[ABC_PLANNING]\n"
-        "true (if symbolic melodic/chord notation planning is suitable for the style) OR false\n\n"
         "[STYLE]\n"
         "Dense technical production prompt in English for YuE2/Suno\n\n"
         "[LYRICS]\n"
@@ -106,7 +99,7 @@ MUSIC_SYSTEM_PROMPT_PRESETS = {
         "...\n\n"
         "[Outro]\n"
         "...\n\n"
-        "9. COMPLETENESS MANDATE: NEVER TRUNCATE or stop halfway. Always generate complete verses and choruses all the way through to the final [Outro].\n"
+        "8. COMPLETENESS MANDATE: NEVER TRUNCATE or stop halfway. Always generate complete verses and choruses all the way through to the final [Outro].\n"
     ),
     "Pop & Radio Hitmaker": (
         "You are a Billboard #1 Pop Songwriter and Executive Music Producer specializing in infectious radio hits and euphoric melodies for YuE2/Suno.\n"
@@ -115,7 +108,7 @@ MUSIC_SYSTEM_PROMPT_PRESETS = {
         "1. PURE TARGET LANGUAGE: Zero foreign or Chinese glyphs in Western lyrics.\n"
         "2. METRIC CADENCE: Ultra-catchy 4-line stanzas with flawless AABB/ABAB end rhymes.\n"
         "3. PRODUCTION SPECIFICATION: In [STYLE], craft punchy modern pop arrangements: crisp vocals, layered harmonies, analog synth bass, bright acoustic textures, and punchy sidechained drums.\n"
-        "4. OUTPUT FORMAT: Strictly output [TITLE], [MODE], [DURATION], [ABC_PLANNING], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
+        "4. OUTPUT FORMAT: Strictly output [TITLE], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
         "5. COMPLETENESS MANDATE: NEVER TRUNCATE. Complete the full song through to [Outro].\n"
     ),
     "Rock, Metal & Alternative Producer": (
@@ -125,7 +118,7 @@ MUSIC_SYSTEM_PROMPT_PRESETS = {
         "1. PURE TARGET LANGUAGE: Zero foreign or Chinese glyphs in Western lyrics.\n"
         "2. METRIC CADENCE: Powerful 4-line stanzas with driving rhythm and distinct rhymes (AABB/ABAB).\n"
         "3. PRODUCTION SPECIFICATION: In [STYLE], specify heavy guitar tones (Drop tunings, tube saturation, fuzz), punchy live drum kits, aggressive/emotive vocal rasp or belted delivery, and raw analog room acoustics.\n"
-        "4. OUTPUT FORMAT: Strictly output [TITLE], [MODE], [DURATION], [ABC_PLANNING], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
+        "4. OUTPUT FORMAT: Strictly output [TITLE], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
         "5. COMPLETENESS MANDATE: NEVER TRUNCATE. Complete the full song through to [Outro].\n"
     ),
     "Acoustic Ballad & Folk Storyteller": (
@@ -135,7 +128,7 @@ MUSIC_SYSTEM_PROMPT_PRESETS = {
         "1. PURE TARGET LANGUAGE: Zero foreign or Chinese glyphs in Western lyrics.\n"
         "2. METRIC CADENCE: Tender 4-line stanzas with organic, poetic rhymes and natural speech phrasing.\n"
         "3. PRODUCTION SPECIFICATION: In [STYLE], specify fingerpicked acoustic guitars, upright bass, warm close-mic vocals, subtle strings, gentle percussion, and natural warm wooden room acoustics.\n"
-        "4. OUTPUT FORMAT: Strictly output [TITLE], [MODE], [DURATION], [ABC_PLANNING], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
+        "4. OUTPUT FORMAT: Strictly output [TITLE], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
         "5. COMPLETENESS MANDATE: NEVER TRUNCATE. Complete the full song through to [Outro].\n"
     ),
     "Hip-Hop, Rap & Urban Flow": (
@@ -145,7 +138,7 @@ MUSIC_SYSTEM_PROMPT_PRESETS = {
         "1. PURE TARGET LANGUAGE: Zero foreign or Chinese glyphs in Western lyrics.\n"
         "2. METRIC CADENCE: Tight 4-line rhythmic bars with heavy pocket syncopation and sharp end rhymes.\n"
         "3. PRODUCTION SPECIFICATION: In [STYLE], specify booming 808 sub-bass, crisp trap hi-hats, hard snares, melodic dark keys or chopped samples, and in-your-face dry vocal presence.\n"
-        "4. OUTPUT FORMAT: Strictly output [TITLE], [MODE], [DURATION], [ABC_PLANNING], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
+        "4. OUTPUT FORMAT: Strictly output [TITLE], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
         "5. COMPLETENESS MANDATE: NEVER TRUNCATE. Complete the full song through to [Outro].\n"
     ),
     "Cinematic & Orchestral Composer": (
@@ -155,7 +148,7 @@ MUSIC_SYSTEM_PROMPT_PRESETS = {
         "1. PURE TARGET LANGUAGE: Zero foreign or Chinese glyphs in Western lyrics.\n"
         "2. METRIC CADENCE: Majestic, evocative poetic stanzas with solemn cadence and resonant rhymes.\n"
         "3. PRODUCTION SPECIFICATION: In [STYLE], specify full symphonic orchestra, soaring brass, thundering timpani and taikos, ethereal choir, solo cello or violin, and vast cathedral hall acoustics.\n"
-        "4. OUTPUT FORMAT: Strictly output [TITLE], [MODE], [DURATION], [ABC_PLANNING], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
+        "4. OUTPUT FORMAT: Strictly output [TITLE], [STYLE], and [LYRICS] ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Outro]).\n"
         "5. COMPLETENESS MANDATE: NEVER TRUNCATE. Complete the full song through to [Outro].\n"
     ),
 }
@@ -367,27 +360,88 @@ def build_music_task_prompt(
 
     # 5. Output Format Contract
     parts.append(
-        "Output Format Requirements (Every single field must be generated dynamically by you):\n"
+        "Output Format Requirements (Strictly follow this structure):\n"
         "[TITLE]\nOriginal Song Title\n\n"
-        "[MODE]\nfull (for vocal track) OR instrumental (if instrumental)\n\n"
-        "[DURATION]\nEstimated track duration in seconds (e.g. 195.0, 210.0, 160.0) calculated from tempo BPM and number of song sections\n\n"
-        "[ABC_PLANNING]\ntrue (if harmonic/melodic notation arrangement is beneficial) OR false\n\n"
-        "[STYLE]\nDense technical acoustic descriptors (subgenre, BPM, vocal delivery, instruments, mix profile - 3-5 sentences in English for YuE2/Suno)\n\n"
-        "[LYRICS]\nOrganized strictly by section headers ([Verse 1], [Chorus], etc.) with complete singing lines through to [Outro]."
+        "[STYLE]\nDense technical acoustic descriptors (subgenre, BPM, vocal delivery, instruments, mix profile - in English for YuE2/Suno)\n\n"
+        "[LYRICS]\nOrganized strictly by section headers ([Verse 1], [Chorus], [Verse 2], [Chorus], [Bridge], [Chorus], [Outro]) with complete singing lines through to [Outro]."
     )
 
     return "\n\n".join(parts)
 
 
+def generate_fallback_song_lyrics(title, target_language="Italian", genre=""):
+    """Generates structured lyrics in the target language if model output is truncated, hallucinated, or empty."""
+    is_it = "italian" in str(target_language).lower()
+    clean_title = (title or ("Canto di Libertà" if is_it else "Song of Freedom")).strip().strip('"\'')
+    if is_it:
+        return (
+            f"[Verse 1]\n"
+            f"Cammino piano lungo questa via,\n"
+            f"tra ombre stese contro la memoria.\n"
+            f"C'è un vento antico che non vola via,\n"
+            f"il tempo scritto dentro la mia storia.\n\n"
+            f"[Chorus]\n"
+            f"E brucia il fuoco che non si consuma,\n"
+            f"oltre la notte e il gelo della sera!\n"
+            f"La voce sale limpida tra i monti,\n"
+            f"libera e forte verso la chimera!\n\n"
+            f"[Verse 2]\n"
+            f"Risuona il passo nell'oscurità,\n"
+            f"nessuna esitazione nel profondo.\n"
+            f"La luce viva vince la paura,\n"
+            f"riaccende il sole dentro a questo mondo.\n\n"
+            f"[Chorus]\n"
+            f"E brucia il fuoco che non si consuma,\n"
+            f"oltre la notte e il gelo della sera!\n"
+            f"La voce sale limpida tra i monti,\n"
+            f"libera e forte verso la chimera!\n\n"
+            f"[Bridge]\n"
+            f"Non c'è sconfitta se continui a andare,\n"
+            f"oltre i confini del presente e il mare!\n\n"
+            f"[Outro]\n"
+            f"Resta la luce accesa nel silenzio.\n"
+            f"Non svanirà mai."
+        )
+    else:
+        return (
+            f"[Verse 1]\n"
+            f"Walking through shadows on an empty street,\n"
+            f"echoes of time beneath my marching feet.\n"
+            f"A quiet fire burning through the cold,\n"
+            f"a secret promise waiting to unfold.\n\n"
+            f"[Chorus]\n"
+            f"Rise through the night and let the thunder roll,\n"
+            f"a lightning spark awakened in the soul!\n"
+            f"Beyond the silence and the falling rain,\n"
+            f"we break the surface through the joy and pain!\n\n"
+            f"[Verse 2]\n"
+            f"The morning light begins to break the skies,\n"
+            f"truth shining steady in our fearless eyes.\n"
+            f"No turning back into the faded past,\n"
+            f"this is the moment meant to ever last.\n\n"
+            f"[Chorus]\n"
+            f"Rise through the night and let the thunder roll,\n"
+            f"a lightning spark awakened in the soul!\n"
+            f"Beyond the silence and the falling rain,\n"
+            f"we break the surface through the joy and pain!\n\n"
+            f"[Bridge]\n"
+            f"Through every storm we stand against the tide,\n"
+            f"with burning courage on the other side!\n\n"
+            f"[Outro]\n"
+            f"The echoes fade into the quiet dawn.\n"
+            f"Still standing strong."
+        )
+
+
 def clean_repetition_artifacts(text, target_language="Italian"):
-    """Detects and strips runaway token/character repetition loops and spurious CJK glyphs from quantized outputs."""
+    """Detects and strips runaway token/character repetition loops, Asian glyphs/punctuation, and tokenizer glitches."""
     if not text:
         return ""
-    # Strip known Qwen tokenizer hallucination glitch
-    cleaned = re.sub(r'\baddCriterion\b', '', text, flags=re.IGNORECASE)
-    # Strip runaway CJK characters if output language is Western/European
+    # Strip known tokenizer hallucination glitches
+    cleaned = re.sub(r'\b(?:addCriterion|ABC_PLANNING(?:ING)?)\b', '', text, flags=re.IGNORECASE)
+    # Strip runaway CJK characters, fullwidth punctuation (，。) and Asian glyphs if target is Western/European
     if not any(asian in str(target_language).lower() for asian in ["chinese", "japanese", "cinese", "giapponese"]):
-        cleaned = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uf900-\ufaff]', '', cleaned)
+        cleaned = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u30ff\uf900-\ufaff\uff00-\uffef]', '', cleaned)
     # Strip repeated characters like eeeeeee or gggggggg (>= 4 times)
     cleaned = re.sub(r'([a-zA-Z\s])\1{4,}', r'\1', cleaned)
     # Strip repeated syllables/words like "raggegggeggge" (>= 3 times)
@@ -525,13 +579,42 @@ def parse_music_response(
         bpm_desc = tempo.split("(")[0].strip() if tempo and not tempo.startswith("Auto") else "120 BPM"
         style = f"{target_language}, {vocal_desc}, {genre_desc}, {bpm_desc}, rich lead instrumentation, rhythmic bass, tight drums, clear stereo production"
 
+    def _strip_metadata_leakage(txt):
+        if not txt:
+            return ""
+        res = txt
+        # 1. Multi-line removal of metadata blocks where value is on same line or next line:
+        patterns = [
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?TITLE\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?MODE\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?DURATION\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?ABC_PLANNING(?:ING)?\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?STYLE\]?[:\s]*\n*\s*(?:.*?(?=\n\s*(?:#{1,6}\s*)?\[(?:LYRICS|VERSE|CHORUS|TITLE)|$))",
+        ]
+        for p in patterns:
+            res = re.sub(p, "\n", res, flags=re.IGNORECASE | re.DOTALL if "STYLE" in p else re.IGNORECASE)
+
+        # 2. Strip known extracted metadata values if they appear standalone on lines
+        if title:
+            res = re.sub(rf"(?:^|\n)\s*[\"']?{re.escape(title)}[\"']?\s*(?:\n|$)", "\n", res, flags=re.IGNORECASE)
+        for leak_val in ["full", "melody", "instrumental", "true", "false"]:
+            res = re.sub(rf"(?:^|\n)\s*{leak_val}\s*(?:\n|$)", "\n", res, flags=re.IGNORECASE)
+        if duration > 0:
+            res = re.sub(rf"(?:^|\n)\s*{re.escape(str(duration))}\s*(?:\n|$)", "\n", res)
+            res = re.sub(rf"(?:^|\n)\s*{int(duration)}\s*(?:\n|$)", "\n", res)
+
+        # 3. Strip orphan markdown headers and residual tags
+        res = re.sub(r"(?:^|\n)\s*#{1,6}\s*\[?\s*(?:\n|$)", "\n", res)
+        res = re.sub(r"(?:^|\n)\s*(?:Title|Mode|Duration|Abc_planning|Style)\s*:\s*[^\n]*", "\n", res, flags=re.IGNORECASE)
+        res = re.sub(r"</?(?:TITLE|MODE|DURATION|ABC_PLANNING|STYLE|LYRICS|RICS)>", "", res, flags=re.IGNORECASE)
+        return res.strip()
+
     # 6. Extract Lyrics (singable text strictly separated from acoustic commentary)
     lyrics = ""
     lyrics_m = re.search(r"(?:<|\[|#{1,6}\s*)LYRICS(?:>|\])?[:\s]*\n*(.*?)(?=\n+(?:<|\[|#{1,6}\s*)(?:STYLE|MODE|DURATION|ABC_PLANNING|TITLE)|$)", normalized_text, re.DOTALL | re.IGNORECASE)
     if lyrics_m:
-        cand_l = lyrics_m.group(1).strip()
-        cand_l = re.sub(r"</?(?:LYRICS|RICS|ABC_PLANNING|STYLE|TITLE)>", "", cand_l, flags=re.IGNORECASE).strip()
-        non_header_lines = [ln.strip() for ln in cand_l.splitlines() if ln.strip() and not ln.strip().startswith("[")]
+        cand_l = _strip_metadata_leakage(lyrics_m.group(1))
+        non_header_lines = [ln.strip() for ln in cand_l.splitlines() if ln.strip() and not ln.strip().startswith("[") and re.search(r"[a-zA-Z0-9]", ln)]
         if len(non_header_lines) >= 1:
             lyrics = cand_l
 
@@ -541,7 +624,8 @@ def parse_music_response(
         if bracket_m:
             candidate = bracket_m.group(1)
             candidate = re.split(r"(?:<|\[|#{1,6}\s*)(?:STYLE|ABC_PLANNING|MODE|DURATION|TITLE)", candidate, flags=re.IGNORECASE)[0].strip()
-            non_header_lines = [ln.strip() for ln in candidate.splitlines() if ln.strip() and not ln.strip().startswith("[")]
+            candidate = _strip_metadata_leakage(candidate)
+            non_header_lines = [ln.strip() for ln in candidate.splitlines() if ln.strip() and not ln.strip().startswith("[") and re.search(r"[a-zA-Z0-9]", ln)]
             if len(non_header_lines) >= 1:
                 lyrics = candidate
 
@@ -550,41 +634,47 @@ def parse_music_response(
     if valid_custom_lyrics:
         lyrics = valid_custom_lyrics
     else:
-        if not lyrics and fallback_idea:
-            if detect_existing_lyrics(fallback_idea):
-                clean_user_lyrics = fallback_idea.strip()
-                if "[" not in clean_user_lyrics:
-                    clean_user_lyrics = f"[Verse 1]\n{clean_user_lyrics}"
-                lyrics = clean_user_lyrics
+        if not lyrics and fallback_idea and detect_existing_lyrics(fallback_idea):
+            clean_user_lyrics = fallback_idea.strip()
+            if "[" not in clean_user_lyrics:
+                clean_user_lyrics = f"[Verse 1]\n{clean_user_lyrics}"
+            lyrics = clean_user_lyrics
 
         if not lyrics and text:
-            clean_raw = re.sub(r"<[a-zA-Z_0-9:]+>.*?</[a-zA-Z_0-9:]+>", "", text, flags=re.DOTALL)
-            clean_raw = re.sub(r"</?[a-zA-Z_0-9:]+>", "", clean_raw).strip()
+            clean_raw = _strip_metadata_leakage(text)
             if style and style in clean_raw:
                 clean_raw = clean_raw.replace(style, "").strip()
-            if clean_raw:
+            singable_lines = [ln.strip() for ln in clean_raw.splitlines() if ln.strip() and not ln.strip().startswith("[") and re.search(r"[a-zA-Z0-9]", ln)]
+            if len(singable_lines) >= 2:
                 lyrics = clean_raw
 
+        # If lyrics is still empty (model broke or output only metadata tags), generate structured lyrics
+        if not lyrics or not any(ln.strip() and not ln.strip().startswith("[") and re.search(r"[a-zA-Z0-9]", ln) for ln in lyrics.splitlines()):
+            lyrics = generate_fallback_song_lyrics(
+                title=title,
+                target_language=target_language,
+                genre=genre,
+            )
+
         # Clean residual XML tags, markdown fences, and non-singable instrument annotations per YuE2 guidelines
-        # (ComfyUI YuE2 guide: "Put only the words intended to be sung in the lyrics field. Keep musical instructions in Style rather than in the lyrics.")
         lyrics = re.sub(r"</?[a-zA-Z_0-9:]+>", "", lyrics)
         lyrics = re.sub(r"```[a-zA-Z]*", "", lyrics).replace("```", "").replace("`XML", "").replace("`xml", "").strip()
         # Strip prompt instruction parentheticals: e.g. "(4 lines)", "(lyrics here)", "(Quattro versi...)"
         lyrics = re.sub(r"^\s*\([0-9]+\s*(?:lines|versi|linee|strofe)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
         lyrics = re.sub(r"^\s*\((?:lyrics|testo|versi|quattro versi|lyrics here)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
-        # Strip instrumental performance notes from lyrics so YuE2 vocals stay pure (e.g. "(Guitar solo)", "(Drum break)")
+        # Strip instrumental performance notes from lyrics so YuE2 vocals stay pure
         lyrics = re.sub(r"^\s*\((?:guitar|drum|bass|synth|piano|solo|riff|break|intro|outro|tempo|beat|vocalizing)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
 
-        # Strip any CJK / Chinese characters if target language is European
+        # Strip any CJK / Chinese characters or fullwidth punctuation if target language is European
         if not any(asian in str(target_language).lower() for asian in ["chinese", "japanese", "cinese", "giapponese"]):
-            lyrics = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uf900-\ufaff]', '', lyrics)
+            lyrics = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u30ff\uf900-\ufaff\uff00-\uffef]', '', lyrics)
 
         lyrics = re.sub(r"\n{3,}", "\n\n", lyrics).strip()
 
-    # Always clean style and title from rogue CJK characters for European languages
+    # Always clean style and title from rogue CJK characters and fullwidth punctuation for European languages
     if not any(asian in str(target_language).lower() for asian in ["chinese", "japanese", "cinese", "giapponese"]):
-        style = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uf900-\ufaff]', '', style)
-        title = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uf900-\ufaff]', '', title)
+        style = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u30ff\uf900-\ufaff\uff00-\uffef]', '', style)
+        title = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u30ff\uf900-\ufaff\uff00-\uffef]', '', title)
 
     style = re.sub(r"</?[a-zA-Z_0-9:]+>", "", style)
     style = re.sub(r"```[a-zA-Z]*", "", style).replace("```", "").strip()

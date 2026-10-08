@@ -254,6 +254,39 @@ Oltre il buio di questa terra
         self.assertNotIn("0.7", parsed_float["lyrics"])
         self.assertIn("Nelle ombre del silenzio", parsed_float["lyrics"])
 
+    def test_strip_aborted_metadata_and_cjk_punctuation(self):
+        sample = """### [TITLE]
+"Black Rose: The Slayers' Veil"
+
+### [MODE]
+full
+
+### [DURATION]
+210.0
+
+### [ABC_PLANNINGING
+
+ ，。
+"""
+        parsed = parse_music_response(
+            sample,
+            fallback_idea="dark fantasy gothic metal song",
+            target_language="English",
+            genre="Metal",
+        )
+        self.assertEqual(parsed["title"], "Black Rose: The Slayers' Veil")
+        self.assertNotIn("ABC_PLANNING", parsed["lyrics"])
+        self.assertNotIn("### [TITLE]", parsed["lyrics"])
+        self.assertNotIn("### [MODE]", parsed["lyrics"])
+        self.assertNotIn("### [DURATION]", parsed["lyrics"])
+        self.assertNotIn("，", parsed["lyrics"])
+        self.assertNotIn("。", parsed["lyrics"])
+        # Must have valid structured lyrics generated
+        self.assertIn("[Verse 1]", parsed["lyrics"])
+        self.assertIn("[Chorus]", parsed["lyrics"])
+        self.assertEqual(parsed["mode"], "full")
+        self.assertEqual(parsed["max_duration"], 210.0)
+
 
 if __name__ == "__main__":
     unittest.main()
