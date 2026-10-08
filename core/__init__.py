@@ -50,6 +50,8 @@ from .music_prompts import (
     resolve_music_system_prompt,
     build_music_task_prompt,
     parse_music_response,
+    clean_user_custom_lyrics,
+    clean_user_custom_directives,
 )
 
 KREA2_PROMPT_IMAGE = SYSTEM_PROMPT_PRESETS["Generative Prompt"]
