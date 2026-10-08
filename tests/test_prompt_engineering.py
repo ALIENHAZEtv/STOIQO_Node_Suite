@@ -85,6 +85,19 @@ class TestPromptEngineering(unittest.TestCase):
         self.assertIn("100% original", YUE2_SYSTEM_PROMPT.lower())
         self.assertIn("fictional", YUE2_SYSTEM_PROMPT.lower())
 
+    def test_completion_mandate_present(self):
+        # Verify that system prompt and task prompt enforce full song completion
+        self.assertIn("NEVER TRUNCATE", YUE2_SYSTEM_PROMPT)
+        prompt_it = build_music_task_prompt(
+            idea="Una canzone epica",
+            genre="Metal",
+            vocal="Gritty Powerful Male Vocal",
+            language="Italian",
+            structure=SONG_STRUCTURES[0],
+            tempo=TEMPO_PRESETS[3],
+        )
+        self.assertIn("COMPLETEZZA TOTALE", prompt_it)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -149,11 +149,11 @@ class StoiqoMusicPromptEngineNode:
                 "max_new_tokens": (
                     "INT",
                     {
-                        "default": 1536,
-                        "min": 512,
-                        "max": 3072,
+                        "default": 3072,
+                        "min": 256,
+                        "max": 8192,
                         "step": 64,
-                        "tooltip": "Token limit for full lyrics and style generation (1536 recommended for complete songs).",
+                        "tooltip": "Token limit for full lyrics and style generation (2560-4096 recommended for complete songs).",
                     },
                 ),
             },
@@ -179,11 +179,11 @@ class StoiqoMusicPromptEngineNode:
         seed=0,
         temperature=0.65,
         repetition_penalty=1.02,
-        max_new_tokens=1536,
+        max_new_tokens=3072,
     ):
         clean_idea = (idea or "").strip()
         if not clean_idea:
-            clean_idea = "A melodic and uplifting contemporary song with warm instruments and evocative lyrics."
+            clean_idea = f"An original {genre} song featuring {vocal_type} in {language} with {tempo} tempo."
 
         active_mgr = stoiqo_model if stoiqo_model is not None else self.model_mgr
         if active_mgr.model is None:
@@ -232,7 +232,15 @@ class StoiqoMusicPromptEngineNode:
         if len(raw_output) < 200:
             print(f"[STOIQO Music Debug] Short raw output: {repr(raw_output)}")
 
-        parsed = parse_music_response(raw_output, fallback_idea=clean_idea, target_language=language)
+        parsed = parse_music_response(
+            raw_output,
+            fallback_idea=clean_idea,
+            target_language=language,
+            genre=genre,
+            vocal=vocal_type,
+            tempo=tempo,
+            structure=structure,
+        )
 
         # Word & char counts
         words = len(parsed["lyrics"].split())

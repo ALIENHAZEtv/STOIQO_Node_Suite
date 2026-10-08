@@ -637,6 +637,10 @@ class ModelManager:
             vocab_size = getattr(self.processor.tokenizer, "vocab_size", 151643)
             if 18724 < vocab_size:
                 gen_kwargs["suppress_tokens"] = [18724]
+            if getattr(self.processor.tokenizer, "eos_token_id", None) is not None:
+                gen_kwargs["eos_token_id"] = self.processor.tokenizer.eos_token_id
+            if getattr(self.processor.tokenizer, "pad_token_id", None) is not None:
+                gen_kwargs["pad_token_id"] = self.processor.tokenizer.pad_token_id
 
         if repetition_penalty and repetition_penalty != 1.0:
             gen_kwargs["repetition_penalty"] = repetition_penalty

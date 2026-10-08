@@ -129,6 +129,34 @@ This is my chorus hook
         self.assertNotIn("eeeeeeeeeee", cleaned)
         self.assertNotIn("ritmoritmoritmoritmo", cleaned)
 
+    def test_lyrics_with_trailing_style_and_full_outro(self):
+        sample = """
+[TITLE]
+Respiro di Ferro
+
+[LYRICS]
+[Verse 1]
+Nelle strade bagnate di pioggia
+il metallo risuona feroce.
+
+[Chorus]
+Brucia la notte!
+
+[Outro]
+Il silenzio cala sulla città.
+
+[STYLE]
+Industrial Metal, 130 BPM, heavy guitars, aggressive vocals.
+"""
+        parsed = parse_music_response(sample, fallback_idea="metal", target_language="Italian")
+        self.assertEqual(parsed["title"], "Respiro di Ferro")
+        self.assertIn("[Verse 1]", parsed["lyrics"])
+        self.assertIn("[Chorus]", parsed["lyrics"])
+        self.assertIn("[Outro]", parsed["lyrics"])
+        self.assertIn("Il silenzio cala sulla città", parsed["lyrics"])
+        self.assertNotIn("Industrial Metal", parsed["lyrics"])
+        self.assertIn("Industrial Metal", parsed["style"])
+
 
 if __name__ == "__main__":
     unittest.main()

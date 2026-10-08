@@ -76,10 +76,18 @@ YUE2_SYSTEM_PROMPT = (
     "1. SOPHISTICATED LYRICISM: Never write childlike or cliché rhymes. Employ rich imagery, internal rhymes, assonances, and authentic storytelling tailored to the genre.\n"
     "2. SINGABLE METER & CADENCE: Verses must have natural rhythmic accents and consistent cadence tailored to musical performance.\n"
     "3. HYPNOTIC CHORUS HOOK: The Chorus MUST be memorable, emotionally powerful, and anthemic.\n"
-    "4. TECHNICAL YuE2/SUNO STYLE SPECIFICATION: Under [STYLE], generate dense, professional studio production descriptors in English: exact subgenres, BPM tempo, specific instruments with timbral descriptors (e.g. Drop-D guitars, 808 bass, vintage Rhodes), vocal delivery technique, spatial acoustics, and mix profile.\n"
-    "5. STRICT FORMAT:\n"
+    "4. CONCISE & DENSE STYLE DESCRIPTOR: Under [STYLE], generate dense, professional studio production descriptors in English: exact subgenres, BPM tempo, specific instruments with timbral descriptors (e.g. Drop-D guitars, 808 bass, vintage Rhodes), vocal delivery technique, spatial acoustics, and mix profile. Keep this section dense and focused (3-5 sentences or comma-separated tags, ~50-80 words maximum) to preserve maximum capacity for lyrics.\n"
+    "5. TOTAL COMPLETION MANDATE (NEVER TRUNCATE): You MUST complete the entire song all the way through to the final [Outro]. Write complete, fully formed stanzas (4-8 lines per section) without stopping early or cutting off.\n"
+    "6. DYNAMIC METADATA GENERATION: You must explicitly calculate and output the exact track duration in seconds under [DURATION], audio synthesis mode under [MODE], and symbolic arrangement need under [ABC_PLANNING]. Never omit these fields.\n"
+    "7. STRICT FORMAT (EVERY FIELD MANDATORY):\n"
     "[TITLE]\n"
     "Original Song Title\n\n"
+    "[MODE]\n"
+    "full (for vocal tracks) OR instrumental (if no vocals)\n\n"
+    "[DURATION]\n"
+    "Track length in seconds as a number (e.g. 195.0, 210.0, 160.0) calculated from tempo and song structure\n\n"
+    "[ABC_PLANNING]\n"
+    "true (if symbolic melodic/chord notation planning is suitable for the style) OR false\n\n"
     "[STYLE]\n"
     "Dense technical production prompt in English for YuE2/Suno\n\n"
     "[LYRICS]\n"
@@ -179,9 +187,10 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
             f"Componi una canzone originale e memorabile basata su questo concetto:\n"
             f">>> \"{clean_idea}\" <<<\n\n"
             f"- Lingua del Testo: 100% ITALIANO (in [LYRICS] ogni strofa, ritornello e bridge deve essere in italiano poetico, maturo e impeccabile).\n"
-            f"- Stile sonoro: In [STYLE], scrivi la descrizione tecnica in INGLESE per sintetizzatori AI (YuE2, Suno).\n"
+            f"- Stile sonoro: In [STYLE], scrivi una descrizione tecnica densa e concisa (3-5 frasi o tag separati da virgole, ~50-80 parole) in INGLESE per sintetizzatori AI (YuE2, Suno).\n"
             f"- Struttura richiesta: {' -> '.join(struct_sections) if struct_sections else '[Verse 1] -> [Chorus] -> [Verse 2] -> [Chorus] -> [Bridge] -> [Outro]'}.\n"
-            f"- Scrivi versi completi, autentici e cantabili sotto ogni sezione. Zero segnaposto o istruzioni tra parentesi."
+            f"- Scrivi versi completi, autentici e cantabili sotto ogni sezione (4-8 versi per strofa). Zero segnaposto o istruzioni tra parentesi.\n"
+            f"- COMPLETEZZA TOTALE (MANDATORIA): Concludi l'intera canzone fino all'ultima riga di [Outro] senza MAI troncare o interrompere la composizione a metà."
         )
     else:
         parts.append(
@@ -189,9 +198,10 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
             f"Compose an original chart-caliber song based on this concept:\n"
             f">>> \"{clean_idea}\" <<<\n\n"
             f"- Lyrics Language: 100% {target_lang} (Every line under [LYRICS] must be written in {target_lang} with top-tier poetic standards).\n"
-            f"- Style Descriptor: In [STYLE], write the technical acoustic prompt in English for YuE2/Suno.\n"
+            f"- Style Descriptor: In [STYLE], write a dense, concise acoustic prompt (3-5 sentences or comma-separated tags, ~50-80 words) in English for YuE2/Suno.\n"
             f"- Structure: {' -> '.join(struct_sections) if struct_sections else '[Verse 1] -> [Chorus] -> [Verse 2] -> [Chorus] -> [Bridge] -> [Outro]'}.\n"
-            f"- Write complete, metric, authentic lines under each section tag. No placeholders."
+            f"- Write complete, metric, authentic lines under each section tag (4-8 lines per section). No placeholders.\n"
+            f"- TOTAL COMPLETION MANDATE: Finish the full song all the way to the final [Outro] without ever truncating or stopping prematurely."
         )
 
     # 4. Specifications
@@ -227,10 +237,13 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
 
     # 5. Output Format Contract
     parts.append(
-        "Output Format Requirements:\n"
-        "[TITLE]\nSong Title\n\n"
-        "[STYLE]\nSubgenre, BPM, vocal delivery, lead instruments, rhythm section, acoustics & mix (in English for YuE2/Suno)\n\n"
-        "[LYRICS]\nOrganized strictly by section headers ([Verse 1], [Chorus], etc.) with complete singing lines."
+        "Output Format Requirements (Every single field must be generated dynamically by you):\n"
+        "[TITLE]\nOriginal Song Title\n\n"
+        "[MODE]\nfull (for vocal track) OR instrumental (if instrumental)\n\n"
+        "[DURATION]\nEstimated track duration in seconds (e.g. 195.0, 210.0, 160.0) calculated from tempo BPM and number of song sections\n\n"
+        "[ABC_PLANNING]\ntrue (if harmonic/melodic notation arrangement is beneficial) OR false\n\n"
+        "[STYLE]\nDense technical acoustic descriptors (subgenre, BPM, vocal delivery, instruments, mix profile - 3-5 sentences in English for YuE2/Suno)\n\n"
+        "[LYRICS]\nOrganized strictly by section headers ([Verse 1], [Chorus], etc.) with complete singing lines through to [Outro]."
     )
 
     return "\n\n".join(parts)
@@ -286,11 +299,19 @@ def normalize_lyrics_sections(text):
     return res
 
 
-def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
+def parse_music_response(
+    raw_text,
+    fallback_idea="",
+    target_language="Italian",
+    genre="",
+    vocal="",
+    tempo="",
+    structure="",
+):
     """
-    Parses the LLM output into structured YuE2 components with maximum resilience.
-    Supports both bracket sections ([TITLE], [STYLE], [LYRICS]) and XML tags (<TITLE>, <STYLE>, <LYRICS>).
-    Never invents fake lyrics or fallback placeholder templates.
+    Parses the LLM output into structured ComfyUI YuE2 components strictly following official specs.
+    Extracts title, style, lyrics, mode, duration, and abc_planning dynamically from model output.
+    Ensures zero hardcoded dummy values and strict separation of acoustic style from singable lyrics.
     """
     text = clean_repetition_artifacts((raw_text or "").strip())
     normalized_text = normalize_lyrics_sections(text)
@@ -298,72 +319,80 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
     is_italian = "italian" in str(target_language).lower() or any(
         w in fallback_idea.lower() for w in ["italiano", "canzone", "mare", "sole", "macchina", "amici", "morte", "amore", "fuoco"]
     )
+    is_instrumental = bool(vocal and "instrumental" in str(vocal).lower())
 
     # 1. Extract Title
     title = ""
-    # Check XML <TITLE>
-    title_m = re.search(r"<TITLE>(.*?)</TITLE>", text, re.DOTALL | re.IGNORECASE)
+    title_m = re.search(r"(?:<|\[|#{1,6}\s*)?TITLE(?:>|\])?[:\s]*([^\n<\[#]+)", text, re.IGNORECASE)
     if title_m:
-        cand_t = title_m.group(1).strip()
-        if not cand_t.lower().startswith("titolo") and not cand_t.lower().startswith("song title"):
+        cand_t = title_m.group(1).strip().strip("\"'#*")
+        if not any(cand_t.lower().startswith(p) for p in ["original song", "titolo della", "song title", "titolo", "<"]):
             title = cand_t
-
-    # Check Bracket [TITLE] or Markdown ### Title
-    if not title:
-        brack_title = re.search(r"(?:#{1,6}\s*)?\[?TITLE\]?\s*\n+([^\n\[<#]+)", text, re.IGNORECASE)
-        if brack_title:
-            cand_t = brack_title.group(1).strip().strip("\"'#*")
-            if not any(cand_t.lower().startswith(p) for p in ["original song", "titolo della", "song title", "titolo"]):
-                title = cand_t
-
-    # Check "Title: ..."
-    if not title:
-        colon_title = re.search(r"(?:^|\n)Title:\s*([^\n\[<#]+)", text, re.IGNORECASE)
-        if colon_title:
-            cand_t = colon_title.group(1).strip().strip("\"'#*")
-            if not any(cand_t.lower().startswith(p) for p in ["original song", "titolo della", "song title"]):
-                title = cand_t
 
     if not title:
         words = fallback_idea.split()
-        if words:
+        if words and not words[0].lower().startswith("an original"):
             title = " ".join(words[:4]).strip().strip("\"'.,")
         else:
-            title = "Canzone Senza Titolo" if is_italian else "Untitled Song"
+            clean_genre = genre.split("(")[0].strip() if genre else "Song"
+            title = f"{clean_genre} Sinfonia" if is_italian else f"{clean_genre} Anthem"
 
-    # 2. Extract Style
+    # 2. Extract Mode (full | melody)
+    mode = "full"
+    mode_m = re.search(r"(?:<|\[|#{1,6}\s*)?MODE(?:>|\])?[:\s]*([^\n<\[#]+)", text, re.IGNORECASE)
+    if mode_m:
+        val_m = mode_m.group(1).strip().lower()
+        if "melody" in val_m:
+            mode = "melody"
+        elif "full" in val_m:
+            mode = "full"
+    elif is_instrumental:
+        mode = "melody"
+
+    # 3. Extract ABC Planning (true | false)
+    abc_planning = True
+    abc_m = re.search(r"(?:<|\[|#{1,6}\s*)?ABC_PLANNING(?:>|\])?[:\s]*([^\n<\[#]+)", text, re.IGNORECASE)
+    if abc_m:
+        val_abc = abc_m.group(1).strip().lower()
+        abc_planning = val_abc in ("true", "1", "yes", "si", "enabled", "on")
+
+    # 4. Extract Duration (seconds as float)
+    duration = 0.0
+    dur_m = re.search(r"(?:<|\[|#{1,6}\s*)?DURATION(?:>|\])?[:\s]*([^\n<\[#]+)", text, re.IGNORECASE)
+    if dur_m:
+        try:
+            num = re.sub(r"[^\d.]", "", dur_m.group(1))
+            if num:
+                duration = float(num)
+        except Exception:
+            duration = 0.0
+
+    # 5. Extract Style (English, vocal, genre, BPM, instruments, mix)
     style = ""
-    # Check XML <STYLE>
-    style_m = re.search(r"<STYLE>(.*?)(?:</STYLE>|<LYRICS>|<RICS>|\[LYRICS\]|\[Verse|$)", text, re.DOTALL | re.IGNORECASE)
+    # Check [STYLE], <STYLE>, ### Style, or Style:
+    style_m = re.search(r"(?:<|\[|#{1,6}\s*)STYLE(?:>|\])?[:\s]*\n*(.*?)(?=\n+(?:<|\[|#{1,6}\s*)(?:LYRICS|VERSE|CHORUS|INTRO|TITLE|MODE|DURATION|ABC_PLANNING)|$)", text, re.DOTALL | re.IGNORECASE)
     if style_m:
         cand_s = style_m.group(1).strip()
         cand_s = re.sub(r"</?STYLE>", "", cand_s, flags=re.IGNORECASE).strip()
-        if not cand_s.lower().startswith("dense technical") and not cand_s.lower().startswith("language, vocal"):
-            style = cand_s
+        lines_s = [ln.strip() for ln in cand_s.splitlines() if ln.strip() and not ln.strip().startswith("(") and not ln.strip().startswith("#")]
+        if lines_s and not lines_s[0].lower().startswith("dense technical"):
+            style = " ".join(lines_s)
 
-    # Check Bracket [STYLE] or Markdown ### Style
-    if not style:
-        brack_style = re.search(r"(?:#{1,6}\s*)?\[?STYLE\]?\s*\n+(.*?)(?=\n+(?:#{1,6}\s*)?\[?LYRICS\]?|\n+(?:#{1,6}\s*)?\[?(?:Verse|Intro|Chorus|Strofa)|<LYRICS>|$)", text, re.DOTALL | re.IGNORECASE)
-        if brack_style:
-            cand_s = brack_style.group(1).strip()
-            # Clean instruction boilerplate if model repeated prompt headers
-            lines_s = [ln.strip() for ln in cand_s.splitlines() if ln.strip() and not ln.strip().startswith("(")]
-            if lines_s:
-                style = " ".join(lines_s)
-
-    # Check "Style: ..."
     if not style:
         colon_style = re.search(r"(?:^|\n)Style:\s*([^\n]+(?:\n[^\n\[<#]+)*)", text, re.IGNORECASE)
         if colon_style:
             style = colon_style.group(1).strip()
 
     if not style:
-        style = f"{target_language}, authentic vocals, {fallback_idea[:60]}, 120 BPM, rich instrumentation, dynamic mix, high fidelity production"
+        # Formulate YuE2 standard style dynamically from user directives
+        vocal_desc = vocal if vocal and not vocal.startswith("Auto") else ("instrumental only, no vocals" if is_instrumental else "expressive lead vocal")
+        genre_desc = genre.split("(")[0].strip() if genre and not genre.startswith("Auto") else "contemporary music"
+        bpm_desc = tempo.split("(")[0].strip() if tempo and not tempo.startswith("Auto") else "120 BPM"
+        style = f"{target_language}, {vocal_desc}, {genre_desc}, {bpm_desc}, rich lead instrumentation, rhythmic bass, tight drums, clear stereo production"
 
-    # 3. Extract Lyrics
+    # 6. Extract Lyrics (singable text strictly separated from acoustic commentary)
     lyrics = ""
-    # Priority A: Look inside <LYRICS> or <RICS> in normalized text
-    lyrics_m = re.search(r"<(?:LYRICS|RICS)>(.*?)(?:</(?:LYRICS|RICS)>|<ABC_PLANNING>|<STYLE>|$)", normalized_text, re.DOTALL | re.IGNORECASE)
+    lyrics_m = re.search(r"(?:<|\[|#{1,6}\s*)LYRICS(?:>|\])?[:\s]*\n*(.*?)(?=\n+(?:<|\[|#{1,6}\s*)(?:STYLE|MODE|DURATION|ABC_PLANNING|TITLE)|$)", normalized_text, re.DOTALL | re.IGNORECASE)
     if lyrics_m:
         cand_l = lyrics_m.group(1).strip()
         cand_l = re.sub(r"</?(?:LYRICS|RICS|ABC_PLANNING|STYLE|TITLE)>", "", cand_l, flags=re.IGNORECASE).strip()
@@ -371,27 +400,16 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
         if len(non_header_lines) >= 1:
             lyrics = cand_l
 
-    # Priority B: Look inside [LYRICS] block
     if not lyrics:
-        brack_lyrics = re.search(r"(?:###\s*)?\[LYRICS\]\s*\n+(.*)", normalized_text, re.DOTALL | re.IGNORECASE)
-        if brack_lyrics:
-            cand_l = brack_lyrics.group(1).strip()
-            cand_l = re.split(r"<(?:STYLE|ABC_PLANNING|MODE|DURATION)", cand_l, flags=re.IGNORECASE)[0].strip()
-            non_header_lines = [ln.strip() for ln in cand_l.splitlines() if ln.strip() and not ln.strip().startswith("[")]
-            if len(non_header_lines) >= 1:
-                lyrics = cand_l
-
-    # Priority C: Look for first musical section bracket ([Verse..., [Intro..., [Chorus..., [Strofa...)
-    if not lyrics:
+        # Fallback to first musical section bracket
         bracket_m = re.search(r"(\[(?:Verse|Verso|Strofa|Chorus|Ritornello|Pre-Chorus|Bridge|Outro|Intro|Hook)[^\]]*\].*)", normalized_text, re.DOTALL | re.IGNORECASE)
         if bracket_m:
             candidate = bracket_m.group(1)
-            candidate = re.split(r"<(?:STYLE|ABC_PLANNING|MODE|DURATION|/LYRICS|/RICS)", candidate, flags=re.IGNORECASE)[0].strip()
+            candidate = re.split(r"(?:<|\[|#{1,6}\s*)(?:STYLE|ABC_PLANNING|MODE|DURATION|TITLE)", candidate, flags=re.IGNORECASE)[0].strip()
             non_header_lines = [ln.strip() for ln in candidate.splitlines() if ln.strip() and not ln.strip().startswith("[")]
             if len(non_header_lines) >= 1:
                 lyrics = candidate
 
-    # Priority D: If user provided pre-written lyrics in fallback_idea, preserve them
     if not lyrics and fallback_idea:
         if detect_existing_lyrics(fallback_idea):
             clean_user_lyrics = fallback_idea.strip()
@@ -399,56 +417,38 @@ def parse_music_response(raw_text, fallback_idea="", target_language="Italian"):
                 clean_user_lyrics = f"[Verse 1]\n{clean_user_lyrics}"
             lyrics = clean_user_lyrics
 
-    # Priority E: Extract any raw generated lines if model omitted headers
     if not lyrics and text:
         clean_raw = re.sub(r"<[a-zA-Z_0-9:]+>.*?</[a-zA-Z_0-9:]+>", "", text, flags=re.DOTALL)
         clean_raw = re.sub(r"</?[a-zA-Z_0-9:]+>", "", clean_raw).strip()
-        # Filter out Style block if style was found
         if style and style in clean_raw:
             clean_raw = clean_raw.replace(style, "").strip()
         if clean_raw:
             lyrics = clean_raw
 
-    # 4. Clean residual XML tags, markdown fences, and parenthetical instructions like "(4 lines)"
+    # Clean residual XML tags, markdown fences, and non-singable instrument annotations per YuE2 guidelines
+    # (ComfyUI YuE2 guide: "Put only the words intended to be sung in the lyrics field. Keep musical instructions in Style rather than in the lyrics.")
     lyrics = re.sub(r"</?[a-zA-Z_0-9:]+>", "", lyrics)
     lyrics = re.sub(r"```[a-zA-Z]*", "", lyrics).replace("```", "").replace("`XML", "").replace("`xml", "").strip()
-    # Strip prompt instruction parentheticals: e.g. "(4 lines)", "(lyrics here)", "(Quattro versi...)", "(lyrics)"
+    # Strip prompt instruction parentheticals: e.g. "(4 lines)", "(lyrics here)", "(Quattro versi...)"
     lyrics = re.sub(r"^\s*\([0-9]+\s*(?:lines|versi|linee|strofe)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
     lyrics = re.sub(r"^\s*\((?:lyrics|testo|versi|quattro versi|lyrics here)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
+    # Strip instrumental performance notes from lyrics so YuE2 vocals stay pure (e.g. "(Guitar solo)", "(Drum break)")
+    lyrics = re.sub(r"^\s*\((?:guitar|drum|bass|synth|piano|solo|riff|break|intro|outro|tempo|beat|vocalizing)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
 
     style = re.sub(r"</?[a-zA-Z_0-9:]+>", "", style)
     style = re.sub(r"```[a-zA-Z]*", "", style).replace("```", "").strip()
     style = re.sub(r"^\s*\([^\)]*\)\s*$", "", style, flags=re.MULTILINE)
 
-    # Clean multiple consecutive empty lines
     lyrics = re.sub(r"\n{3,}", "\n\n", lyrics).strip()
     style = re.sub(r"\n{2,}", " ", style).strip()
 
-    # 5. Extract ABC Planning
-    abc_m = re.search(r"<ABC_PLANNING>(.*?)</ABC_PLANNING>", text, re.DOTALL | re.IGNORECASE)
-    abc_planning = True
-    if abc_m:
-        val = abc_m.group(1).strip().lower()
-        abc_planning = val in ("true", "1", "yes")
-
-    # 6. Extract Mode
-    mode_m = re.search(r"<MODE>(.*?)</MODE>", text, re.DOTALL | re.IGNORECASE)
-    mode = "full"
-    if mode_m:
-        val = mode_m.group(1).strip().lower()
-        if "melody" in val:
-            mode = "melody"
-
-    # 7. Extract Duration
-    dur_m = re.search(r"<DURATION>(.*?)</DURATION>", text, re.DOTALL | re.IGNORECASE)
-    duration = 180.0
-    if dur_m:
-        try:
-            num = re.sub(r"[^\d.]", "", dur_m.group(1))
-            if num:
-                duration = float(num)
-        except Exception:
-            duration = 180.0
+    # Dynamic duration calculation if model omitted or gave invalid duration
+    if duration <= 10.0 or duration > 900.0:
+        total_lyric_lines = len([l for l in lyrics.splitlines() if l.strip() and not l.strip().startswith("[")])
+        section_count = len(re.findall(r"\[(?:Verse|Chorus|Bridge|Outro|Intro|Strofa|Ritornello)", lyrics, re.IGNORECASE))
+        # Standard singing pace: ~4.2 seconds per line + 25s intro/outro/arrangement space
+        estimated_seconds = max(total_lyric_lines * 4.2 + 25.0, max(section_count, 1) * 28.0)
+        duration = round(max(90.0, min(360.0, estimated_seconds)), 1)
 
     return {
         "title": title,
