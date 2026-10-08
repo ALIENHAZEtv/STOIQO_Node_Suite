@@ -13,12 +13,18 @@ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-from core.music_prompts import (
-    parse_music_response,
-    clean_repetition_artifacts,
-    normalize_lyrics_sections,
-    detect_existing_lyrics,
+import importlib.util
+
+spec = importlib.util.spec_from_file_location(
+    "music_prompts", os.path.join(root, "core", "music_prompts.py")
 )
+music_prompts = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(music_prompts)
+
+parse_music_response = music_prompts.parse_music_response
+clean_repetition_artifacts = music_prompts.clean_repetition_artifacts
+normalize_lyrics_sections = music_prompts.normalize_lyrics_sections
+detect_existing_lyrics = music_prompts.detect_existing_lyrics
 
 
 class TestMusicParser(unittest.TestCase):
@@ -158,5 +164,64 @@ Industrial Metal, 130 BPM, heavy guitars, aggressive vocals.
         self.assertIn("Industrial Metal", parsed["style"])
 
 
+    def test_custom_lyrics_verbatim_passthrough(self):
+        user_lyrics = """[Verse 1]
+Le mie parole scritte da me
+Senza modifiche del modello
+[Chorus]
+Questo ritornello resta puro
+Nessun filtro me lo toglie"""
+        raw_llm = """[TITLE]
+Canzone Mia
+
+[STYLE]
+Italian, warm male vocal, Acoustic Pop, 110 BPM, acoustic guitar, soft percussion
+
+[LYRICS]
+[Verse 1]
+Testo allucinato dall'AI che non deve essere usato
+"""
+        parsed = parse_music_response(
+            raw_llm,
+            fallback_idea="pop song",
+            target_language="Italian",
+            custom_lyrics=user_lyrics,
+        )
+        # Verify user lyrics are preserved 100% verbatim
+        self.assertEqual(parsed["lyrics"], user_lyrics.strip())
+        self.assertEqual(parsed["title"], "Canzone Mia")
+        self.assertIn("Acoustic Pop", parsed["style"])
+
+    def test_cjk_glyph_elimination_for_european_lyrics(self):
+        raw_llm_with_cjk = """[TITLE]
+Notte di Luna 月亮
+
+[STYLE]
+Italian, powerful female vocal, Synthwave, 120 BPM, analog synths 音乐
+
+[LYRICS]
+[Verse 1]
+Sotto le luci al neon della città 城市
+guardo le ombre correre via 你好
+[Chorus]
+Brucia la fiamma dentro il mio cuore 火
+non ci fermiamo più nel buio
+"""
+        parsed = parse_music_response(
+            raw_llm_with_cjk,
+            fallback_idea="synthwave",
+            target_language="Italian",
+        )
+        # Verify no CJK glyphs survive in title, style, or lyrics
+        self.assertNotIn("月亮", parsed["title"])
+        self.assertNotIn("音乐", parsed["style"])
+        self.assertNotIn("城市", parsed["lyrics"])
+        self.assertNotIn("你好", parsed["lyrics"])
+        self.assertNotIn("火", parsed["lyrics"])
+        self.assertIn("Notte di Luna", parsed["title"])
+        self.assertIn("Sotto le luci al neon", parsed["lyrics"])
+
+
 if __name__ == "__main__":
     unittest.main()
+

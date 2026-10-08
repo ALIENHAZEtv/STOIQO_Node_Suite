@@ -97,6 +97,14 @@ class StoiqoMusicPromptEngineNode:
                 ),
             },
             "optional": {
+                "custom_lyrics": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "",
+                        "tooltip": "Optional: Write or paste your own lyrics. When provided, the node preserves your lyrics 100% exactly as written, while the AI analyzes them to formulate the matching YuE2 Style prompt, BPM, Duration, and Mode.",
+                    },
+                ),
                 "cover_image": (
                     "IMAGE",
                     {
@@ -129,11 +137,11 @@ class StoiqoMusicPromptEngineNode:
                 "temperature": (
                     "FLOAT",
                     {
-                        "default": 0.65,
+                        "default": 0.55,
                         "min": 0.1,
                         "max": 1.5,
                         "step": 0.05,
-                        "tooltip": "Creativity and lyrical variation (0.60-0.70 recommended for lyrical coherence).",
+                        "tooltip": "Creativity and lyrical variation (0.50-0.60 recommended for tight rhyming & zero CJK drift).",
                     },
                 ),
                 "repetition_penalty": (
@@ -173,11 +181,12 @@ class StoiqoMusicPromptEngineNode:
         language,
         structure,
         tempo,
+        custom_lyrics="",
         cover_image=None,
         custom_directives="",
         stoiqo_model=None,
         seed=0,
-        temperature=0.65,
+        temperature=0.55,
         repetition_penalty=1.02,
         max_new_tokens=3072,
     ):
@@ -202,7 +211,7 @@ class StoiqoMusicPromptEngineNode:
             except Exception as e:
                 print(f"[STOIQO Music] Warning converting cover image: {e}")
 
-        # Build task prompt with multimodal grounding awareness
+        # Build task prompt with multimodal grounding awareness and custom lyrics
         task_prompt = build_music_task_prompt(
             idea=clean_idea,
             genre=genre,
@@ -212,6 +221,7 @@ class StoiqoMusicPromptEngineNode:
             tempo=tempo,
             custom_directives=custom_directives,
             has_image=(img_pil is not None),
+            custom_lyrics=custom_lyrics,
         )
 
         print(f"[STOIQO Music] Generating music style & lyrics for: '{clean_idea[:60]}'...")
@@ -222,7 +232,7 @@ class StoiqoMusicPromptEngineNode:
             YUE2_SYSTEM_PROMPT,
             max_new_tokens=max_new_tokens,
             temperature=temperature,
-            top_p=0.90,
+            top_p=0.85,
             repetition_penalty=repetition_penalty,
             is_multi_image=False,
             seed=seed,
@@ -240,6 +250,7 @@ class StoiqoMusicPromptEngineNode:
             vocal=vocal_type,
             tempo=tempo,
             structure=structure,
+            custom_lyrics=custom_lyrics,
         )
 
         # Word & char counts

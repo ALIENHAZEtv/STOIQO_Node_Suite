@@ -12,15 +12,21 @@ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-from core.music_prompts import (
-    build_music_task_prompt,
-    YUE2_SYSTEM_PROMPT,
-    GENRE_PRESETS,
-    VOCAL_PRESETS,
-    LANGUAGE_PRESETS,
-    SONG_STRUCTURES,
-    TEMPO_PRESETS,
+import importlib.util
+
+spec = importlib.util.spec_from_file_location(
+    "music_prompts", os.path.join(root, "core", "music_prompts.py")
 )
+music_prompts = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(music_prompts)
+
+build_music_task_prompt = music_prompts.build_music_task_prompt
+YUE2_SYSTEM_PROMPT = music_prompts.YUE2_SYSTEM_PROMPT
+GENRE_PRESETS = music_prompts.GENRE_PRESETS
+VOCAL_PRESETS = music_prompts.VOCAL_PRESETS
+LANGUAGE_PRESETS = music_prompts.LANGUAGE_PRESETS
+SONG_STRUCTURES = music_prompts.SONG_STRUCTURES
+TEMPO_PRESETS = music_prompts.TEMPO_PRESETS
 
 
 class TestPromptEngineering(unittest.TestCase):
@@ -96,7 +102,18 @@ class TestPromptEngineering(unittest.TestCase):
             structure=SONG_STRUCTURES[0],
             tempo=TEMPO_PRESETS[3],
         )
-        self.assertIn("COMPLETEZZA TOTALE", prompt_it)
+    def test_custom_lyrics_prompt_instruction(self):
+        prompt = build_music_task_prompt(
+            idea="Una canzone",
+            genre="Rock",
+            vocal="Gritty Powerful Male Vocal",
+            language="Italian",
+            structure=SONG_STRUCTURES[0],
+            tempo=TEMPO_PRESETS[3],
+            custom_lyrics="[Verse 1]\nParole mie scritte a mano",
+        )
+        self.assertIn("USER-SUPPLIED LYRICS", prompt)
+        self.assertIn("Parole mie scritte a mano", prompt)
 
 
 if __name__ == "__main__":

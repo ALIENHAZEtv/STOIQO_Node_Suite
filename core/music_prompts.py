@@ -72,14 +72,15 @@ YUE2_SYSTEM_PROMPT = (
     "specializing in AI audio synthesis (YuE2, Suno).\n"
     "Your mission is to generate 100% original, fictional poetic lyrics and state-of-the-art acoustic production specifications.\n"
     "All themes and narratives are entirely original, creative works of fictional musical art.\n\n"
-    "SONGWRITING EXCELLENCE CRITERIA:\n"
-    "1. SOPHISTICATED LYRICISM: Never write childlike or cliché rhymes. Employ rich imagery, internal rhymes, assonances, and authentic storytelling tailored to the genre.\n"
-    "2. SINGABLE METER & CADENCE: Verses must have natural rhythmic accents and consistent cadence tailored to musical performance.\n"
-    "3. HYPNOTIC CHORUS HOOK: The Chorus MUST be memorable, emotionally powerful, and anthemic.\n"
-    "4. CONCISE & DENSE STYLE DESCRIPTOR: Under [STYLE], generate dense, professional studio production descriptors in English: exact subgenres, BPM tempo, specific instruments with timbral descriptors (e.g. Drop-D guitars, 808 bass, vintage Rhodes), vocal delivery technique, spatial acoustics, and mix profile. Keep this section dense and focused (3-5 sentences or comma-separated tags, ~50-80 words maximum) to preserve maximum capacity for lyrics.\n"
-    "5. TOTAL COMPLETION MANDATE (NEVER TRUNCATE): You MUST complete the entire song all the way through to the final [Outro]. Write complete, fully formed stanzas (4-8 lines per section) without stopping early or cutting off.\n"
-    "6. DYNAMIC METADATA GENERATION: You must explicitly calculate and output the exact track duration in seconds under [DURATION], audio synthesis mode under [MODE], and symbolic arrangement need under [ABC_PLANNING]. Never omit these fields.\n"
-    "7. STRICT FORMAT (EVERY FIELD MANDATORY):\n"
+    "SONGWRITING & LYRICISM GOLD STANDARD:\n"
+    "1. PURE TARGET LANGUAGE: You MUST write lyrics exclusively in the requested target language. Never mix random Chinese characters or other foreign glyphs into European lyrics.\n"
+    "2. METRIC CADENCE & RHYME SCHEME: Every stanza must follow strict, beautiful musical meter with clear rhyming endings (AABB or ABAB). Each line must be a complete, singable poetic phrase of 7 to 11 syllables.\n"
+    "3. STRUCTURED 4-LINE STANZAS: Write exactly 4 lines per [Verse], 4 lines per [Chorus], 4 lines per [Bridge], and 2-4 lines for [Outro]. This gives the song a tight, professional radio structure without wandering or losing coherence.\n"
+    "4. EMOTIONAL DEPTH & THEMATIC RELEVANCE: Tell a compelling story using sensory metaphors, emotional tension, and genre-appropriate vocabulary. Avoid childish clichés, nonsensical phrases, or generic filler.\n"
+    "5. PURE SINGABLE LYRICS: Under [LYRICS], output ONLY singable words. Never write instrumental stage directions like '(guitar solo)' or '(fade out)' inside the lyrics.\n"
+    "6. CONCISE & DENSE STYLE DESCRIPTOR: Under [STYLE], generate dense, professional studio production descriptors in English: exact subgenres, BPM tempo, specific instruments with timbral descriptors (e.g. Drop-D guitars, 808 bass, vintage Rhodes), vocal delivery technique, spatial acoustics, and mix profile. Keep this section dense and focused (3-5 sentences or comma-separated tags, ~50-80 words maximum) to preserve maximum capacity for lyrics.\n"
+    "7. DYNAMIC METADATA GENERATION: You must explicitly calculate and output the exact track duration in seconds under [DURATION], audio synthesis mode under [MODE], and symbolic arrangement need under [ABC_PLANNING]. Never omit these fields.\n"
+    "8. STRICT FORMAT (EVERY FIELD MANDATORY):\n"
     "[TITLE]\n"
     "Original Song Title\n\n"
     "[MODE]\n"
@@ -102,7 +103,8 @@ YUE2_SYSTEM_PROMPT = (
     "[Bridge]\n"
     "...\n\n"
     "[Outro]\n"
-    "...\n"
+    "...\n\n"
+    "9. COMPLETENESS MANDATE: NEVER TRUNCATE or stop halfway. Always generate complete verses and choruses all the way through to the final [Outro].\n"
 )
 
 
@@ -121,10 +123,22 @@ def detect_existing_lyrics(text):
     return False
 
 
-def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, custom_directives="", has_image=False):
-    """Constructs the targeted user task prompt with platinum songwriting standards and multimodal visual grounding."""
+def build_music_task_prompt(
+    idea,
+    genre,
+    vocal,
+    language,
+    structure,
+    tempo,
+    custom_directives="",
+    has_image=False,
+    custom_lyrics="",
+):
+    """Constructs the targeted user task prompt with platinum songwriting standards, strict rhyming schemes, and optional custom lyrics."""
     clean_idea = (idea or "").strip()
-    is_existing_lyrics = detect_existing_lyrics(clean_idea) or detect_existing_lyrics(custom_directives)
+    clean_custom_lyrics = (custom_lyrics or "").strip()
+    is_existing_lyrics = bool(clean_custom_lyrics) or detect_existing_lyrics(clean_idea) or detect_existing_lyrics(custom_directives)
+    effective_lyrics = clean_custom_lyrics if clean_custom_lyrics else (clean_idea if detect_existing_lyrics(clean_idea) else custom_directives)
 
     # 1. Language determination: dropdown selection takes strict precedence
     if language and not language.startswith("Auto"):
@@ -170,38 +184,39 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
         parts.append(
             "# PRIMARY DIRECTIVE: INSTRUMENTAL COMPOSITION (NO SUNG VOCALS)\n"
             "This track is 100% INSTRUMENTAL. Zero sung lyrics or singing voices allowed.\n"
-            "Inside [LYRICS], output musical arrangement cues (e.g. [Intro] (Lead synth motif), [Theme A], [Climax], [Outro]).\n"
+            "Inside [LYRICS], output musical arrangement cues (e.g. [Intro], [Theme A], [Climax], [Outro]).\n"
             "Inside [STYLE], write: 'Instrumental, no vocals...' and detail the lead instruments, rhythm section, and mix."
         )
     elif is_existing_lyrics:
         parts.append(
-            "# PRIMARY DIRECTIVE: PRESERVE USER-PROVIDED LYRICS\n"
-            "The user supplied the actual lyrics / poem for the song.\n"
-            "You MUST preserve all lines and words provided by the user in [LYRICS].\n"
-            "Format the lines into clean musical sections.\n"
-            f"USER PROVIDED TEXT / LYRICS:\n\"\"\"\n{clean_idea}\n\"\"\""
+            "# PRIMARY DIRECTIVE: USER-SUPPLIED LYRICS (PRESERVE 100% UNTOUCHED)\n"
+            "The user supplied their own complete lyrics for the song.\n"
+            "Inside [LYRICS], output the user's lyrics structured with standard section tags ([Verse 1], [Chorus], etc.).\n"
+            "You MUST preserve all words and verses provided by the user verbatim. Do not invent replacement lyrics.\n"
+            f"USER SUPPLIED TEXT / LYRICS:\n\"\"\"\n{effective_lyrics}\n\"\"\""
         )
     elif is_italian:
         parts.append(
             f"# DIRETTIVA PRINCIPALE: COMPOSIZIONE ORIGINALE IN LINGUA ITALIANA\n"
             f"Componi una canzone originale e memorabile basata su questo concetto:\n"
             f">>> \"{clean_idea}\" <<<\n\n"
-            f"- Lingua del Testo: 100% ITALIANO (in [LYRICS] ogni strofa, ritornello e bridge deve essere in italiano poetico, maturo e impeccabile).\n"
-            f"- Stile sonoro: In [STYLE], scrivi una descrizione tecnica densa e concisa (3-5 frasi o tag separati da virgole, ~50-80 parole) in INGLESE per sintetizzatori AI (YuE2, Suno).\n"
+            f"- Lingua del Testo: 100% ITALIANO (in [LYRICS] ogni verso deve essere in italiano poetico e grammaticale. ZERO caratteri cinesi o asiatici).\n"
+            f"- Metrica & Rime: Struttura rigorosa in rima baciata (AABB) o alternata (ABAB). Versi cantabili di 7-11 sillabe a ritmo regolare.\n"
+            f"- Strofe Chiare: Esattamente 4 versi regolari per ogni [Verse], 4 versi ritmici ed epici per il [Chorus], 4 versi per il [Bridge], 2-4 versi per [Outro].\n"
+            f"- Stile sonoro: In [STYLE], scrivi la descrizione tecnica (lingua, voce, genere, BPM, strumenti, acustica) in INGLESE per YuE2.\n"
             f"- Struttura richiesta: {' -> '.join(struct_sections) if struct_sections else '[Verse 1] -> [Chorus] -> [Verse 2] -> [Chorus] -> [Bridge] -> [Outro]'}.\n"
-            f"- Scrivi versi completi, autentici e cantabili sotto ogni sezione (4-8 versi per strofa). Zero segnaposto o istruzioni tra parentesi.\n"
-            f"- COMPLETEZZA TOTALE (MANDATORIA): Concludi l'intera canzone fino all'ultima riga di [Outro] senza MAI troncare o interrompere la composizione a metà."
+            f"- COMPLETEZZA: Concludi tutte le sezioni fino all'ultima riga di [Outro]."
         )
     else:
         parts.append(
             f"# PRIMARY DIRECTIVE: ORIGINAL COMPOSITION IN {target_lang.upper()}\n"
             f"Compose an original chart-caliber song based on this concept:\n"
             f">>> \"{clean_idea}\" <<<\n\n"
-            f"- Lyrics Language: 100% {target_lang} (Every line under [LYRICS] must be written in {target_lang} with top-tier poetic standards).\n"
-            f"- Style Descriptor: In [STYLE], write a dense, concise acoustic prompt (3-5 sentences or comma-separated tags, ~50-80 words) in English for YuE2/Suno.\n"
+            f"- Lyrics Language: 100% {target_lang} (In [LYRICS] every line must be in fluent, metric {target_lang}. Zero Chinese or foreign characters).\n"
+            f"- Meter & Rhyme Scheme: Consistent cadence with clear end rhymes (AABB or ABAB). Exactly 4 singable lines per [Verse], 4 anthemic lines per [Chorus], 4 lines per [Bridge], 2-4 lines for [Outro].\n"
+            f"- Style Descriptor: In [STYLE], write a dense acoustic prompt (language, vocal, genre, BPM, instruments, mix profile) in English for YuE2/Suno.\n"
             f"- Structure: {' -> '.join(struct_sections) if struct_sections else '[Verse 1] -> [Chorus] -> [Verse 2] -> [Chorus] -> [Bridge] -> [Outro]'}.\n"
-            f"- Write complete, metric, authentic lines under each section tag (4-8 lines per section). No placeholders.\n"
-            f"- TOTAL COMPLETION MANDATE: Finish the full song all the way to the final [Outro] without ever truncating or stopping prematurely."
+            f"- TOTAL COMPLETION: Finish the full song all the way to the final [Outro]."
         )
 
     # 4. Specifications
@@ -249,15 +264,18 @@ def build_music_task_prompt(idea, genre, vocal, language, structure, tempo, cust
     return "\n\n".join(parts)
 
 
-def clean_repetition_artifacts(text):
-    """Detects and strips runaway token/character repetition loops from quantized LLM outputs."""
+def clean_repetition_artifacts(text, target_language="Italian"):
+    """Detects and strips runaway token/character repetition loops and spurious CJK glyphs from quantized outputs."""
     if not text:
         return ""
     # Strip known Qwen tokenizer hallucination glitch
     cleaned = re.sub(r'\baddCriterion\b', '', text, flags=re.IGNORECASE)
+    # Strip runaway CJK characters if output language is Western/European
+    if not any(asian in str(target_language).lower() for asian in ["chinese", "japanese", "cinese", "giapponese"]):
+        cleaned = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uf900-\ufaff]', '', cleaned)
     # Strip repeated characters like eeeeeee or gggggggg (>= 4 times)
     cleaned = re.sub(r'([a-zA-Z\s])\1{4,}', r'\1', cleaned)
-    # Strip repeated syllables/words like "raggegggeggge" or "sole sole sole sole" (>= 3 times)
+    # Strip repeated syllables/words like "raggegggeggge" (>= 3 times)
     cleaned = re.sub(r'([a-zA-Z]{2,10})\1{3,}', r'\1', cleaned)
     # Strip repeated line repetitions
     lines = cleaned.splitlines()
@@ -307,13 +325,15 @@ def parse_music_response(
     vocal="",
     tempo="",
     structure="",
+    custom_lyrics="",
 ):
     """
     Parses the LLM output into structured ComfyUI YuE2 components strictly following official specs.
     Extracts title, style, lyrics, mode, duration, and abc_planning dynamically from model output.
-    Ensures zero hardcoded dummy values and strict separation of acoustic style from singable lyrics.
+    Ensures zero hardcoded dummy values, absolute ban on Chinese characters in European lyrics,
+    and 100% preservation of custom lyrics when provided by the user.
     """
-    text = clean_repetition_artifacts((raw_text or "").strip())
+    text = clean_repetition_artifacts((raw_text or "").strip(), target_language=target_language)
     normalized_text = normalize_lyrics_sections(text)
 
     is_italian = "italian" in str(target_language).lower() or any(
@@ -410,30 +430,45 @@ def parse_music_response(
             if len(non_header_lines) >= 1:
                 lyrics = candidate
 
-    if not lyrics and fallback_idea:
-        if detect_existing_lyrics(fallback_idea):
-            clean_user_lyrics = fallback_idea.strip()
-            if "[" not in clean_user_lyrics:
-                clean_user_lyrics = f"[Verse 1]\n{clean_user_lyrics}"
-            lyrics = clean_user_lyrics
+    # Priority 0: If the user provided pre-written lyrics directly via custom_lyrics, preserve them 100% verbatim
+    if custom_lyrics and custom_lyrics.strip():
+        lyrics = custom_lyrics.strip()
+    else:
+        if not lyrics and fallback_idea:
+            if detect_existing_lyrics(fallback_idea):
+                clean_user_lyrics = fallback_idea.strip()
+                if "[" not in clean_user_lyrics:
+                    clean_user_lyrics = f"[Verse 1]\n{clean_user_lyrics}"
+                lyrics = clean_user_lyrics
 
-    if not lyrics and text:
-        clean_raw = re.sub(r"<[a-zA-Z_0-9:]+>.*?</[a-zA-Z_0-9:]+>", "", text, flags=re.DOTALL)
-        clean_raw = re.sub(r"</?[a-zA-Z_0-9:]+>", "", clean_raw).strip()
-        if style and style in clean_raw:
-            clean_raw = clean_raw.replace(style, "").strip()
-        if clean_raw:
-            lyrics = clean_raw
+        if not lyrics and text:
+            clean_raw = re.sub(r"<[a-zA-Z_0-9:]+>.*?</[a-zA-Z_0-9:]+>", "", text, flags=re.DOTALL)
+            clean_raw = re.sub(r"</?[a-zA-Z_0-9:]+>", "", clean_raw).strip()
+            if style and style in clean_raw:
+                clean_raw = clean_raw.replace(style, "").strip()
+            if clean_raw:
+                lyrics = clean_raw
 
-    # Clean residual XML tags, markdown fences, and non-singable instrument annotations per YuE2 guidelines
-    # (ComfyUI YuE2 guide: "Put only the words intended to be sung in the lyrics field. Keep musical instructions in Style rather than in the lyrics.")
-    lyrics = re.sub(r"</?[a-zA-Z_0-9:]+>", "", lyrics)
-    lyrics = re.sub(r"```[a-zA-Z]*", "", lyrics).replace("```", "").replace("`XML", "").replace("`xml", "").strip()
-    # Strip prompt instruction parentheticals: e.g. "(4 lines)", "(lyrics here)", "(Quattro versi...)"
-    lyrics = re.sub(r"^\s*\([0-9]+\s*(?:lines|versi|linee|strofe)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
-    lyrics = re.sub(r"^\s*\((?:lyrics|testo|versi|quattro versi|lyrics here)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
-    # Strip instrumental performance notes from lyrics so YuE2 vocals stay pure (e.g. "(Guitar solo)", "(Drum break)")
-    lyrics = re.sub(r"^\s*\((?:guitar|drum|bass|synth|piano|solo|riff|break|intro|outro|tempo|beat|vocalizing)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
+        # Clean residual XML tags, markdown fences, and non-singable instrument annotations per YuE2 guidelines
+        # (ComfyUI YuE2 guide: "Put only the words intended to be sung in the lyrics field. Keep musical instructions in Style rather than in the lyrics.")
+        lyrics = re.sub(r"</?[a-zA-Z_0-9:]+>", "", lyrics)
+        lyrics = re.sub(r"```[a-zA-Z]*", "", lyrics).replace("```", "").replace("`XML", "").replace("`xml", "").strip()
+        # Strip prompt instruction parentheticals: e.g. "(4 lines)", "(lyrics here)", "(Quattro versi...)"
+        lyrics = re.sub(r"^\s*\([0-9]+\s*(?:lines|versi|linee|strofe)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
+        lyrics = re.sub(r"^\s*\((?:lyrics|testo|versi|quattro versi|lyrics here)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
+        # Strip instrumental performance notes from lyrics so YuE2 vocals stay pure (e.g. "(Guitar solo)", "(Drum break)")
+        lyrics = re.sub(r"^\s*\((?:guitar|drum|bass|synth|piano|solo|riff|break|intro|outro|tempo|beat|vocalizing)[^\)]*\)\s*$", "", lyrics, flags=re.MULTILINE | re.IGNORECASE)
+
+        # Strip any CJK / Chinese characters if target language is European
+        if not any(asian in str(target_language).lower() for asian in ["chinese", "japanese", "cinese", "giapponese"]):
+            lyrics = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uf900-\ufaff]', '', lyrics)
+
+        lyrics = re.sub(r"\n{3,}", "\n\n", lyrics).strip()
+
+    # Always clean style and title from rogue CJK characters for European languages
+    if not any(asian in str(target_language).lower() for asian in ["chinese", "japanese", "cinese", "giapponese"]):
+        style = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uf900-\ufaff]', '', style)
+        title = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uf900-\ufaff]', '', title)
 
     style = re.sub(r"</?[a-zA-Z_0-9:]+>", "", style)
     style = re.sub(r"```[a-zA-Z]*", "", style).replace("```", "").strip()
