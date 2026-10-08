@@ -7,7 +7,7 @@
     "build": "esbuild src_js/index.js --bundle --outfile=js/stoiqo_suite.js --format=esm --external:../../scripts/* --external:../../../scripts/*",
     "release": "python tools/build_release.py",
     "release:deploy": "python tools/build_release.py --deploy",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "python -m unittest discover tests"
   },
   "keywords": [],
   "author": "",

@@ -85,7 +85,7 @@ def build_release(deploy=False):
         print("[WARNING] Compiled js/stoiqo_suite.js not found!")
 
     # Root metadata files
-    root_files = ["__init__.py", "requirements.txt", "install.py", "README.md", ".gitignore", "LICENSE"]
+    root_files = ["__init__.py", "requirements.txt", "install.py", "README.md", ".gitignore", "LICENSE", "pyproject.toml"]
     for rf in root_files:
         src_path = os.path.join(PROJECT_ROOT, rf)
         if os.path.exists(src_path):

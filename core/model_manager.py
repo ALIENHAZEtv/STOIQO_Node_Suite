@@ -273,13 +273,17 @@ class ModelManager:
                 pass
 
         if not llm_dir:
-            llm_dir = os.path.join(folder_paths.models_dir, "LLM")
+            if folder_paths and hasattr(folder_paths, "models_dir"):
+                llm_dir = os.path.join(folder_paths.models_dir, "LLM")
+            else:
+                llm_dir = os.path.join(os.getcwd(), "models", "LLM")
 
         os.makedirs(llm_dir, exist_ok=True)
-        try:
-            folder_paths.add_model_folder_path("LLM", llm_dir)
-        except Exception:
-            pass
+        if folder_paths and hasattr(folder_paths, "add_model_folder_path"):
+            try:
+                folder_paths.add_model_folder_path("LLM", llm_dir)
+            except Exception:
+                pass
         return llm_dir
 
     @staticmethod
