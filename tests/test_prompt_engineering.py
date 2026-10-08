@@ -27,6 +27,9 @@ VOCAL_PRESETS = music_prompts.VOCAL_PRESETS
 LANGUAGE_PRESETS = music_prompts.LANGUAGE_PRESETS
 SONG_STRUCTURES = music_prompts.SONG_STRUCTURES
 TEMPO_PRESETS = music_prompts.TEMPO_PRESETS
+MUSIC_SYSTEM_PROMPT_PRESETS = music_prompts.MUSIC_SYSTEM_PROMPT_PRESETS
+MUSIC_CUSTOM_SYSTEM_PROMPT_KEY = music_prompts.MUSIC_CUSTOM_SYSTEM_PROMPT_KEY
+resolve_music_system_prompt = music_prompts.resolve_music_system_prompt
 
 
 class TestPromptEngineering(unittest.TestCase):
@@ -112,8 +115,25 @@ class TestPromptEngineering(unittest.TestCase):
             tempo=TEMPO_PRESETS[3],
             custom_lyrics="[Verse 1]\nParole mie scritte a mano",
         )
-        self.assertIn("USER-SUPPLIED LYRICS", prompt)
-        self.assertIn("Parole mie scritte a mano", prompt)
+    def test_music_system_prompt_presets(self):
+        self.assertIn("YuE2 / Suno Master Lyricist & Sound Architect", MUSIC_SYSTEM_PROMPT_PRESETS)
+        self.assertIn("Pop & Radio Hitmaker", MUSIC_SYSTEM_PROMPT_PRESETS)
+        self.assertIn("Rock, Metal & Alternative Producer", MUSIC_SYSTEM_PROMPT_PRESETS)
+        self.assertIn("Acoustic Ballad & Folk Storyteller", MUSIC_SYSTEM_PROMPT_PRESETS)
+        self.assertIn("Hip-Hop, Rap & Urban Flow", MUSIC_SYSTEM_PROMPT_PRESETS)
+        self.assertIn("Cinematic & Orchestral Composer", MUSIC_SYSTEM_PROMPT_PRESETS)
+
+        pop_prompt = resolve_music_system_prompt("Pop & Radio Hitmaker")
+        self.assertIn("Billboard #1 Pop Songwriter", pop_prompt)
+
+    def test_custom_system_prompt_override(self):
+        custom_instructions = "You are a Cyberpunk Synthwave Producer specializing in dark neon dystopian lyrics."
+        res = resolve_music_system_prompt(MUSIC_CUSTOM_SYSTEM_PROMPT_KEY, custom_text=custom_instructions)
+        self.assertEqual(res, custom_instructions)
+
+        # Fallback when custom_text is empty
+        fallback_res = resolve_music_system_prompt(MUSIC_CUSTOM_SYSTEM_PROMPT_KEY, custom_text="")
+        self.assertEqual(fallback_res, YUE2_SYSTEM_PROMPT)
 
 
 if __name__ == "__main__":

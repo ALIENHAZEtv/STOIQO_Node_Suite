@@ -19,6 +19,10 @@ try:
         SONG_STRUCTURES,
         TEMPO_PRESETS,
         YUE2_SYSTEM_PROMPT,
+        MUSIC_SYSTEM_PROMPT_PRESETS,
+        MUSIC_CUSTOM_SYSTEM_PROMPT_KEY,
+        MUSIC_SYSTEM_PROMPT_CHOICES,
+        resolve_music_system_prompt,
         build_music_task_prompt,
         parse_music_response,
         tensor_to_pil,
@@ -32,6 +36,10 @@ except (ImportError, ValueError):
         SONG_STRUCTURES,
         TEMPO_PRESETS,
         YUE2_SYSTEM_PROMPT,
+        MUSIC_SYSTEM_PROMPT_PRESETS,
+        MUSIC_CUSTOM_SYSTEM_PROMPT_KEY,
+        MUSIC_SYSTEM_PROMPT_CHOICES,
+        resolve_music_system_prompt,
         build_music_task_prompt,
         parse_music_response,
         tensor_to_pil,
@@ -58,6 +66,13 @@ class StoiqoMusicPromptEngineNode:
                         "multiline": True,
                         "default": "An upbeat summer indie pop song about a nostalgic coastal road trip with driving rhythms and melodic guitars.",
                         "tooltip": "The core musical idea, mood, narrative, or concept for the song.",
+                    },
+                ),
+                "system_prompt": (
+                    MUSIC_SYSTEM_PROMPT_CHOICES,
+                    {
+                        "default": MUSIC_SYSTEM_PROMPT_CHOICES[0],
+                        "tooltip": "AI Producer Persona & System Prompt: Select a specialized music director persona, or select 'Custom (Manual Override)' to write your own custom system instructions below.",
                     },
                 ),
                 "genre": (
@@ -97,6 +112,15 @@ class StoiqoMusicPromptEngineNode:
                 ),
             },
             "optional": {
+                "custom_system_prompt": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "",
+                        "placeholder": "Active only when system_prompt = 'Custom'. Write your custom AI music producer system instructions here...",
+                        "tooltip": "Custom system instructions for the music engine. Revealed dynamically on canvas when system_prompt is set to 'Custom'.",
+                    },
+                ),
                 "custom_lyrics": (
                     "STRING",
                     {
@@ -176,11 +200,13 @@ class StoiqoMusicPromptEngineNode:
     def generate_music_prompt(
         self,
         idea,
-        genre,
-        vocal_type,
-        language,
-        structure,
-        tempo,
+        system_prompt=MUSIC_SYSTEM_PROMPT_CHOICES[0],
+        genre=GENRE_PRESETS[0],
+        vocal_type=VOCAL_PRESETS[0],
+        language=LANGUAGE_PRESETS[0],
+        structure=SONG_STRUCTURES[0],
+        tempo=TEMPO_PRESETS[0],
+        custom_system_prompt="",
         custom_lyrics="",
         cover_image=None,
         custom_directives="",
@@ -211,6 +237,9 @@ class StoiqoMusicPromptEngineNode:
             except Exception as e:
                 print(f"[STOIQO Music] Warning converting cover image: {e}")
 
+        # Resolve active system prompt (preset or custom manual override)
+        active_system_prompt = resolve_music_system_prompt(system_prompt, custom_system_prompt)
+
         # Build task prompt with multimodal grounding awareness and custom lyrics
         task_prompt = build_music_task_prompt(
             idea=clean_idea,
@@ -229,7 +258,7 @@ class StoiqoMusicPromptEngineNode:
         raw_output = active_mgr.generate_single(
             img_pil,
             task_prompt,
-            YUE2_SYSTEM_PROMPT,
+            active_system_prompt,
             max_new_tokens=max_new_tokens,
             temperature=temperature,
             top_p=0.85,

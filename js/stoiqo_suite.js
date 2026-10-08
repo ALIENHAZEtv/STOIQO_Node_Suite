@@ -2542,13 +2542,16 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
   const MIN_NODE_WIDTH = 480;
   const SECTIONS = [
     { targetWidget: "idea", num: "1", title: "CONCEPT & CORE THEME", color: "#f43f5e" },
-    { targetWidget: "genre", num: "2", title: "GENRE & ACOUSTICS", color: "#a855f7" },
-    { targetWidget: "vocal_type", num: "3", title: "VOCALS & LANGUAGE", color: "#38bdf8" },
-    { targetWidget: "structure", num: "4", title: "STRUCTURE & TEMPO", color: "#eab308" },
-    { targetWidget: "seed", num: "5", title: "GENERATION & SAMPLING", color: "#10b981" }
+    { targetWidget: "system_prompt", num: "2", title: "PRODUCER PERSONA & AI AGENT", color: "#ec4899" },
+    { targetWidget: "genre", num: "3", title: "GENRE & ACOUSTICS", color: "#a855f7" },
+    { targetWidget: "vocal_type", num: "4", title: "VOCALS & LANGUAGE", color: "#38bdf8" },
+    { targetWidget: "structure", num: "5", title: "STRUCTURE & TEMPO", color: "#eab308" },
+    { targetWidget: "seed", num: "6", title: "GENERATION & SAMPLING", color: "#10b981" }
   ];
   const MULTILINE_HEIGHTS = {
     "idea": 76,
+    "custom_system_prompt": 68,
+    "custom_lyrics": 80,
     "custom_directives": 54
   };
   function setupNodeInstance(node) {
@@ -2592,6 +2595,56 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
         }
       }
     }
+    function updateSystemPromptVisibility() {
+      const sysPromptWidget2 = node.widgets.find((w) => w.name === "system_prompt");
+      const customWidget = node.widgets.find((w) => w.name === "custom_system_prompt");
+      if (!customWidget) return;
+      const isCustomSelected = sysPromptWidget2 && String(sysPromptWidget2.value || "").includes("Custom");
+      if (!customWidget._stoiqoOrigComputeSize) {
+        customWidget._stoiqoOrigComputeSize = customWidget.computeSize;
+        customWidget._stoiqoOrigDraw = customWidget.draw;
+      }
+      if (isCustomSelected) {
+        customWidget.hidden = false;
+        customWidget.computeSize = function(width) {
+          return [width, MULTILINE_HEIGHTS["custom_system_prompt"] || 68];
+        };
+        if (customWidget._stoiqoOrigDraw) {
+          customWidget.draw = customWidget._stoiqoOrigDraw;
+        }
+        if (customWidget.inputEl) {
+          customWidget.inputEl.hidden = false;
+          customWidget.inputEl.style.display = "";
+        }
+      } else {
+        customWidget.hidden = true;
+        customWidget.computeSize = function() {
+          return [0, -4];
+        };
+        customWidget.draw = function() {
+        };
+        if (customWidget.inputEl) {
+          customWidget.inputEl.hidden = true;
+          customWidget.inputEl.style.display = "none";
+        }
+      }
+      if (typeof node.computeSize === "function") {
+        const computed = node.computeSize();
+        node.size[0] = Math.max(node.size[0] || 0, MIN_NODE_WIDTH);
+        node.size[1] = Math.max(node.size[1] || 0, Math.ceil(computed[1]));
+      }
+      node.setDirtyCanvas(true, true);
+    }
+    const sysPromptWidget = node.widgets.find((w) => w.name === "system_prompt");
+    if (sysPromptWidget && !sysPromptWidget._stoiqoVisibilityHooked) {
+      sysPromptWidget._stoiqoVisibilityHooked = true;
+      const origSysCallback = sysPromptWidget.callback;
+      sysPromptWidget.callback = function(val) {
+        if (origSysCallback) origSysCallback.apply(this, arguments);
+        updateSystemPromptVisibility();
+      };
+    }
+    updateSystemPromptVisibility();
     node.widgets = node.widgets.filter((w) => !w.isStoiqoDivider);
     for (const sec of SECTIONS) {
       const targetIdx = node.widgets.findIndex((w) => w.name === sec.targetWidget);
@@ -2602,7 +2655,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     }
     let styleDisplay = node.widgets.find((w) => w.name === "preview_style");
     if (!styleDisplay) {
-      const styleDivider = new StoiqoSectionDividerWidget("6", "YUE2 OUTPUT: STYLE DESCRIPTOR", "#06b6d4");
+      const styleDivider = new StoiqoSectionDividerWidget("7", "YUE2 OUTPUT: STYLE DESCRIPTOR", "#06b6d4");
       node.widgets.push(styleDivider);
       if (typeof ComfyWidgets7 !== "undefined" && ComfyWidgets7["STRING"]) {
         styleDisplay = ComfyWidgets7["STRING"](
@@ -2660,7 +2713,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     }
     let lyricsDisplay = node.widgets.find((w) => w.name === "preview_lyrics");
     if (!lyricsDisplay) {
-      const lyricsDivider = new StoiqoSectionDividerWidget("7", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ec4899");
+      const lyricsDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ec4899");
       node.widgets.push(lyricsDivider);
       if (typeof ComfyWidgets7 !== "undefined" && ComfyWidgets7["STRING"]) {
         lyricsDisplay = ComfyWidgets7["STRING"](

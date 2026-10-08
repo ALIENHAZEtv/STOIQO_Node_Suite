@@ -44,6 +44,10 @@ from .music_prompts import (
     SONG_STRUCTURES,
     TEMPO_PRESETS,
     YUE2_SYSTEM_PROMPT,
+    MUSIC_SYSTEM_PROMPT_PRESETS,
+    MUSIC_CUSTOM_SYSTEM_PROMPT_KEY,
+    MUSIC_SYSTEM_PROMPT_CHOICES,
+    resolve_music_system_prompt,
     build_music_task_prompt,
     parse_music_response,
 )
