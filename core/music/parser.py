@@ -525,13 +525,25 @@ def parse_music_response(
     lyrics = re.sub(r"\n{3,}", "\n\n", lyrics).strip()
     style = re.sub(r"\n{2,}", " ", style).strip()
 
-    # Dynamic duration calculation if model omitted or gave invalid duration
-    if duration <= 10.0 or duration > 900.0:
+    # Dynamic duration calculation calibrated for full professional songs (2.5 to 4 minutes)
+    if duration <= 30.0 or duration > 900.0:
         total_lyric_lines = len([l for l in lyrics.splitlines() if l.strip() and not l.strip().startswith("[")])
-        section_count = len(re.findall(r"\[(?:Verse|Chorus|Bridge|Outro|Intro|Strofa|Ritornello)", lyrics, re.IGNORECASE))
-        # Standard singing pace: ~4.2 seconds per line + 25s intro/outro/arrangement space
-        estimated_seconds = max(total_lyric_lines * 4.2 + 25.0, max(section_count, 1) * 28.0)
-        duration = round(max(90.0, min(360.0, estimated_seconds)), 1)
+        sections = re.findall(r"\[(?:Verse|Chorus|Bridge|Outro|Intro|Strofa|Ritornello|Pre-Chorus|Solo)", lyrics, re.IGNORECASE)
+        section_count = max(len(sections), 5)
+
+        # Extract BPM if present in style to calibrate measure duration
+        bpm_match = re.search(r"(\d{2,3})\s*BPM", style, re.IGNORECASE)
+        bpm = float(bpm_match.group(1)) if bpm_match else 115.0
+        bpm = max(60.0, min(180.0, bpm))
+
+        # Real musical pacing:
+        # A standard 4/4 measure = 240 / BPM seconds.
+        # Verses & Choruses typically span 8 to 16 measures each (~18-32s per section).
+        # Intro & Outro and instrumental solos add 30-45s of arrangement space.
+        sec_per_measure = 240.0 / bpm
+        estimated_arrangement_time = (section_count * 8.5 * sec_per_measure) + (total_lyric_lines * 3.5)
+        # Full radio song target: guaranteed 160s to 240s (2m40s to 4m00s)
+        duration = round(max(160.0, min(240.0, estimated_arrangement_time)), 1)
 
     return {
         "title": title,

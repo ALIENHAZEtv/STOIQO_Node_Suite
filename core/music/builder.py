@@ -195,6 +195,7 @@ def build_music_task_prompt(
         "- Every single line in [LYRICS] must be a complete, grammatical poetic sentence ready to be sung into a microphone.\n\n"
         "Output Format Requirements (Strictly follow this structure):\n"
         "[TITLE]\nOriginal Song Title\n\n"
+        "[DURATION]\n210.0 (Full song length in seconds: typically 180.0 to 240.0 for a complete 3 to 4 minute track)\n\n"
         "[STYLE]\nDense technical acoustic descriptors (subgenre, BPM, vocal delivery, instruments, mix profile - in English for YuE2/Suno)\n\n"
         "[LYRICS]\n"
         "[Verse 1]\n"

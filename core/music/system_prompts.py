@@ -31,6 +31,8 @@ MUSIC_SYSTEM_PROMPT_PRESETS = {
         "7. STRICT OUTPUT FORMAT (MANDATORY):\n"
         "[TITLE]\n"
         "Song Title\n\n"
+        "[DURATION]\n"
+        "210.0\n\n"
         "[STYLE]\n"
         "Dense technical production prompt in English for YuE2/Suno\n\n"
         "[LYRICS]\n"
