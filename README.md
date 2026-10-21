@@ -47,8 +47,8 @@ Search for `STOIQO Comfyui Nodes` in the ComfyUI Manager custom nodes browser an
 ### Option B — Manual
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/ALIENHAZEtv/STOIQO_ComfyUI_Nodes.git
-cd STOIQO_ComfyUI_Nodes
+git clone https://github.com/ALIENHAZEtv/STOIQO_Node_Suite.git
+cd STOIQO_Node_Suite
 pip install -r requirements.txt
 ```
 Restart ComfyUI. The nodes will appear under the **STOIQO** category.
