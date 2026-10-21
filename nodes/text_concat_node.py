@@ -192,7 +192,7 @@ class StoiqoTextConcatenateNode:
     RETURN_NAMES = ("text", "word_count", "char_count", "token_count")
     FUNCTION = "concatenate"
     OUTPUT_NODE = True
-    CATEGORY = "STOIQO/Utilities"
+    CATEGORY = "STOIQO"
 
     def concatenate(
         self,
@@ -312,10 +312,17 @@ class StoiqoTextConcatenateNode:
         else:
             result = combined
 
+        if clean_whitespace and result:
+            result = re.sub(r",\s*,+", ", ", result)
+            result = re.sub(r"\s+([,;.!?])", r"\1", result)
+            result = result.strip(" ,;\t\n\r")
+
         word_count = len(result.split()) if result else 0
         char_count = len(result)
         # Standard estimated token count (max between word count and chars/3.8)
         est_token_count = max(word_count, int(char_count / 3.8)) if result else 0
+
+        slot_values = {f"text_{i+1}": raw_parts[i] for i in range(min(8, len(raw_parts)))}
 
         return {
             "ui": {

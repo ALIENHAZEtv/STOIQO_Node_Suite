@@ -19,7 +19,6 @@ def generate_fallback_song_lyrics(title="", target_language="Italian", genre="",
 
     is_metal = any(m in combined_desc for m in ["metal", "death metal", "rock", "slipknot", "heavy", "core", "scream", "grunge", "thrash"])
     is_rap = any(m in combined_desc for m in ["rap", "hip-hop", "trap", "flow", "drill", "beat"])
-    is_pop = any(m in combined_desc for m in ["pop", "dance", "synth", "disco", "indie", "club"])
 
     if is_it:
         if is_metal:
@@ -392,10 +391,56 @@ def parse_music_response(
         except Exception:
             duration = 0.0
 
+    # 4b. Extract BPM (integer)
+    bpm = 120
+    bpm_m = re.search(r"(?:<|\[|#{1,6}\s*)?BPM(?:>|\])?[:\s]*([^\n<\[#]+)", text, re.IGNORECASE)
+    if bpm_m:
+        try:
+            b_val = int(re.sub(r"[^\d]", "", bpm_m.group(1)))
+            if 40 <= b_val <= 300:
+                bpm = b_val
+        except Exception:
+            pass
+
+    # 4c. Extract Key (e.g. C Minor, A Major, F# Minor)
+    musical_key = "C Minor"
+    key_m = re.search(r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?(?:KEY|MUSICAL_KEY)\]?[:\s]*([^\n<\[]+)", text, re.IGNORECASE)
+    if key_m:
+        cand_key = key_m.group(1).strip().strip("\"'*")
+        if cand_key and len(cand_key) <= 30 and not cand_key.lower().startswith("musical key") and not cand_key.lower().startswith("c minor ("):
+            musical_key = cand_key
+
+    # 4d. Extract Time Signature (e.g. 4/4, 3/4, 6/8)
+    time_signature = "4/4"
+    meter_m = re.search(r"(?:<|\[|#{1,6}\s*)?(?:TIME_SIGNATURE|METER)(?:>|\])?[:\s]*([^\n<\[#]+)", text, re.IGNORECASE)
+    if meter_m:
+        cand_meter = meter_m.group(1).strip().strip("\"'#*")
+        meter_match = re.search(r"\b\d/\d\b", cand_meter)
+        if meter_match:
+            time_signature = meter_match.group(0)
+        elif cand_meter and len(cand_meter) <= 10 and not cand_meter.lower().startswith("rhythmic"):
+            time_signature = cand_meter
+
+    # 4e. Extract Genre Tags
+    genre_tags = ""
+    gtag_m = re.search(r"(?:<|\[|#{1,6}\s*)?GENRE_TAGS(?:>|\])?[:\s]*([^\n<\[#]+)", text, re.IGNORECASE)
+    if gtag_m:
+        cand_gtag = gtag_m.group(1).strip().strip("\"'#*")
+        if cand_gtag and not cand_gtag.lower().startswith("exact comma"):
+            genre_tags = cand_gtag
+
+    # 4f. Extract Vocal Description
+    vocal_description = ""
+    vdesc_m = re.search(r"(?:<|\[|#{1,6}\s*)?VOCAL_DESCRIPTION(?:>|\])?[:\s]*([^\n<\[#]+)", text, re.IGNORECASE)
+    if vdesc_m:
+        cand_vdesc = vdesc_m.group(1).strip().strip("\"'#*")
+        if cand_vdesc and not cand_vdesc.lower().startswith("clear vocal") and not cand_vdesc.lower().startswith("detailed vocal"):
+            vocal_description = cand_vdesc
+
     # 5. Extract Style (English, vocal, genre, BPM, instruments, mix)
     style = ""
     # Check [STYLE], <STYLE>, ### Style, or Style:
-    style_m = re.search(r"(?:<|\[|#{1,6}\s*)STYLE(?:>|\])?[:\s]*\n*(.*?)(?=\n+(?:<|\[|#{1,6}\s*)(?:LYRICS|VERSE|CHORUS|INTRO|TITLE|MODE|DURATION|ABC_PLANNING)|$)", text, re.DOTALL | re.IGNORECASE)
+    style_m = re.search(r"(?:<|\[|#{1,6}\s*)STYLE(?:>|\])?[:\s]*\n*(.*?)(?=\n+(?:<|\[|#{1,6}\s*)(?:LYRICS|VERSE|CHORUS|INTRO|TITLE|MODE|DURATION|ABC_PLANNING|BPM|KEY|TIME_SIGNATURE|GENRE_TAGS|VOCAL_DESCRIPTION)|$)", text, re.DOTALL | re.IGNORECASE)
     if style_m:
         cand_s = style_m.group(1).strip()
         cand_s = re.sub(r"</?STYLE>", "", cand_s, flags=re.IGNORECASE).strip()
@@ -412,8 +457,33 @@ def parse_music_response(
         # Formulate YuE2 standard style dynamically from user directives
         vocal_desc = vocal if vocal and not vocal.startswith("Auto") else ("instrumental only, no vocals" if is_instrumental else "expressive lead vocal")
         genre_desc = genre.split("(")[0].strip() if genre and not genre.startswith("Auto") else "contemporary music"
-        bpm_desc = tempo.split("(")[0].strip() if tempo and not tempo.startswith("Auto") else "120 BPM"
+        bpm_desc = f"{bpm} BPM" if bpm else (tempo.split("(")[0].strip() if tempo and not tempo.startswith("Auto") else "120 BPM")
         style = f"{target_language}, {vocal_desc}, {genre_desc}, {bpm_desc}, rich lead instrumentation, rhythmic bass, tight drums, clear stereo production"
+
+    # Cross-calibrate BPM and Key from style if needed
+    if bpm == 120 and style:
+        bpm_s = re.search(r"(\d{2,3})\s*BPM", style, re.IGNORECASE)
+        if bpm_s:
+            try:
+                bpm = int(bpm_s.group(1))
+            except Exception:
+                pass
+
+    if musical_key == "C Minor" and style:
+        key_s = re.search(r"\b([A-G][#b]?(?:\s+(?:Major|Minor|Dorian|Mixolydian|Phrygian|Lydian|Aeolian|Locrian)))\b", style, re.IGNORECASE)
+        if key_s:
+            musical_key = key_s.group(1).strip()
+
+    if not genre_tags and style:
+        # Extract first 3 comma-separated terms from style
+        parts_s = [p.strip() for p in style.split(",") if p.strip()]
+        if len(parts_s) >= 3:
+            genre_tags = ", ".join(parts_s[1:4])
+
+    if not vocal_description and style:
+        parts_s = [p.strip() for p in style.split(",") if p.strip()]
+        if len(parts_s) >= 2:
+            vocal_description = parts_s[1]
 
     def _strip_metadata_leakage(txt):
         if not txt:
@@ -424,6 +494,11 @@ def parse_music_response(
             r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?TITLE\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
             r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?MODE\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
             r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?DURATION\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?BPM\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?KEY\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?TIME_SIGNATURE\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?GENRE_TAGS\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
+            r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?VOCAL_DESCRIPTION\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
             r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?ABC_PLANNING(?:ING)?\]?[:\s]*\n*\s*(?:[^\n]+\n?)?",
             r"(?:^|\n)\s*(?:#{1,6}\s*)?\[?STYLE\]?[:\s]*\n*\s*(?:.*?(?=\n\s*(?:#{1,6}\s*)?\[(?:LYRICS|VERSE|CHORUS|TITLE)|$))",
         ]
@@ -438,11 +513,13 @@ def parse_music_response(
         if duration > 0:
             res = re.sub(rf"(?:^|\n)\s*{re.escape(str(duration))}\s*(?:\n|$)", "\n", res)
             res = re.sub(rf"(?:^|\n)\s*{int(duration)}\s*(?:\n|$)", "\n", res)
+        if bpm > 0:
+            res = re.sub(rf"(?:^|\n)\s*{bpm}\s*(?:\n|$)", "\n", res)
 
         # 3. Strip orphan markdown headers and residual tags
         res = re.sub(r"(?:^|\n)\s*#{1,6}\s*\[?\s*(?:\n|$)", "\n", res)
-        res = re.sub(r"(?:^|\n)\s*(?:Title|Mode|Duration|Abc_planning|Style)\s*:\s*[^\n]*", "\n", res, flags=re.IGNORECASE)
-        res = re.sub(r"</?(?:TITLE|MODE|DURATION|ABC_PLANNING|STYLE|LYRICS|RICS)>", "", res, flags=re.IGNORECASE)
+        res = re.sub(r"(?:^|\n)\s*(?:Title|Mode|Duration|Abc_planning|Style|Bpm|Key|Time_signature|Genre_tags|Vocal_description)\s*:\s*[^\n]*", "\n", res, flags=re.IGNORECASE)
+        res = re.sub(r"</?(?:TITLE|MODE|DURATION|ABC_PLANNING|STYLE|LYRICS|RICS|BPM|KEY|TIME_SIGNATURE|GENRE_TAGS|VOCAL_DESCRIPTION)>", "", res, flags=re.IGNORECASE)
         return res.strip()
 
     # 6. Extract Lyrics (singable text strictly separated from acoustic commentary)
@@ -490,7 +567,7 @@ def parse_music_response(
 
         # If lyrics is empty or invalid (model broke, output metadata tags, or hallucinated numbers), generate genre-calibrated lyrics
         if not lyrics or not is_valid_poetic_lyrics(lyrics):
-            print(f"[STOIQO Music Warning] Model produced invalid or corrupted lyrics. Triggering genre-adaptive lyrical synthesis.")
+            print("[STOIQO Music Warning] Model produced invalid or corrupted lyrics. Triggering genre-adaptive lyrical synthesis.")
             lyrics = generate_fallback_song_lyrics(
                 title=title,
                 target_language=target_language,
@@ -525,25 +602,28 @@ def parse_music_response(
     lyrics = re.sub(r"\n{3,}", "\n\n", lyrics).strip()
     style = re.sub(r"\n{2,}", " ", style).strip()
 
-    # Dynamic duration calculation calibrated for full professional songs (2.5 to 4 minutes)
-    if duration <= 30.0 or duration > 900.0:
-        total_lyric_lines = len([l for l in lyrics.splitlines() if l.strip() and not l.strip().startswith("[")])
-        sections = re.findall(r"\[(?:Verse|Chorus|Bridge|Outro|Intro|Strofa|Ritornello|Pre-Chorus|Solo)", lyrics, re.IGNORECASE)
-        section_count = max(len(sections), 5)
+    # Dynamic metric duration calculation based on actual lyric density, sections, and BPM pacing
+    # Real musical pacing in 4/4 meter:
+    # 1 full measure = 240 / BPM seconds.
+    # Each singable poetic verse occupies approx 2 musical measures (with vocal cadence and breaths).
+    # Instrumental sections (Intro, inter-section turnarounds, Bridge/Solo, Outro fadeout) add arrangement time.
+    eff_bpm = float(bpm) if (40.0 <= float(bpm) <= 240.0) else 120.0
+    sec_per_measure = 240.0 / eff_bpm
 
-        # Extract BPM if present in style to calibrate measure duration
-        bpm_match = re.search(r"(\d{2,3})\s*BPM", style, re.IGNORECASE)
-        bpm = float(bpm_match.group(1)) if bpm_match else 115.0
-        bpm = max(60.0, min(180.0, bpm))
+    total_lyric_lines = len([line for line in lyrics.splitlines() if line.strip() and not line.strip().startswith("[")])
+    sections = re.findall(r"\[(?:Verse|Chorus|Bridge|Outro|Intro|Strofa|Ritornello|Pre-Chorus|Solo|Hook|Breakdown)", lyrics, re.IGNORECASE)
+    section_count = max(len(sections), 4)
 
-        # Real musical pacing:
-        # A standard 4/4 measure = 240 / BPM seconds.
-        # Verses & Choruses typically span 8 to 16 measures each (~18-32s per section).
-        # Intro & Outro and instrumental solos add 30-45s of arrangement space.
-        sec_per_measure = 240.0 / bpm
-        estimated_arrangement_time = (section_count * 8.5 * sec_per_measure) + (total_lyric_lines * 3.5)
-        # Full radio song target: guaranteed 160s to 240s (2m40s to 4m00s)
-        duration = round(max(160.0, min(240.0, estimated_arrangement_time)), 1)
+    # Vocal singing time: 2 measures per lyric line on average (minimum 3.2s per line)
+    vocal_time = total_lyric_lines * max(3.2, 2.0 * sec_per_measure)
+    # Instrumental arrangement time: Intro (4-8 bars) + turnarounds (2 bars per section) + Outro release (6-8 bars)
+    instrumental_time = (section_count * 2.5 * sec_per_measure) + (10.0 * sec_per_measure)
+    # Headroom buffer (+15s) so YuE2/Suno audio generator has ample token budget to conclude Outro without hard-clipping
+    required_song_time = round(vocal_time + instrumental_time + 15.0, 1)
+
+    # If model emitted a generic/truncated duration or lower than musically required, adapt dynamically
+    if duration <= 30.0 or duration < required_song_time:
+        duration = required_song_time
 
     return {
         "title": title,
@@ -552,4 +632,9 @@ def parse_music_response(
         "abc_planning": abc_planning,
         "mode": mode,
         "max_duration": duration,
+        "bpm": int(bpm),
+        "musical_key": str(musical_key),
+        "time_signature": str(time_signature),
+        "genre_tags": str(genre_tags),
+        "vocal_description": str(vocal_description),
     }

@@ -16,7 +16,6 @@ if root not in sys.path:
 from core.music import (
     parse_music_response,
     clean_repetition_artifacts,
-    normalize_lyrics_sections,
     detect_existing_lyrics,
 )
 
@@ -315,9 +314,143 @@ In slipknotsions  40,  slipknotons  25,  slipknot  150,  slipknot  125.  The  4 
         lines = [ln for ln in parsed["lyrics"].splitlines() if ln and not ln.startswith("[")]
         self.assertTrue(len(lines) >= 8)
 
+    def test_parse_granular_music_parameters(self):
+        sample = """
+[TITLE]
+Neon Shadows
+
+[BPM]
+128
+
+[KEY]
+F# Minor
+
+[TIME_SIGNATURE]
+4/4
+
+[GENRE_TAGS]
+Cyberpunk, Darkwave, Industrial Synth
+
+[VOCAL_DESCRIPTION]
+Detached robotic vocoder with emotional layered harmonies
+
+[DURATION]
+195.0
+
+[MODE]
+full
+
+[STYLE]
+English, detached robotic vocoder with emotional layered harmonies, cyberpunk darkwave industrial synth, 128 BPM, F# Minor, 4/4 meter, arpeggiated analog bass, gated reverb drums, wide stereo pads
+
+[LYRICS]
+[Verse 1]
+Walking through the neon rain alone tonight,
+Reflections in the puddles losing all their light.
+A circuit whispers secrets that I cannot keep,
+The digital horizon never goes to sleep.
+
+[Chorus]
+We are the shadows in the cyber glow,
+Running from the memories we used to know!
+Caught in the wires where the pulses beat,
+Dancing on the edge of every broken street!
+"""
+        parsed = parse_music_response(
+            sample,
+            fallback_idea="cyberpunk darkwave",
+            target_language="English",
+        )
+        self.assertEqual(parsed["title"], "Neon Shadows")
+        self.assertEqual(parsed["bpm"], 128)
+        self.assertEqual(parsed["musical_key"], "F# Minor")
+        self.assertEqual(parsed["time_signature"], "4/4")
+        self.assertEqual(parsed["duration"] if "duration" in parsed else parsed["max_duration"], 195.0)
+        self.assertEqual(parsed["mode"], "full")
+        self.assertIn("Cyberpunk", parsed["genre_tags"])
+        self.assertIn("vocoder", parsed["vocal_description"])
+        self.assertIn("[Verse 1]", parsed["lyrics"])
+        self.assertIn("[Chorus]", parsed["lyrics"])
+        self.assertNotIn("128", parsed["lyrics"])
+        self.assertNotIn("F# Minor", parsed["lyrics"])
+
+    def test_dynamic_duration_expansion_for_full_song(self):
+        # A full multi-section song with 24 lines that would clip if limited to 180s
+        sample = """
+[TITLE]
+Epic Anthem of the Stars
+
+[BPM]
+100
+
+[DURATION]
+120.0
+
+[STYLE]
+Cinematic Rock, 100 BPM
+
+[LYRICS]
+[Intro]
+(Instrumental build)
+
+[Verse 1]
+Through the cosmic dust we rise above the falling sun,
+Looking for the promised light before the day is done.
+Silent echoes in the dark are calling out my name,
+Every heartbeat in the void is burning like a flame.
+
+[Pre-Chorus]
+Can you hear the thunder rolling through the midnight sky?
+We were never born to crawl, we only learned to fly!
+
+[Chorus]
+Ignite the stars and let the shadows fall,
+Together we will answer to the thunder call!
+No fear inside this sanctuary of the brave,
+We are the dreamers that the galaxies will save!
+
+[Verse 2]
+Drifting on the solar winds across the edge of time,
+Every scar upon the soul becomes a sacred rhyme.
+Footsteps on the meteor that crumble into space,
+Nothing can erase the golden memories of your face.
+
+[Pre-Chorus]
+Can you hear the thunder rolling through the midnight sky?
+We were never born to crawl, we only learned to fly!
+
+[Chorus]
+Ignite the stars and let the shadows fall,
+Together we will answer to the thunder call!
+No fear inside this sanctuary of the brave,
+We are the dreamers that the galaxies will save!
+
+[Bridge]
+Break the gravity, shatter the glass,
+Watch all the sorrow and misery pass!
+Look to the heavens and open your eyes,
+This is the moment the universe cries!
+
+[Chorus]
+Ignite the stars and let the shadows fall,
+Together we will answer to the thunder call!
+No fear inside this sanctuary of the brave,
+We are the dreamers that the galaxies will save!
+
+[Outro]
+Fading into the cosmic glow.
+Forever free.
+We let it go.
+"""
+        parsed = parse_music_response(sample, fallback_idea="rock", target_language="English")
+        # Ensure duration was expanded past the requested 120.0s to avoid YuE2 hard clipping
+        self.assertGreater(parsed["max_duration"], 200.0)
+        self.assertEqual(parsed["bpm"], 100)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 
 

@@ -36,7 +36,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
     };
 
     const PLACEHOLDERS = {
-        "idea": "Song theme, story, or emotion (e.g. 'A death metal song about...')...",
+        "idea": "Describe ANY musical vision, emotion, story, artist/band influence, or concept in free natural language (e.g. 'un brano baroque pop in italiano con clavicembalo e archi', 'cyberpunk industrial synthwave', 'fuga per organo')...",
         "custom_system_prompt": "Active only when system_prompt = 'Custom'. Write your custom AI music producer system instructions here...",
         "custom_lyrics": "Optional: Write or paste your own lyrics. Leave blank for full AI lyric generation...",
         "custom_directives": "Optional constraints (e.g. 'acoustic cello solo', 'no drums in verse 1')...",
@@ -172,11 +172,28 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
         }
 
         // 4. Ensure Live Preview Widgets Exist (Style & Lyrics HUD)
+        let trackInfoDisplay = node.widgets.find(w => w.name === "preview_track_info");
+        if (!trackInfoDisplay) {
+            const trackDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: TRACK TELEMETRY & STYLE", "#06b6d4");
+            node.widgets.push(trackDivider);
+
+            trackInfoDisplay = node.addWidget(
+                "text",
+                "preview_track_info",
+                "🎵 Waiting for generation...",
+                function() {},
+                { serialize: false }
+            );
+            if (trackInfoDisplay) {
+                trackInfoDisplay.name = "preview_track_info";
+                trackInfoDisplay.options = trackInfoDisplay.options || {};
+                trackInfoDisplay.options.serialize = false;
+                trackInfoDisplay.computeSize = function(width) { return [width, 24]; };
+            }
+        }
+
         let styleDisplay = node.widgets.find(w => w.name === "preview_style");
         if (!styleDisplay) {
-            const styleDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: STYLE DESCRIPTOR", "#06b6d4");
-            node.widgets.push(styleDivider);
-
             if (typeof ComfyWidgets !== "undefined" && ComfyWidgets["STRING"]) {
                 styleDisplay = ComfyWidgets["STRING"](
                     node,
@@ -358,8 +375,20 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
 
         if (message && message.music_info && message.music_info.length > 0) {
             const info = message.music_info[0];
+            const tw = this.widgets?.find(w => w.name === "preview_track_info");
             const sw = this.widgets?.find(w => w.name === "preview_style");
             const lw = this.widgets?.find(w => w.name === "preview_lyrics");
+
+            if (tw) {
+                const durSec = Math.round(info.max_duration || 0);
+                const durMin = Math.floor(durSec / 60);
+                const durRemSec = String(durSec % 60).padStart(2, '0');
+                const durStr = durSec > 0 ? `${durSec}s (~${durMin}:${durRemSec}m)` : "Dynamic";
+                const modeStr = info.mode === "full" ? "Full Song" : (info.mode === "melody" ? "Melody Lead" : "Vocal");
+                const summaryText = `🎵 ${info.title || "Untitled"} | ⏱️ ${durStr} | 🥁 ${info.bpm || 120} BPM | 🎹 ${info.musical_key || "N/A"} | 🎚️ ${modeStr}`;
+                tw.value = summaryText;
+                if (tw.inputEl) tw.inputEl.value = summaryText;
+            }
 
             if (sw && info.style) {
                 sw.value = info.style;

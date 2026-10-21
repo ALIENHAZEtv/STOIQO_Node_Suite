@@ -1,0 +1,135 @@
+{
+  "last_node_id": 5,
+  "last_link_id": 6,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "StoiqoVLMModelLoaderNode",
+      "pos": [40, 100],
+      "size": [380, 260],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        { "name": "stoiqo_model", "type": "STOIQO_MODEL", "links": [1], "slot_index": 0 }
+      ],
+      "properties": { "Node name for S&R": "StoiqoVLMModelLoaderNode" },
+      "widgets_values": [
+        "12-16 GB VRAM  -  Qwen2.5-VL-7B  (4bit, ~5 GB active)",
+        "",
+        "4bit - NF4 (Recommended - Low VRAM)",
+        "sdpa (PyTorch Native - Recommended)",
+        true
+      ]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [40, 400],
+      "size": [340, 320],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        { "name": "IMAGE", "type": "IMAGE", "links": [2, 4], "slot_index": 0 },
+        { "name": "MASK", "type": "MASK", "links": null, "slot_index": 1 }
+      ],
+      "properties": { "Node name for S&R": "LoadImage" },
+      "widgets_values": [
+        "input_portrait.png",
+        "image"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "StoiqoSpatialCropperNode",
+      "pos": [460, 100],
+      "size": [440, 380],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        { "name": "stoiqo_model", "type": "STOIQO_MODEL", "link": 1 },
+        { "name": "image", "type": "IMAGE", "link": 2 }
+      ],
+      "outputs": [
+        { "name": "cropped_image", "type": "IMAGE", "links": [3], "slot_index": 0 },
+        { "name": "mask", "type": "MASK", "links": null, "slot_index": 1 },
+        { "name": "bbox_info", "type": "STRING", "links": [5], "slot_index": 2 },
+        { "name": "segs", "type": "SEGS", "links": null, "slot_index": 3 }
+      ],
+      "properties": { "Node name for S&R": "StoiqoSpatialCropperNode" },
+      "widgets_values": [
+        "face and intricate gold necklace",
+        10,
+        1.0,
+        false,
+        "Tight Bounding Box",
+        0,
+        "ymin, xmin, ymax, xmax (Qwen Standard)"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "StoiqoInpaintStitcherNode",
+      "pos": [940, 100],
+      "size": [380, 280],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        { "name": "original_image", "type": "IMAGE", "link": 4 },
+        { "name": "edited_image", "type": "IMAGE", "link": 3 },
+        { "name": "bbox_info", "type": "STRING", "link": 5 }
+      ],
+      "outputs": [
+        { "name": "composite_image", "type": "IMAGE", "links": [6], "slot_index": 0 },
+        { "name": "stitch_mask", "type": "MASK", "links": null, "slot_index": 1 }
+      ],
+      "properties": { "Node name for S&R": "StoiqoInpaintStitcherNode" },
+      "widgets_values": [
+        "Normal (Alpha Feather)",
+        16,
+        true
+      ]
+    },
+    {
+      "id": 5,
+      "type": "PreviewImage",
+      "pos": [1360, 100],
+      "size": [400, 400],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        { "name": "images", "type": "IMAGE", "link": 6 }
+      ],
+      "outputs": [],
+      "properties": { "Node name for S&R": "PreviewImage" },
+      "widgets_values": []
+    }
+  ],
+  "links": [
+    [1, 1, 0, 3, 0, "STOIQO_MODEL"],
+    [2, 2, 0, 3, 1, "IMAGE"],
+    [3, 3, 0, 4, 1, "IMAGE"],
+    [4, 2, 0, 4, 0, "IMAGE"],
+    [5, 3, 2, 4, 2, "STRING"],
+    [6, 4, 0, 5, 0, "IMAGE"]
+  ],
+  "groups": [
+    {
+      "title": "[STOIQO] Spatial Grounding, Impact-Pack SEGS Bridge & GPU Stitching",
+      "bounding": [20, 40, 1780, 720],
+      "color": "#1a1f2c",
+      "font_size": 24
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": { "scale": 0.85, "offset": [50, 50] }
+  },
+  "version": 0.4
+}

@@ -72,7 +72,7 @@ class StoiqoSmartFolderImageIterator:
     RETURN_NAMES = ("image", "mask", "filename", "width", "height")
     OUTPUT_IS_LIST = (False, False, False, False, False)
     FUNCTION = "load_image"
-    CATEGORY = "STOIQO/Dataset Tools"
+    CATEGORY = "STOIQO"
 
     @classmethod
     def IS_CHANGED(cls, folder_path, index, skip_captioned, caption_extension, recursive=False):

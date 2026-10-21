@@ -10,9 +10,12 @@ import json
 import glob
 import torch
 
+from threading import Thread
+
 from transformers import (
     AutoProcessor,
     BitsAndBytesConfig,
+    TextIteratorStreamer,
 )
 
 import time
@@ -57,7 +60,7 @@ try:
 except ImportError:
     PromptServer = None
 
-from .config import MODEL_PRESETS, ATTENTION_OPTIONS, CUSTOM_MODEL_KEY
+from .config import MODEL_PRESETS, ATTENTION_OPTIONS, CUSTOM_MODEL_KEY, API_ENDPOINT_KEY
 from .vision import process_vision_info
 from .text_processing import clean_llm_output
 
@@ -150,17 +153,73 @@ class ComfyHFDownloadProgress(tqdm):
 class ModelManager:
     """Manages VLM model loading, device placement, quantization, caching, and inference."""
 
+    # Shared Class-Level Model Registry (SSOT across all node instances)
+    _shared_model = None
+    _shared_processor = None
+    _shared_model_repo = ""
+    _shared_cache_key = None
+    _shared_attn = None
+    _shared_lock = None
+
     def __init__(self):
-        self.model = None
-        self.processor = None
-        self.current_model_repo = ""
-        self.current_cache_key = None
-        self.current_attn = None
+        import threading
+        if ModelManager._shared_lock is None:
+            ModelManager._shared_lock = threading.RLock()
         self.keep_in_vram = True
         self.last_load_params = None
 
+    @property
+    def model(self):
+        return ModelManager._shared_model
+
+    @model.setter
+    def model(self, val):
+        ModelManager._shared_model = val
+
+    @property
+    def processor(self):
+        return ModelManager._shared_processor
+
+    @processor.setter
+    def processor(self, val):
+        ModelManager._shared_processor = val
+
+    @property
+    def current_model_repo(self):
+        return ModelManager._shared_model_repo
+
+    @current_model_repo.setter
+    def current_model_repo(self, val):
+        ModelManager._shared_model_repo = val
+
+    @property
+    def current_cache_key(self):
+        return ModelManager._shared_cache_key
+
+    @current_cache_key.setter
+    def current_cache_key(self, val):
+        ModelManager._shared_cache_key = val
+
+    @property
+    def current_attn(self):
+        return ModelManager._shared_attn
+
+    @current_attn.setter
+    def current_attn(self, val):
+        ModelManager._shared_attn = val
+
     def resolve_model_repo(self, model_preset, local_model_path, model_mode=None):
         """Resolves target model path from unified preset dropdown or local folder path with safety validation."""
+        is_api = (
+            model_preset == API_ENDPOINT_KEY
+            or "API Endpoint" in str(model_preset)
+            or (local_model_path and (local_model_path.strip().startswith("http://") or local_model_path.strip().startswith("https://")))
+        )
+        if is_api:
+            endpoint = local_model_path.strip() if local_model_path and local_model_path.strip() else os.environ.get("STOIQO_API_URL", "http://localhost:11434/v1")
+            print(f"[STOIQO] Configured for Universal API Endpoint: {endpoint}")
+            return f"api://{endpoint}"
+
         is_custom = (
             model_preset == CUSTOM_MODEL_KEY
             or "Custom" in str(model_preset)
@@ -211,6 +270,24 @@ class ModelManager:
         if "8bit" in quantization:
             return BitsAndBytesConfig(load_in_8bit=True)
         return None
+
+    @staticmethod
+    def estimate_vram_bytes(model_repo, quantization):
+        """Estimates required GPU VRAM headroom in bytes for model loading and activation tensors."""
+        repo_lower = str(model_repo).lower()
+        quant_lower = str(quantization).lower()
+        is_4bit = "4bit" in quant_lower
+        is_8bit = "8bit" in quant_lower
+
+        if "3b" in repo_lower:
+            base_gb = 3.0 if is_4bit else (4.5 if is_8bit else 6.5)
+        elif "32b" in repo_lower:
+            base_gb = 19.0 if is_4bit else (34.0 if is_8bit else 64.0)
+        elif "72b" in repo_lower:
+            base_gb = 44.0 if is_4bit else 74.0
+        else: # 7b default
+            base_gb = 5.5 if is_4bit else (8.5 if is_8bit else 14.5)
+        return int(base_gb * 1024 * 1024 * 1024)
 
     def resolve_attn_implementation(self, attention_mode):
         """Selects attention implementation kernel with GPU capability checks and graceful fallback."""
@@ -292,37 +369,48 @@ class ModelManager:
         Scans all known local model storage directories to check if the model is already downloaded.
         Returns the absolute snapshot directory if valid weights are found, otherwise None.
         """
-        import glob
 
-        # Risolve la root di ExCathedra cercando user_data risalendo l'albero
-        curr = os.path.abspath(os.path.dirname(__file__))
-        detected_root = None
-        for _ in range(8):
-            curr = os.path.dirname(curr)
-            if os.path.isdir(os.path.join(curr, "user_data")) or os.path.isdir(os.path.join(curr, "workspace")):
-                detected_root = curr
-                break
-        workspace_root = detected_root or os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..", ".."))
-        sandbox_cache = os.path.join(workspace_root, "user_data", "_sandbox", ".cache", "huggingface", "hub")
-
+        # Discovers candidate model storage directories across ComfyUI, HF Cache, and custom roots
         search_dirs = [
             ModelManager.get_llm_models_dir(),
-            os.path.join(folder_paths.models_dir, "LLM"),
-            os.path.join(workspace_root, "workspace", "models", "LLM"),
-            sandbox_cache,
-            os.path.expanduser("~/.cache/huggingface/hub"),
         ]
-        try:
-            if hasattr(folder_paths, "get_folder_paths"):
+
+        if folder_paths and hasattr(folder_paths, "models_dir") and folder_paths.models_dir:
+            search_dirs.append(os.path.join(folder_paths.models_dir, "LLM"))
+
+        if folder_paths and hasattr(folder_paths, "get_folder_paths"):
+            try:
                 for p in folder_paths.get_folder_paths("LLM"):
                     if p and p not in search_dirs:
                         search_dirs.append(p)
-        except Exception:
-            pass
+            except Exception:
+                pass
 
+        custom_models_dir = os.environ.get("STOIQO_MODELS_DIR")
+        if custom_models_dir and os.path.isdir(custom_models_dir):
+            search_dirs.append(custom_models_dir)
+
+        # Standard Hugging Face hub caches
         hf_home = os.environ.get("HF_HOME")
         if hf_home:
             search_dirs.append(os.path.join(hf_home, "hub"))
+        elif os.environ.get("EXC_STRICT_SANDBOX") != "1":
+            search_dirs.append(os.path.expanduser("~/.cache/huggingface/hub"))
+
+        # Upward traversal for portable or sandbox environments
+        curr = os.path.abspath(os.path.dirname(__file__))
+        for _ in range(8):
+            parent = os.path.dirname(curr)
+            if parent == curr:
+                break
+            curr = parent
+            for candidate in [
+                os.path.join(curr, "models", "LLM"),
+                os.path.join(curr, "workspace", "models", "LLM"),
+                os.path.join(curr, "user_data", "_sandbox", ".cache", "huggingface", "hub"),
+            ]:
+                if os.path.isdir(candidate) and candidate not in search_dirs:
+                    search_dirs.append(candidate)
 
         hub_name = "models--" + repo_id.replace("/", "--")
         repo_name = repo_id.split("/")[-1]
@@ -369,6 +457,25 @@ class ModelManager:
         if self.model is not None and self.current_cache_key == cache_key:
             return
 
+        # ── API Endpoint Mode (Ollama / OpenAI / vLLM — Zero VRAM) ────────────
+        if str(model_repo).startswith("api://"):
+            self.unload_model()
+            self.is_api_endpoint = True
+            raw_target = str(model_repo)[6:]
+            if "#" in raw_target:
+                self.api_base_url, self.api_model_name = raw_target.split("#", 1)
+            else:
+                self.api_base_url = raw_target
+                self.api_model_name = os.environ.get("STOIQO_API_MODEL", "qwen2.5-vl")
+            self.model = "API_CLIENT"
+            self.processor = None
+            self.current_model_repo = model_repo
+            self.current_cache_key = cache_key
+            print(f"[STOIQO] Active Universal API Endpoint: {self.api_base_url} (Model: {self.api_model_name}) [0 GB VRAM]")
+            return
+
+        self.is_api_endpoint = False
+
         llm_models_dir = self.get_llm_models_dir()
 
         print(f"\n[STOIQO] Target model: {model_repo}")
@@ -408,6 +515,14 @@ class ModelManager:
 
         target_device = mm.get_torch_device()
         print(f"[STOIQO] Using device: {target_device} via ComfyUI model management")
+
+        if mm is not None and hasattr(mm, "free_memory") and target_device.type == "cuda":
+            try:
+                req_bytes = self.estimate_vram_bytes(model_repo, quantization)
+                mm.free_memory(req_bytes, target_device)
+                print(f"[STOIQO] Proactively requested {req_bytes / (1024**3):.1f} GB VRAM headroom via ComfyUI model management.")
+            except Exception as f_err:
+                print(f"[STOIQO] Notice: free_memory request skipped: {f_err}")
 
         if target_device.type == "cuda":
             dtype = (
@@ -555,13 +670,133 @@ class ModelManager:
                 torch.cuda.ipc_collect()
             except Exception:
                 pass
-        mm.soft_empty_cache()
+        if mm is not None and hasattr(mm, "soft_empty_cache"):
+            mm.soft_empty_cache()
 
         if torch.cuda.is_available():
             vram_after = torch.cuda.memory_allocated()
             freed_mb = max(0.0, (vram_before - vram_after) / (1024 * 1024))
             remaining_mb = vram_after / (1024 * 1024)
             print(f"[STOIQO] VRAM freed: {freed_mb:.1f} MB | Active allocated remaining: {remaining_mb:.1f} MB")
+
+    def _generate_api(
+        self,
+        pil_images,
+        task_prompt,
+        system_prompt,
+        max_new_tokens,
+        temperature,
+        top_p=0.9,
+        is_multi_image=False,
+        node_id=None,
+    ):
+        """Dispatches vision-language inference to an OpenAI/Ollama compatible API endpoint with streaming & cancel support."""
+        import urllib.request
+        import base64
+        import io
+        import json
+
+        messages = []
+        if system_prompt and system_prompt.strip():
+            messages.append({"role": "system", "content": system_prompt.strip()})
+
+        user_content = []
+        if pil_images is not None:
+            imgs = pil_images if isinstance(pil_images, list) else [pil_images]
+            for idx, img in enumerate(imgs):
+                buffered = io.BytesIO()
+                img.save(buffered, format="JPEG", quality=90)
+                img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+                user_content.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}
+                })
+
+        user_content.append({"type": "text", "text": task_prompt})
+        messages.append({"role": "user", "content": user_content})
+
+        url = self.api_base_url.rstrip("/")
+        if not url.endswith("/chat/completions"):
+            url = f"{url}/chat/completions"
+
+        payload = {
+            "model": getattr(self, "api_model_name", "qwen2.5-vl"),
+            "messages": messages,
+            "temperature": float(temperature),
+            "max_tokens": int(max_new_tokens),
+            "top_p": float(top_p),
+            "stream": True,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "STOIQO-Node-Suite/1.0",
+        }
+        api_key = os.environ.get("STOIQO_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        if node_id is not None and PromptServer is not None and hasattr(PromptServer, "instance") and PromptServer.instance is not None:
+            try:
+                PromptServer.instance.send_sync("stoiqo_stream_start", {"node_id": node_id})
+            except Exception:
+                pass
+
+        full_response = []
+        try:
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                for raw_line in resp:
+                    if mm is not None and hasattr(mm, "throw_exception_if_processing_interrupted"):
+                        mm.throw_exception_if_processing_interrupted()
+
+                    line = raw_line.decode("utf-8").strip()
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data_str = line[5:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        choices = chunk.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            token = delta.get("content", "")
+                            if token:
+                                full_response.append(token)
+                                if node_id is not None and PromptServer is not None and hasattr(PromptServer, "instance") and PromptServer.instance is not None:
+                                    try:
+                                        PromptServer.instance.send_sync("stoiqo_stream_token", {
+                                            "node_id": node_id,
+                                            "token": token,
+                                        })
+                                    except Exception:
+                                        pass
+                    except Exception:
+                        pass
+        except Exception as stream_err:
+            if mm is not None and hasattr(mm, "throw_exception_if_processing_interrupted"):
+                mm.throw_exception_if_processing_interrupted()
+            print(f"[STOIQO API] Streaming notice ({stream_err}). Trying non-streaming mode...")
+            payload["stream"] = False
+            req_ns = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req_ns, timeout=120) as resp_ns:
+                res_obj = json.loads(resp_ns.read().decode("utf-8"))
+                text_out = res_obj["choices"][0]["message"]["content"]
+                full_response = [text_out]
+                if node_id is not None and PromptServer is not None and hasattr(PromptServer, "instance") and PromptServer.instance is not None:
+                    try:
+                        PromptServer.instance.send_sync("stoiqo_stream_token", {"node_id": node_id, "token": text_out})
+                    except Exception:
+                        pass
+
+        if node_id is not None and PromptServer is not None and hasattr(PromptServer, "instance") and PromptServer.instance is not None:
+            try:
+                PromptServer.instance.send_sync("stoiqo_stream_complete", {"node_id": node_id})
+            except Exception:
+                pass
+
+        return clean_llm_output("".join(full_response).strip())
 
     def generate_single(
         self,
@@ -574,6 +809,8 @@ class ModelManager:
         repetition_penalty=1.1,
         is_multi_image=False,
         seed=None,
+        node_id=None,
+        top_k=50,
     ):
         if seed is not None and seed >= 0:
             import random
@@ -583,6 +820,19 @@ class ModelManager:
                 torch.cuda.manual_seed_all(seed)
             random.seed(seed)
             np.random.seed(seed % (2**32))
+
+        # Direct API endpoint routing (zero VRAM overhead)
+        if self.model == "API_CLIENT" or getattr(self, "is_api_endpoint", False):
+            return self._generate_api(
+                pil_images=pil_images,
+                task_prompt=task_prompt,
+                system_prompt=system_prompt,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                is_multi_image=is_multi_image,
+                node_id=node_id,
+            )
 
         if self.model is None:
             if self.last_load_params is not None:
@@ -658,15 +908,102 @@ class ModelManager:
         if temperature > 0:
             gen_kwargs["do_sample"] = True
             gen_kwargs["temperature"] = temperature
-            gen_kwargs["top_k"] = 50
+            gen_kwargs["top_k"] = int(top_k) if top_k is not None else 50
             if top_p and 0.0 < top_p < 1.0:
                 gen_kwargs["top_p"] = top_p
         else:
             gen_kwargs["do_sample"] = False
 
+        # Ensure memory headroom before executing generation
+        if mm is not None and hasattr(mm, "free_memory"):
+            try:
+                target_dev = mm.get_torch_device()
+                if target_dev.type == "cuda":
+                    mm.free_memory(int(1.5 * 1024 * 1024 * 1024), target_dev)
+            except Exception:
+                pass
+
+        stream_ids = []
+        if node_id is not None:
+            if isinstance(node_id, (list, tuple, set)):
+                stream_ids = [str(x) for x in node_id if x]
+            elif isinstance(node_id, (str, int)):
+                stream_ids = [str(node_id)]
+
+        streamer = None
+        gen_thread = None
+        has_server = PromptServer is not None and getattr(PromptServer, "instance", None) is not None
+        should_stream = len(stream_ids) > 0 and has_server
+
+        if should_stream and hasattr(self.processor, "tokenizer") and self.processor.tokenizer is not None:
+            try:
+                streamer = TextIteratorStreamer(
+                    self.processor.tokenizer,
+                    skip_prompt=True,
+                    skip_special_tokens=True,
+                    clean_up_tokenization_spaces=False,
+                )
+                gen_kwargs["streamer"] = streamer
+            except Exception as stream_err:
+                print(f"[STOIQO] Notice: streamer creation failed ({stream_err}), using standard generation.")
+                streamer = None
+
         try:
             with torch.no_grad():
-                generated_ids = self.model.generate(**inputs, **gen_kwargs)
+                if streamer is not None:
+                    # Notify UI that streaming has started
+                    for sid in stream_ids:
+                        try:
+                            PromptServer.instance.send_sync("stoiqo_stream_start", {"node_id": sid})
+                        except Exception:
+                            pass
+
+                    gen_thread = Thread(target=self.model.generate, kwargs=dict(**inputs, **gen_kwargs))
+                    gen_thread.start()
+
+                    accumulated = []
+                    token_count = 0
+                    for token in streamer:
+                        accumulated.append(token)
+                        token_count += 1
+
+                        # Gracefully interrupt if user clicked Cancel in ComfyUI
+                        if mm is not None and hasattr(mm, "throw_exception_if_processing_interrupted"):
+                            try:
+                                mm.throw_exception_if_processing_interrupted()
+                            except Exception:
+                                break
+
+                        for sid in stream_ids:
+                            try:
+                                PromptServer.instance.send_sync("stoiqo_stream_token", {
+                                    "node_id": sid,
+                                    "token": token,
+                                })
+                            except Exception:
+                                pass
+
+                    gen_thread.join()
+
+                    # Notify UI that streaming has completed
+                    for sid in stream_ids:
+                        try:
+                            PromptServer.instance.send_sync("stoiqo_stream_complete", {"node_id": sid})
+                        except Exception:
+                            pass
+
+                    decoded = "".join(accumulated).strip()
+                    print(f"[STOIQO] Live streaming complete: ~{token_count} tokens generated (budget: {max_new_tokens}, temp: {temperature})")
+                else:
+                    generated_ids = self.model.generate(**inputs, **gen_kwargs)
+                    trimmed = [
+                        out[len(inp):] for inp, out in zip(inputs.input_ids, generated_ids)
+                    ]
+                    tokens_count = len(trimmed[0])
+                    print(f"[STOIQO] Inference complete: {tokens_count} tokens generated (budget: {max_new_tokens}, temp: {temperature})")
+                    decoded = self.processor.batch_decode(
+                        trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+                    )[0].strip()
         except torch.cuda.OutOfMemoryError as oom_exc:
             self.unload_model()
             raise RuntimeError(
@@ -677,15 +1014,6 @@ class ModelManager:
                 "3. Enable '4bit - NF4' quantization.\n"
                 "4. Free VRAM by setting 'unload_model_after' to True."
             ) from oom_exc
-
-        trimmed = [
-            out[len(inp):] for inp, out in zip(inputs.input_ids, generated_ids)
-        ]
-        tokens_count = len(trimmed[0])
-        print(f"[STOIQO] Inference complete: {tokens_count} tokens generated (budget: {max_new_tokens}, temp: {temperature})")
-        decoded = self.processor.batch_decode(
-            trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )[0].strip()
 
         if not getattr(self, "keep_in_vram", True):
             print("[STOIQO] Low VRAM Mode: Offloading model immediately after generation to free GPU memory.")

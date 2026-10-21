@@ -1,7 +1,7 @@
 {
-  "name": "stoiqo-comfyui-nodes",
+  "name": "stoiqo-node-suite",
   "version": "1.0.0",
-  "description": "A production-ready ComfyUI custom node suite for **Visual Prompt Generation, Multimodal Comparison, and Creative Utilities** powered by Vision-Language Models (Qwen2.5-VL and compatible architectures).",
+  "description": "ComfyUI custom node suite for visual prompt generation, multimodal comparison and creative utilities, powered by Vision-Language Models (Qwen2.5-VL and compatible).",
   "main": "js/stoiqo_suite.js",
   "scripts": {
     "build": "esbuild src_js/index.js --bundle --outfile=js/stoiqo_suite.js --format=esm --external:../../scripts/* --external:../../../scripts/*",
@@ -9,10 +9,10 @@
     "release:deploy": "python tools/build_release.py --deploy",
     "test": "python -m unittest discover tests"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "keywords": ["comfyui", "custom-nodes", "vlm", "qwen", "prompt-generation"],
+  "author": "ALIENHAZEtv / STOIQO",
+  "license": "MIT",
+  "type": "module",
   "devDependencies": {
     "esbuild": "^0.28.2"
   }

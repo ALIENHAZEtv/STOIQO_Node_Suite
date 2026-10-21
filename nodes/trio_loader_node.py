@@ -9,10 +9,31 @@ import hashlib
 import torch
 import torch.nn.functional as F
 import numpy as np
-from PIL import Image, ImageOps, ImageSequence
+from PIL import Image, ImageOps
 
-import folder_paths
-import node_helpers
+try:
+    import folder_paths
+except ImportError:
+    class _MockFolderPaths:
+        @staticmethod
+        def get_input_directory():
+            return "./input"
+        @staticmethod
+        def get_annotated_filepath(name):
+            return name
+        @staticmethod
+        def exists_annotated_filepath(name):
+            return True
+    folder_paths = _MockFolderPaths()
+
+try:
+    import node_helpers
+except ImportError:
+    class _MockNodeHelpers:
+        @staticmethod
+        def pillow(func, img):
+            return func(img)
+    node_helpers = _MockNodeHelpers()
 
 
 def _safe_load_image(image_name):
@@ -95,7 +116,7 @@ class StoiqoTripleImageLoaderNode:
     )
     FUNCTION = "load_trio_images"
     OUTPUT_NODE = False
-    CATEGORY = "STOIQO/Loaders & IO"
+    CATEGORY = "STOIQO"
 
     def load_trio_images(self, image_1, image_2="none", image_3="none", active_focus="Slot 1"):
         img1, mask1, w1, h1, v1 = _safe_load_image(image_1)
@@ -103,9 +124,12 @@ class StoiqoTripleImageLoaderNode:
         img3, mask3, w3, h3, v3 = _safe_load_image(image_3)
 
         valid_list = []
-        if v1: valid_list.append((img1, mask1))
-        if v2: valid_list.append((img2, mask2))
-        if v3: valid_list.append((img3, mask3))
+        if v1:
+            valid_list.append((img1, mask1))
+        if v2:
+            valid_list.append((img2, mask2))
+        if v3:
+            valid_list.append((img3, mask3))
 
         loaded_count = len(valid_list)
 
@@ -176,10 +200,11 @@ class StoiqoTripleImageLoaderNode:
 
     @classmethod
     def VALIDATE_INPUTS(cls, image_1, image_2="none", image_3="none", active_focus="Slot 1"):
-        if not image_1 or not folder_paths.exists_annotated_filepath(image_1):
+        exists_fn = getattr(folder_paths, "exists_annotated_filepath", lambda p: True)
+        if not image_1 or not exists_fn(image_1):
             return f"Invalid primary image: {image_1}"
-        if image_2 and image_2 != "none" and not folder_paths.exists_annotated_filepath(image_2):
+        if image_2 and image_2 != "none" and not exists_fn(image_2):
             return f"Invalid image 2: {image_2}"
-        if image_3 and image_3 != "none" and not folder_paths.exists_annotated_filepath(image_3):
+        if image_3 and image_3 != "none" and not exists_fn(image_3):
             return f"Invalid image 3: {image_3}"
         return True

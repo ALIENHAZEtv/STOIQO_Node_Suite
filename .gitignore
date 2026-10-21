@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 *.pyd
 .Python
+.ruff_cache/
+.pytest_cache/
 env/
 venv/
 .venv/
@@ -25,6 +27,8 @@ dataset/
 *.json
 !package.json
 !package-lock.json
+!examples/*.json
+!examples/**/*.json
 
 # IDE & OS
 .vscode/

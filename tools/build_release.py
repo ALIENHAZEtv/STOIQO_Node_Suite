@@ -17,8 +17,18 @@ if sys.platform == "win32":
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RELEASE_BASE = os.path.join(PROJECT_ROOT, "@release")
-RELEASE_DIR = os.path.join(RELEASE_BASE, "STOIQO-Comfyui-Nodes")
-COMFY_TARGET = r"Y:\Project_ExCathedra\ExCathedra\engines\comfyui\ComfyUI\custom_nodes\STOIQO-Comfyui-Nodes"
+RELEASE_DIR = os.path.join(RELEASE_BASE, "STOIQO_Node_Suite")
+COMFY_TARGET = os.environ.get(
+    "COMFYUI_CUSTOM_NODES",
+    os.environ.get(
+        "EXC_COMFYUI_CUSTOM_NODES",
+        os.path.normpath(
+            os.path.join(PROJECT_ROOT, "..", "..", "ExCathedra", "engines", "comfyui", "ComfyUI", "custom_nodes", "STOIQO_Node_Suite")
+            if os.path.isdir(os.path.join(PROJECT_ROOT, "..", "..", "ExCathedra", "engines", "comfyui", "ComfyUI", "custom_nodes"))
+            else os.path.join(PROJECT_ROOT, "..", "ComfyUI", "custom_nodes", "STOIQO_Node_Suite")
+        ),
+    ),
+)
 
 
 def run_command(cmd, cwd):
@@ -102,7 +112,7 @@ def build_release(deploy=False):
     size_str = f"{size_mb:.2f} MB" if size_mb >= 1.0 else f"{size_kb:.1f} KB"
 
     print("\n" + "-" * 60)
-    print(f"✓ RELEASE GENERATED SUCCESSFULLY!")
+    print("✓ RELEASE GENERATED SUCCESSFULLY!")
     print(f"  Target: {RELEASE_DIR}")
     print(f"  Files:  {total_files}")
     print(f"  Size:   {size_str}")
@@ -110,7 +120,7 @@ def build_release(deploy=False):
 
     # 4. Optional Non-Destructive Deploy to ComfyUI
     if deploy:
-        print(f"\n>>> DEPLOY: Synchronizing release into ComfyUI runtime...")
+        print("\n>>> DEPLOY: Synchronizing release into ComfyUI runtime...")
         print(f"    Destination: {COMFY_TARGET}")
         if not os.path.exists(COMFY_TARGET):
             os.makedirs(COMFY_TARGET, exist_ok=True)

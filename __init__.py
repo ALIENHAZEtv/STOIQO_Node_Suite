@@ -1,6 +1,6 @@
 """
-STOIQO-Comfyui-Nodes
-====================
+STOIQO_Node_Suite
+=================
 Production-ready ComfyUI custom node suite for Visual Prompt Generation, Multimodal Comparison,
 and Creative Utilities. Powered by Qwen2.5-VL with tiered 4-bit quantization, forensic visual diff,
 interactive split-slider comparison, text concatenation, VAE-safe resolution generation,

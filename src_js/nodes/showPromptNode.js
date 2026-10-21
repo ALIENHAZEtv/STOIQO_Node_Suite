@@ -3,14 +3,62 @@ import { api } from "../../../scripts/api.js";
 import { ComfyWidgets } from "../../../scripts/widgets.js";
 import { StoiqoSectionDividerWidget, currentDownloadProgress } from "../utils/core.js";
 
+let _streamListenersRegistered = false;
+
+function ensureStreamListeners() {
+    if (_streamListenersRegistered || typeof api === "undefined" || !api.addEventListener) return;
+    _streamListenersRegistered = true;
+
+    api.addEventListener("stoiqo_stream_start", (evt) => {
+        const detail = evt.detail || {};
+        const nodeId = detail.node_id;
+        if (!nodeId || !app.graph) return;
+        const node = app.graph.getNodeById(nodeId);
+        if (!node) return;
+        let tw = node.widgets?.find(w => w.name === "display_text" || w.name === "text" || w.name === "synthesized_prompt");
+        if (tw) {
+            tw.value = "";
+            if (tw.inputEl) tw.inputEl.value = "";
+            node.setDirtyCanvas(true);
+        }
+    });
+
+    api.addEventListener("stoiqo_stream_token", (evt) => {
+        const detail = evt.detail || {};
+        const nodeId = detail.node_id;
+        const token = detail.token;
+        if (!nodeId || token === undefined || !app.graph) return;
+        const node = app.graph.getNodeById(nodeId);
+        if (!node) return;
+        let tw = node.widgets?.find(w => w.name === "display_text" || w.name === "text" || w.name === "synthesized_prompt");
+        if (tw) {
+            tw.value = (tw.value || "") + token;
+            if (tw.inputEl) {
+                tw.inputEl.value = tw.value;
+                tw.inputEl.scrollTop = tw.inputEl.scrollHeight;
+            }
+            node.setDirtyCanvas(true);
+        }
+    });
+
+    api.addEventListener("stoiqo_stream_complete", (evt) => {
+        const detail = evt.detail || {};
+        const nodeId = detail.node_id;
+        if (!nodeId || !app.graph) return;
+        const node = app.graph.getNodeById(nodeId);
+        if (node) {
+            node.setDirtyCanvas(true, true);
+        }
+    });
+}
+
 export function setupShowPromptNode(nodeType, nodeData, app) {
+        ensureStreamListeners();
         // 2. SHOW PROMPT NODE ENHANCEMENTS
         // ══════════════════════════════════════════════════════════════════════
         const showPromptTargetNames = [
             "StoiqoShowPromptNode",
-            "QwenVLTextDisplayNode",
             "[STOIQO] Show Prompt",
-            "[STOIQO] Show Prompt (Legacy)",
         ];
         if (showPromptTargetNames.includes(nodeData.name)) {
             const SHOW_MIN_WIDTH = 460;

@@ -5,11 +5,6 @@ directly feedable into YuE2, Suno, and AI music workflows.
 Supports optional multimodal visual grounding from cover art or video frames.
 """
 
-import os
-import random
-import numpy as np
-import torch
-from PIL import Image
 
 try:
     from ..core.music import (
@@ -18,9 +13,6 @@ try:
         LANGUAGE_PRESETS,
         SONG_STRUCTURES,
         TEMPO_PRESETS,
-        YUE2_SYSTEM_PROMPT,
-        MUSIC_SYSTEM_PROMPT_PRESETS,
-        MUSIC_CUSTOM_SYSTEM_PROMPT_KEY,
         MUSIC_SYSTEM_PROMPT_CHOICES,
         resolve_music_system_prompt,
         build_music_task_prompt,
@@ -36,9 +28,6 @@ except (ImportError, ValueError):
         LANGUAGE_PRESETS,
         SONG_STRUCTURES,
         TEMPO_PRESETS,
-        YUE2_SYSTEM_PROMPT,
-        MUSIC_SYSTEM_PROMPT_PRESETS,
-        MUSIC_CUSTOM_SYSTEM_PROMPT_KEY,
         MUSIC_SYSTEM_PROMPT_CHOICES,
         resolve_music_system_prompt,
         build_music_task_prompt,
@@ -193,13 +182,44 @@ class StoiqoMusicPromptEngineNode:
                     },
                 ),
             },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "BOOLEAN", "STRING", "FLOAT")
-    RETURN_NAMES = ("style", "lyrics", "title", "abc_planning", "mode", "max_duration")
+    RETURN_TYPES = (
+        "STRING",
+        "STRING",
+        "STRING",
+        "BOOLEAN",
+        "STRING",
+        "FLOAT",
+        "INT",
+        "STRING",
+        "STRING",
+        "STRING",
+        "STRING",
+        "INT",
+    )
+    RETURN_NAMES = (
+        "style",
+        "lyrics",
+        "title",
+        "abc_planning",
+        "mode",
+        "max_duration",
+        "bpm",
+        "musical_key",
+        "time_signature",
+        "genre_tags",
+        "vocal_description",
+        "seed",
+    )
     FUNCTION = "generate_music_prompt"
     OUTPUT_NODE = True
-    CATEGORY = "STOIQO/Audio & Music"
+    CATEGORY = "STOIQO"
 
     def generate_music_prompt(
         self,
@@ -219,6 +239,9 @@ class StoiqoMusicPromptEngineNode:
         temperature=0.55,
         repetition_penalty=1.02,
         max_new_tokens=3072,
+        unique_id=None,
+        prompt=None,
+        extra_pnginfo=None,
     ):
         clean_idea = (idea or "").strip()
         if not clean_idea:
@@ -270,6 +293,19 @@ class StoiqoMusicPromptEngineNode:
 
         print(f"[STOIQO Music] Generating music style & lyrics for: '{clean_idea[:60]}'...")
 
+        # Discover target node IDs for live WebSocket streaming
+        stream_ids = []
+        if unique_id is not None:
+            stream_ids.append(str(unique_id))
+            if prompt and isinstance(prompt, dict):
+                uid_str = str(unique_id)
+                for nid, ninfo in prompt.items():
+                    if isinstance(ninfo, dict) and "inputs" in ninfo:
+                        inputs_dict = ninfo["inputs"]
+                        for inval in inputs_dict.values():
+                            if isinstance(inval, list) and len(inval) > 0 and str(inval[0]) == uid_str:
+                                stream_ids.append(str(nid))
+
         raw_output = active_mgr.generate_single(
             img_pil,
             task_prompt,
@@ -280,6 +316,7 @@ class StoiqoMusicPromptEngineNode:
             repetition_penalty=repetition_penalty,
             is_multi_image=False,
             seed=seed,
+            node_id=stream_ids,
         )
 
         print(f"[STOIQO Music] Raw LLM output: {len(raw_output)} chars generated.")
@@ -304,6 +341,12 @@ class StoiqoMusicPromptEngineNode:
         print(f"[STOIQO Music] Generated Song: '{parsed['title']}' | {words} words in lyrics.")
         print(f"[STOIQO Music] Style: {parsed['style'][:80]}...")
 
+        bpm_val = int(parsed.get("bpm", 120))
+        key_val = str(parsed.get("musical_key", "C Minor"))
+        time_sig_val = str(parsed.get("time_signature", "4/4"))
+        gtags_val = str(parsed.get("genre_tags", ""))
+        vdesc_val = str(parsed.get("vocal_description", ""))
+
         ui_info = [{
             "title": parsed["title"],
             "style": parsed["style"],
@@ -313,6 +356,11 @@ class StoiqoMusicPromptEngineNode:
             "mode": parsed["mode"],
             "abc_planning": parsed["abc_planning"],
             "max_duration": parsed["max_duration"],
+            "bpm": bpm_val,
+            "musical_key": key_val,
+            "time_signature": time_sig_val,
+            "genre_tags": gtags_val,
+            "vocal_description": vdesc_val,
         }]
 
         return {
@@ -326,5 +374,11 @@ class StoiqoMusicPromptEngineNode:
                 parsed["abc_planning"],
                 parsed["mode"],
                 float(parsed["max_duration"]),
+                bpm_val,
+                key_val,
+                time_sig_val,
+                gtags_val,
+                vdesc_val,
+                int(seed),
             ),
         }

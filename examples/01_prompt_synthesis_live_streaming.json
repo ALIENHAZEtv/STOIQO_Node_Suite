@@ -1,0 +1,111 @@
+{
+  "last_node_id": 4,
+  "last_link_id": 3,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "StoiqoStyleDirectivesNode",
+      "pos": [40, 100],
+      "size": [380, 240],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        { "name": "style_pipe", "type": "STOIQO_STYLE_PIPE", "links": [1], "slot_index": 0 }
+      ],
+      "properties": { "Node name for S&R": "StoiqoStyleDirectivesNode" },
+      "widgets_values": [
+        "Photographic & Cinematic",
+        "8k resolution, Kodak Portra 400, volumetric rim lighting, photorealistic textures",
+        "Preset Default (Recommended)",
+        ""
+      ]
+    },
+    {
+      "id": 2,
+      "type": "StoiqoSamplingOptionsNode",
+      "pos": [40, 380],
+      "size": [360, 200],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        { "name": "sampling_pipe", "type": "STOIQO_SAMPLING_PIPE", "links": [2], "slot_index": 0 }
+      ],
+      "properties": { "Node name for S&R": "StoiqoSamplingOptionsNode" },
+      "widgets_values": [
+        512,
+        0.7,
+        0.9,
+        1.15,
+        42
+      ]
+    },
+    {
+      "id": 3,
+      "type": "StoiqoPromptSynthesizerNode",
+      "pos": [460, 100],
+      "size": [440, 480],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        { "name": "style_pipe", "type": "STOIQO_STYLE_PIPE", "link": 1 },
+        { "name": "sampling_pipe", "type": "STOIQO_SAMPLING_PIPE", "link": 2 },
+        { "name": "stoiqo_model", "type": "STOIQO_MODEL", "link": null },
+        { "name": "image_context", "type": "STOIQO_IMAGE_CONTEXT", "link": null }
+      ],
+      "outputs": [
+        { "name": "positive_prompt", "type": "STRING", "links": [3], "slot_index": 0 },
+        { "name": "negative_prompt", "type": "STRING", "links": null, "slot_index": 1 },
+        { "name": "style_tags", "type": "STRING", "links": null, "slot_index": 2 },
+        { "name": "raw_response", "type": "STRING", "links": null, "slot_index": 3 }
+      ],
+      "properties": { "Node name for S&R": "StoiqoPromptSynthesizerNode" },
+      "widgets_values": [
+        "A futuristic high-fashion android model walking a neon-drenched Tokyo avenue in light rain",
+        1.0,
+        false
+      ]
+    },
+    {
+      "id": 4,
+      "type": "StoiqoShowPromptNode",
+      "pos": [940, 100],
+      "size": [460, 480],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        { "name": "text", "type": "STRING", "link": 3 }
+      ],
+      "outputs": [
+        { "name": "text", "type": "STRING", "links": null, "slot_index": 0 }
+      ],
+      "properties": { "Node name for S&R": "StoiqoShowPromptNode" },
+      "widgets_values": [
+        ""
+      ]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 3, 0, "STOIQO_STYLE_PIPE"],
+    [2, 2, 0, 3, 1, "STOIQO_SAMPLING_PIPE"],
+    [3, 3, 0, 4, 0, "STRING"]
+  ],
+  "groups": [
+    {
+      "title": "[STOIQO] Live Token Streaming & Modular Prompt Synthesis",
+      "bounding": [20, 40, 1400, 560],
+      "color": "#1a1f2c",
+      "font_size": 24
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": { "scale": 0.9, "offset": [50, 50] }
+  },
+  "version": 0.4
+}

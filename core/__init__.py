@@ -6,6 +6,7 @@ from .config import (
     DEFAULT_MODEL_REPO,
     MODEL_PRESETS,
     CUSTOM_MODEL_KEY,
+    API_ENDPOINT_KEY,
     MODEL_SELECTION_CHOICES,
     MODEL_MODES,
     MODEL_CHOICES,
@@ -50,9 +51,6 @@ from .music import (
     clean_user_custom_directives,
 )
 
-KREA2_PROMPT_IMAGE = SYSTEM_PROMPT_PRESETS["Generative Prompt"]
-KREA2_PROMPT_TEXT = BASE_TEXT_EXPANSION_PROMPT
-KREA2_PROMPT_MULTI_IMAGE = BASE_MULTI_IMAGE_PROMPT
 from .vision import (
     process_vision_info,
     tensor_to_pil,
@@ -76,11 +74,18 @@ from .storage import (
     build_dataset_manifest,
 )
 from .model_manager import ModelManager
+from .telemetry import NodeTelemetryTimer, inject_telemetry, TelemetryResult
+
+KREA2_PROMPT_IMAGE = SYSTEM_PROMPT_PRESETS["Generative Prompt"]
+KREA2_PROMPT_TEXT = BASE_TEXT_EXPANSION_PROMPT
+KREA2_PROMPT_MULTI_IMAGE = BASE_MULTI_IMAGE_PROMPT
+
 
 __all__ = [
     "DEFAULT_MODEL_REPO",
     "MODEL_PRESETS",
     "CUSTOM_MODEL_KEY",
+    "API_ENDPOINT_KEY",
     "MODEL_SELECTION_CHOICES",
     "MODEL_MODES",
     "MODEL_CHOICES",
@@ -103,10 +108,25 @@ __all__ = [
     "MULTI_IMAGE_SYSTEM_PROMPT",
     "BASE_TEXT_EXPANSION_PROMPT",
     "BASE_MULTI_IMAGE_PROMPT",
+    "LEGACY_SYSTEM_PROMPT_ALIASES",
     "KREA2_PROMPT_IMAGE",
     "KREA2_PROMPT_TEXT",
     "KREA2_PROMPT_MULTI_IMAGE",
     "resolve_system_prompt",
+    "GENRE_PRESETS",
+    "VOCAL_PRESETS",
+    "LANGUAGE_PRESETS",
+    "SONG_STRUCTURES",
+    "TEMPO_PRESETS",
+    "YUE2_SYSTEM_PROMPT",
+    "MUSIC_SYSTEM_PROMPT_PRESETS",
+    "MUSIC_CUSTOM_SYSTEM_PROMPT_KEY",
+    "MUSIC_SYSTEM_PROMPT_CHOICES",
+    "resolve_music_system_prompt",
+    "build_music_task_prompt",
+    "parse_music_response",
+    "clean_user_custom_lyrics",
+    "clean_user_custom_directives",
     "process_vision_info",
     "tensor_to_pil",
     "clean_llm_output",
@@ -124,5 +144,9 @@ __all__ = [
     "open_native_folder_dialog",
     "build_dataset_manifest",
     "ModelManager",
+    "NodeTelemetryTimer",
+    "inject_telemetry",
+    "TelemetryResult",
 ]
+
 

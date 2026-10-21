@@ -97,7 +97,7 @@ class StoiqoDatasetWriterNode:
     OUTPUT_IS_LIST = (True, True, True)
     FUNCTION = "process_and_save"
     OUTPUT_NODE = True
-    CATEGORY = "STOIQO/Prompt Engine"
+    CATEGORY = "STOIQO"
 
     def process_and_save(
         self,

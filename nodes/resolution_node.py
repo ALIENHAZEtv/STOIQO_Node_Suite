@@ -1,6 +1,6 @@
 """
 [STOIQO] Image Resolution & Aspect Ratio Node
-Calculates optimal width and height for generative models (Flux.1, SDXL, SD 3.5, SD 1.5)
+Calculates optimal width and height for modern generative engines (Krea 2, MiniMax Video, SeedVR2 Upscaling)
 with standard aspect ratio presets, VAE divisibility alignment, dimension swapping, and Megapixel targets.
 """
 
@@ -11,7 +11,7 @@ class StoiqoResolutionNode:
     """
     Image Resolution & Aspect Ratio Generator for ComfyUI.
     Provides standard aspect ratio presets, ensures safe divisibility (multiples of 8/16/32/64)
-    to prevent VAE and attention tensor dimension mismatch errors, and outputs clean (width, height).
+    for Krea 2, SeedVR2 upscaling and MiniMax video tensor dimensions, outputting clean (width, height).
     """
 
     ASPECT_RATIOS = [
@@ -30,16 +30,17 @@ class StoiqoResolutionNode:
     ]
 
     SCALE_TARGETS = [
-        "1.0 MP - Flux.1 / SDXL Standard (1024 base)",
-        "0.26 MP - SD 1.5 Legacy (512 base)",
-        "1.5 MP - High Quality (1280 base)",
-        "2.0 MP - 2K Ultra HD (1440 base)",
+        "1.0 MP - Krea 2 Standard (1024 base)",
+        "2.0 MP - SeedVR2 2x Upscale Target (1440 base)",
+        "4.0 MP - SeedVR2 4x / 4K UHD Master (2160 base)",
+        "0.9 MP - MiniMax 720p Video (1280 base)",
+        "2.1 MP - MiniMax 1080p Video (1920 base)",
         "Exact Preset Dimensions",
     ]
 
     MULTIPLE_OPTIONS = [16, 8, 32, 64]
 
-    # Pre-calculated standard dimensions for 1.0 MP (Flux/SDXL optimal)
+    # Pre-calculated standard dimensions for 1.0 MP (Krea 2 / MiniMax optimal)
     PRESET_DIMS_1MP = {
         "1:1 Square (1024 x 1024)": (1024, 1024),
         "16:9 Landscape Widescreen (1344 x 768)": (1344, 768),
@@ -106,7 +107,7 @@ class StoiqoResolutionNode:
                     cls.MULTIPLE_OPTIONS,
                     {
                         "default": 16,
-                        "tooltip": "Ensures width and height are divisible by this value (16 is recommended for Flux and VAEs).",
+                        "tooltip": "Ensures width and height are divisible by this value (16 is recommended for Krea 2, SeedVR2, and VAEs).",
                     },
                 ),
                 "custom_width": (
@@ -135,7 +136,7 @@ class StoiqoResolutionNode:
     RETURN_TYPES = ("INT", "INT", "FLOAT", "STRING")
     RETURN_NAMES = ("width", "height", "aspect_ratio", "resolution_str")
     FUNCTION = "get_resolution"
-    CATEGORY = "STOIQO/Utilities"
+    CATEGORY = "STOIQO"
 
     def get_resolution(
         self,
@@ -161,10 +162,16 @@ class StoiqoResolutionNode:
             else:
                 if "0.26 MP" in scale_target:
                     target_pixels = 512 * 512
+                elif "0.9 MP" in scale_target:
+                    target_pixels = 1280 * 720
                 elif "1.5 MP" in scale_target:
                     target_pixels = 1280 * 1280
                 elif "2.0 MP" in scale_target:
                     target_pixels = 1440 * 1440
+                elif "2.1 MP" in scale_target:
+                    target_pixels = 1920 * 1080
+                elif "4.0 MP" in scale_target:
+                    target_pixels = 2160 * 2160
                 else:
                     target_pixels = 1024 * 1024
 
@@ -183,13 +190,19 @@ class StoiqoResolutionNode:
         else:
             # Determine target pixel count
             if "0.26 MP" in scale_target:
-                target_pixels = 512 * 512  # ~262,144 px
+                target_pixels = 512 * 512
+            elif "0.9 MP" in scale_target:
+                target_pixels = 1280 * 720
             elif "1.5 MP" in scale_target:
-                target_pixels = 1280 * 1280  # ~1,638,400 px
+                target_pixels = 1280 * 1280
             elif "2.0 MP" in scale_target:
-                target_pixels = 1440 * 1440  # ~2,073,600 px
+                target_pixels = 1440 * 1440
+            elif "2.1 MP" in scale_target:
+                target_pixels = 1920 * 1080
+            elif "4.0 MP" in scale_target:
+                target_pixels = 2160 * 2160
             else:
-                # Default 1.0 MP (1024x1024 = 1,048,576 px)
+                # Default 1.0 MP - Krea 2 Standard (1024x1024)
                 target_pixels = 1024 * 1024
 
             ratio = self.RATIO_VALUES.get(aspect_ratio, 1.0)

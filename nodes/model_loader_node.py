@@ -69,7 +69,7 @@ class StoiqoVLMModelLoaderNode:
                     "BOOLEAN",
                     {
                         "default": True,
-                        "tooltip": "Keep model resident in VRAM for zero-latency subsequent inferences. If False (Low VRAM Mode), unloads the model immediately after generation to give 100% GPU memory to Flux / SDXL.",
+                        "tooltip": "Keep model resident in VRAM for zero-latency subsequent inferences. If False (Low VRAM Mode), unloads the model immediately after generation to give 100% GPU memory to Krea 2 / MiniMax / SeedVR2.",
                     },
                 ),
             },
@@ -78,7 +78,7 @@ class StoiqoVLMModelLoaderNode:
     RETURN_TYPES = ("STOIQO_MODEL",)
     RETURN_NAMES = ("stoiqo_model",)
     FUNCTION = "load_vlm_model"
-    CATEGORY = "STOIQO/Prompt Engine"
+    CATEGORY = "STOIQO"
 
     def load_vlm_model(self, model_preset, local_model_path, quantization, attention_mode, keep_in_vram=True):
         target_repo = self.model_mgr.resolve_model_repo(model_preset, local_model_path)

@@ -20,9 +20,10 @@ MODEL_MODES = [
 ]
 
 CUSTOM_MODEL_KEY = "📁 Custom Model (Local Disk Path)"
+API_ENDPOINT_KEY = "🌐 API Endpoint (Ollama / OpenAI / vLLM - 0 GB VRAM)"
 
-# Unified choices: Presets + Custom Model
-MODEL_SELECTION_CHOICES = list(MODEL_PRESETS.keys()) + [CUSTOM_MODEL_KEY]
+# Unified choices: Presets + Custom Model + API Endpoint
+MODEL_SELECTION_CHOICES = list(MODEL_PRESETS.keys()) + [CUSTOM_MODEL_KEY, API_ENDPOINT_KEY]
 
 # Legacy alias
 MODEL_CHOICES = list(MODEL_PRESETS.keys())

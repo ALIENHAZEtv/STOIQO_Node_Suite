@@ -1,425 +1,197 @@
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __esm = (fn, res, err) => function __init() {
-  if (err) throw err[0];
-  try {
-    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-  } catch (e) {
-    throw err = [e], e;
-  }
-};
-var __commonJS = (cb, mod) => function __require() {
-  try {
-    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
-  } catch (e) {
-    throw mod = 0, e;
-  }
-};
+// src_js/index.js
+import { app as app10 } from "../../scripts/app.js";
+
+// src_js/nodes/showPromptNode.js
+import { app as app2 } from "../../../scripts/app.js";
+import { api as api2 } from "../../../scripts/api.js";
+import { ComfyWidgets as ComfyWidgets2 } from "../../../scripts/widgets.js";
 
 // src_js/utils/core.js
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
-var currentDownloadProgress, downloadClearTimer, comfyApi, StoiqoSectionDividerWidget;
-var init_core = __esm({
-  "src_js/utils/core.js"() {
-    currentDownloadProgress = null;
-    downloadClearTimer = null;
-    comfyApi = api || typeof app !== "undefined" && app.api;
-    if (comfyApi && comfyApi.addEventListener) {
-      comfyApi.addEventListener("stoiqo_download_progress", (event) => {
-        const data = event.detail;
-        if (!data) return;
-        currentDownloadProgress = data;
-        if (data.status === "complete") {
-          if (downloadClearTimer) clearTimeout(downloadClearTimer);
-          downloadClearTimer = setTimeout(() => {
-            currentDownloadProgress = null;
-            if (app && app.graph) app.graph.setDirtyCanvas(true, true);
-          }, 6e3);
-        }
+var currentDownloadProgress = null;
+var downloadClearTimer = null;
+var comfyApi = api || typeof app !== "undefined" && app.api;
+if (comfyApi && comfyApi.addEventListener) {
+  comfyApi.addEventListener("stoiqo_download_progress", (event) => {
+    const data = event.detail;
+    if (!data) return;
+    currentDownloadProgress = data;
+    if (data.status === "complete") {
+      if (downloadClearTimer) clearTimeout(downloadClearTimer);
+      downloadClearTimer = setTimeout(() => {
+        currentDownloadProgress = null;
         if (app && app.graph) app.graph.setDirtyCanvas(true, true);
-      });
+      }, 6e3);
     }
-    StoiqoSectionDividerWidget = class {
-      constructor(sectionNum, sectionTitle, accentColor) {
-        this.type = "custom";
-        this.name = `_stoiqo_divider_${sectionNum}`;
-        this.value = {};
-        this.options = { serialize: false };
-        this.sectionNum = sectionNum;
-        this.sectionTitle = sectionTitle;
-        this.accentColor = accentColor;
-        this.isStoiqoDivider = true;
-        this.height = 30;
-      }
-      serializeValue() {
-        return void 0;
-      }
-      computeSize(width) {
-        return [width, this.height];
-      }
-      draw(ctx, node, width, posY, height) {
-        const nodeWidth = node && node.size ? node.size[0] : width;
-        const accent = this.accentColor;
-        const bannerY = posY + 5;
-        ctx.save();
-        const lineY = bannerY + 10;
-        const grad = ctx.createLinearGradient(12, lineY, nodeWidth - 12, lineY);
-        grad.addColorStop(0, accent + "08");
-        grad.addColorStop(0.2, accent + "88");
-        grad.addColorStop(0.8, accent + "88");
-        grad.addColorStop(1, accent + "08");
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(12, lineY);
-        ctx.lineTo(nodeWidth - 12, lineY);
-        ctx.stroke();
-        const label = `\xA7 ${this.sectionNum}. ${this.sectionTitle}`;
-        ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
-        const textMetrics = ctx.measureText(label);
-        const badgeX = 14;
-        const badgeY = bannerY + 2;
-        const badgeW = Math.ceil(textMetrics.width) + 18;
-        const badgeH = 16;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+    if (app && app.graph) app.graph.setDirtyCanvas(true, true);
+  });
+}
+var StoiqoSectionDividerWidget = class {
+  constructor(sectionNum, sectionTitle, accentColor) {
+    this.type = "custom";
+    this.name = `_stoiqo_divider_${sectionNum}`;
+    this.value = {};
+    this.options = { serialize: false };
+    this.sectionNum = sectionNum;
+    this.sectionTitle = sectionTitle;
+    this.accentColor = accentColor;
+    this.isStoiqoDivider = true;
+    this.height = 30;
+  }
+  serializeValue() {
+    return void 0;
+  }
+  computeSize(width) {
+    return [width, this.height];
+  }
+  draw(ctx, node, width, posY, height) {
+    const nodeWidth = node && node.size ? node.size[0] : width;
+    const accent = this.accentColor;
+    const bannerY = posY + 5;
+    ctx.save();
+    const lineY = bannerY + 10;
+    const grad = ctx.createLinearGradient(12, lineY, nodeWidth - 12, lineY);
+    grad.addColorStop(0, accent + "08");
+    grad.addColorStop(0.2, accent + "88");
+    grad.addColorStop(0.8, accent + "88");
+    grad.addColorStop(1, accent + "08");
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(12, lineY);
+    ctx.lineTo(nodeWidth - 12, lineY);
+    ctx.stroke();
+    const label = `\xA7 ${this.sectionNum}. ${this.sectionTitle}`;
+    ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+    const textMetrics = ctx.measureText(label);
+    const badgeX = 14;
+    const badgeY = bannerY + 2;
+    const badgeW = Math.ceil(textMetrics.width) + 18;
+    const badgeH = 16;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
+      ctx.fill();
+      ctx.strokeStyle = accent + "aa";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else {
+      ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+      ctx.strokeStyle = accent + "aa";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+    }
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(badgeX + 7, badgeY + badgeH / 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#f8fafc";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, badgeX + 13, badgeY + badgeH / 2 + 0.5);
+    if (this.sectionNum === "1" && currentDownloadProgress) {
+      const dp = currentDownloadProgress;
+      const isDone = dp.status === "complete" || dp.percent >= 100;
+      const dlLabel = isDone ? "\u2713 Model Ready" : `\u2B07 DL ${dp.percent}% (${dp.downloaded_str || ""})`;
+      const dlColor = isDone ? "#22c55e" : "#38bdf8";
+      ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+      const dlMetrics = ctx.measureText(dlLabel);
+      const dlBadgeW = Math.ceil(dlMetrics.width) + 16;
+      const dlBadgeX = nodeWidth - 14 - dlBadgeW;
+      const dlBadgeY = badgeY;
+      const dlBadgeH = badgeH;
+      if (dlBadgeX > badgeX + badgeW + 8) {
+        ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
         if (ctx.roundRect) {
           ctx.beginPath();
-          ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
+          ctx.roundRect(dlBadgeX, dlBadgeY, dlBadgeW, dlBadgeH, 3);
           ctx.fill();
-          ctx.strokeStyle = accent + "aa";
-          ctx.lineWidth = 1;
+        } else {
+          ctx.fillRect(dlBadgeX, dlBadgeY, dlBadgeW, dlBadgeH);
+        }
+        if (!isDone && dp.percent > 0) {
+          const progressW = Math.max(0, Math.min(dlBadgeW - 2, (dlBadgeW - 2) * dp.percent / 100));
+          ctx.fillStyle = "rgba(56, 189, 248, 0.28)";
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(dlBadgeX + 1, dlBadgeY + 1, progressW, dlBadgeH - 2, 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(dlBadgeX + 1, dlBadgeY + 1, progressW, dlBadgeH - 2);
+          }
+        }
+        ctx.strokeStyle = dlColor + "bb";
+        ctx.lineWidth = 1;
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(dlBadgeX, dlBadgeY, dlBadgeW, dlBadgeH, 3);
           ctx.stroke();
         } else {
-          ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
-          ctx.strokeStyle = accent + "aa";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+          ctx.strokeRect(dlBadgeX, dlBadgeY, dlBadgeW, dlBadgeH);
         }
-        ctx.fillStyle = accent;
-        ctx.beginPath();
-        ctx.arc(badgeX + 7, badgeY + badgeH / 2, 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#f8fafc";
-        ctx.textAlign = "left";
+        ctx.fillStyle = dlColor;
+        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(label, badgeX + 13, badgeY + badgeH / 2 + 0.5);
-        if (this.sectionNum === "1" && currentDownloadProgress) {
-          const dp = currentDownloadProgress;
-          const isDone = dp.status === "complete" || dp.percent >= 100;
-          const dlLabel = isDone ? "\u2713 Model Ready" : `\u2B07 DL ${dp.percent}% (${dp.downloaded_str || ""})`;
-          const dlColor = isDone ? "#22c55e" : "#38bdf8";
-          ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
-          const dlMetrics = ctx.measureText(dlLabel);
-          const dlBadgeW = Math.ceil(dlMetrics.width) + 16;
-          const dlBadgeX = nodeWidth - 14 - dlBadgeW;
-          const dlBadgeY = badgeY;
-          const dlBadgeH = badgeH;
-          if (dlBadgeX > badgeX + badgeW + 8) {
-            ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
-            if (ctx.roundRect) {
-              ctx.beginPath();
-              ctx.roundRect(dlBadgeX, dlBadgeY, dlBadgeW, dlBadgeH, 3);
-              ctx.fill();
-            } else {
-              ctx.fillRect(dlBadgeX, dlBadgeY, dlBadgeW, dlBadgeH);
-            }
-            if (!isDone && dp.percent > 0) {
-              const progressW = Math.max(0, Math.min(dlBadgeW - 2, (dlBadgeW - 2) * dp.percent / 100));
-              ctx.fillStyle = "rgba(56, 189, 248, 0.28)";
-              if (ctx.roundRect) {
-                ctx.beginPath();
-                ctx.roundRect(dlBadgeX + 1, dlBadgeY + 1, progressW, dlBadgeH - 2, 2);
-                ctx.fill();
-              } else {
-                ctx.fillRect(dlBadgeX + 1, dlBadgeY + 1, progressW, dlBadgeH - 2);
-              }
-            }
-            ctx.strokeStyle = dlColor + "bb";
-            ctx.lineWidth = 1;
-            if (ctx.roundRect) {
-              ctx.beginPath();
-              ctx.roundRect(dlBadgeX, dlBadgeY, dlBadgeW, dlBadgeH, 3);
-              ctx.stroke();
-            } else {
-              ctx.strokeRect(dlBadgeX, dlBadgeY, dlBadgeW, dlBadgeH);
-            }
-            ctx.fillStyle = dlColor;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(dlLabel, dlBadgeX + dlBadgeW / 2, dlBadgeY + dlBadgeH / 2 + 0.5);
-          }
-        }
-        ctx.restore();
+        ctx.fillText(dlLabel, dlBadgeX + dlBadgeW / 2, dlBadgeY + dlBadgeH / 2 + 0.5);
       }
-    };
+    }
+    ctx.restore();
   }
-});
-
-// src_js/nodes/engineNode.js
-import { app as app2 } from "../../../scripts/app.js";
-import { api as api2 } from "../../../scripts/api.js";
-import { ComfyWidgets as ComfyWidgets2 } from "../../../scripts/widgets.js";
-function setupEngineNode(nodeType, nodeData, app11) {
-  const engineTargetNames = [
-    "StoiqoPromptGeneratorEngineNode",
-    "QwenVLCaptionerNode",
-    "[STOIQO] Prompt Generator Engine",
-    "[STOIQO] Prompt Generator Engine (Legacy)"
-  ];
-  if (engineTargetNames.includes(nodeData.name)) {
-    let setupEngineNode2 = function(node) {
-      if (!node || !node.widgets) return;
-      if (node.bgcolor === "#0e1218" || node.bgcolor === "#0b1411") {
-        delete node.bgcolor;
-      }
-      if (node.color === "#18202c" || node.color === "#14251f") {
-        delete node.color;
-      }
-      if (node.size && node.size[0] < MIN_NODE_WIDTH) {
-        node.size[0] = MIN_NODE_WIDTH;
-      }
-      const legacyModelMode = node.widgets.find((w) => w.name === "model_mode");
-      if (legacyModelMode) {
-        legacyModelMode.hidden = true;
-        legacyModelMode.computeSize = function() {
-          return [0, -4];
-        };
-        legacyModelMode.draw = function() {
-        };
-        if (legacyModelMode.inputEl) {
-          legacyModelMode.inputEl.hidden = true;
-          legacyModelMode.inputEl.style.display = "none";
-        }
-      }
-      for (const [wName, hVal] of Object.entries(MULTILINE_HEIGHTS)) {
-        const w = node.widgets.find((item) => item.name === wName);
-        if (w) {
-          w.computeSize = function(width) {
-            return [width, hVal];
-          };
-          const applyInputStyles = (el) => {
-            if (!el) return;
-            el.style.boxSizing = "border-box";
-            el.style.height = `${hVal}px`;
-            el.style.minHeight = `${hVal}px`;
-            el.style.maxHeight = `${hVal}px`;
-            el.style.resize = "none";
-            el.style.fontSize = "11.5px";
-            el.style.lineHeight = "1.45";
-          };
-          if (w.inputEl) {
-            applyInputStyles(w.inputEl);
-            if (w.hidden) {
-              w.inputEl.hidden = true;
-              w.inputEl.style.display = "none";
-            }
-          } else {
-            let rawInputEl = null;
-            Object.defineProperty(w, "inputEl", {
-              configurable: true,
-              enumerable: true,
-              get() {
-                return rawInputEl;
-              },
-              set(val) {
-                rawInputEl = val;
-                applyInputStyles(val);
-                if (w.hidden && val) {
-                  val.hidden = true;
-                  val.style.display = "none";
-                }
-              }
-            });
-          }
-        }
-      }
-      function updateSystemPromptVisibility() {
-        const sysPromptWidget2 = node.widgets.find((w) => w.name === "system_prompt");
-        const customWidget = node.widgets.find((w) => w.name === "custom_system_prompt");
-        if (!customWidget) return;
-        const isCustomSelected = sysPromptWidget2 && String(sysPromptWidget2.value || "").includes("Custom");
-        if (!customWidget._stoiqoOrigComputeSize) {
-          customWidget._stoiqoOrigComputeSize = customWidget.computeSize;
-          customWidget._stoiqoOrigDraw = customWidget.draw;
-        }
-        if (isCustomSelected) {
-          customWidget.hidden = false;
-          customWidget.computeSize = function(width) {
-            return [width, MULTILINE_HEIGHTS["custom_system_prompt"] || 68];
-          };
-          if (customWidget._stoiqoOrigDraw) {
-            customWidget.draw = customWidget._stoiqoOrigDraw;
-          }
-          if (customWidget.inputEl) {
-            customWidget.inputEl.hidden = false;
-            customWidget.inputEl.style.display = "";
-          }
-        } else {
-          customWidget.hidden = true;
-          customWidget.computeSize = function() {
-            return [0, -4];
-          };
-          customWidget.draw = function() {
-          };
-          if (customWidget.inputEl) {
-            customWidget.inputEl.hidden = true;
-            customWidget.inputEl.style.display = "none";
-          }
-        }
-        if (typeof node.computeSize === "function") {
-          const computed = node.computeSize();
-          node.size[0] = Math.max(node.size[0] || 0, MIN_NODE_WIDTH);
-          node.size[1] = Math.max(Math.ceil(computed[1]), 100);
-        }
-        node.setDirtyCanvas(true, true);
-      }
-      const sysPromptWidget = node.widgets.find((w) => w.name === "system_prompt");
-      if (sysPromptWidget && !sysPromptWidget._stoiqoVisibilityHooked) {
-        sysPromptWidget._stoiqoVisibilityHooked = true;
-        const origSysCallback = sysPromptWidget.callback;
-        sysPromptWidget.callback = function(val) {
-          if (origSysCallback) origSysCallback.apply(this, arguments);
-          updateSystemPromptVisibility();
-        };
-      }
-      node.widgets = node.widgets.filter((w) => !w.isStoiqoDivider);
-      for (const sec of SECTIONS) {
-        let targetIdx = node.widgets.findIndex((w) => w.name === sec.targetWidget);
-        if (targetIdx === -1 && sec.fallbackWidget) {
-          targetIdx = node.widgets.findIndex((w) => w.name === sec.fallbackWidget);
-        }
-        if (targetIdx !== -1) {
-          const dividerWidget = new StoiqoSectionDividerWidget(sec.num, sec.title, sec.color);
-          node.widgets.splice(targetIdx, 0, dividerWidget);
-        }
-      }
-      updateSystemPromptVisibility();
-      node.updatePipeVisibility = function() {
-        if (!this.inputs) return;
-        const pipeInput = this.inputs.find((inp) => inp.name === "stoiqo_model");
-        const isConnected = pipeInput ? !!pipeInput.link : false;
-        const wNamesToHide = ["model_preset", "local_model_path", "quantization", "attention_mode", "unload_model_after"];
-        this.widgets.forEach((w) => {
-          if (wNamesToHide.includes(w.name) || w.isStoiqoDivider && w.sectionNum === "1") {
-            if (!w._stoiqoOrigComputeSizePipe) {
-              w._stoiqoOrigComputeSizePipe = w.computeSize;
-              w._stoiqoOrigDrawPipe = w.draw;
-            }
-            if (isConnected) {
-              w.hidden = true;
-              w.computeSize = function() {
-                return [0, -4];
-              };
-              w.draw = function() {
-              };
-              if (w.inputEl) {
-                w.inputEl.hidden = true;
-                w.inputEl.style.display = "none";
-              }
-            } else {
-              w.hidden = false;
-              if (w._stoiqoOrigComputeSizePipe) {
-                w.computeSize = w._stoiqoOrigComputeSizePipe;
-              } else {
-                delete w.computeSize;
-              }
-              if (w._stoiqoOrigDrawPipe) {
-                w.draw = w._stoiqoOrigDrawPipe;
-              } else {
-                delete w.draw;
-              }
-              if (w.inputEl) {
-                w.inputEl.hidden = false;
-                w.inputEl.style.display = "";
-              }
-            }
-          }
-        });
-        if (isConnected) {
-          const browseWidget = this.widgets.find((w) => w._isStoiqoBrowse);
-          if (browseWidget) {
-            if (!browseWidget._stoiqoOrigComputeSizePipe) {
-              browseWidget._stoiqoOrigComputeSizePipe = browseWidget.computeSize;
-              browseWidget._stoiqoOrigDrawPipe = browseWidget.draw;
-            }
-            browseWidget.hidden = true;
-            browseWidget.computeSize = function() {
-              return [0, -4];
-            };
-            browseWidget.draw = function() {
-            };
-          }
-        }
-        if (typeof this.computeSize === "function") {
-          const computed = this.computeSize();
-          this.size[0] = Math.max(this.size[0] || 0, MIN_NODE_WIDTH);
-          this.size[1] = Math.max(Math.ceil(computed[1]), 100);
-        }
-        this.setDirtyCanvas(true, true);
-      };
-      setTimeout(() => node.updatePipeVisibility(), 50);
-      if (typeof node.computeSize === "function") {
-        const computed = node.computeSize();
-        node.size[0] = Math.max(node.size[0] || 0, MIN_NODE_WIDTH);
-        node.size[1] = Math.max(node.size[1] || 0, Math.ceil(computed[1]));
-      }
-      node.setDirtyCanvas(true, true);
-    };
-    const MIN_NODE_WIDTH = 460;
-    const SECTIONS = [
-      { targetWidget: "model_preset", num: "1", title: "MODEL & HARDWARE ENGINE", color: "#60a5fa" },
-      { targetWidget: "batch_mode", num: "2", title: "TASK & DIRECTIVES", color: "#c084fc" },
-      { targetWidget: "seed", num: "3", title: "SAMPLING & GENERATION", color: "#facc15" },
-      { targetWidget: "enable_dual_prompt", num: "4", title: "DUAL PROMPT & ARTIFACT AUDIT", color: "#2dd4bf" }
-    ];
-    const MULTILINE_HEIGHTS = {
-      "user_directives": 88,
-      "custom_system_prompt": 68
-    };
-    const origOnNodeCreated = nodeType.prototype.onNodeCreated;
-    nodeType.prototype.onNodeCreated = function() {
-      if (origOnNodeCreated) {
-        origOnNodeCreated.apply(this, arguments);
-      }
-      setupEngineNode2(this);
-    };
-    const origOnConfigure = nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure = function() {
-      if (origOnConfigure) {
-        origOnConfigure.apply(this, arguments);
-      }
-      setupEngineNode2(this);
-    };
-    const origOnConnectionsChange = nodeType.prototype.onConnectionsChange;
-    nodeType.prototype.onConnectionsChange = function(type, index, connected, link_info) {
-      if (origOnConnectionsChange) {
-        origOnConnectionsChange.apply(this, arguments);
-      }
-      if (type === 1 && this.inputs && this.inputs[index] && this.inputs[index].name === "stoiqo_model") {
-        if (typeof this.updatePipeVisibility === "function") {
-          this.updatePipeVisibility();
-        }
-      }
-    };
-  }
-}
-var init_engineNode = __esm({
-  "src_js/nodes/engineNode.js"() {
-    init_core();
-  }
-});
+};
 
 // src_js/nodes/showPromptNode.js
-import { app as app3 } from "../../../scripts/app.js";
-import { api as api3 } from "../../../scripts/api.js";
-import { ComfyWidgets as ComfyWidgets3 } from "../../../scripts/widgets.js";
+var _streamListenersRegistered = false;
+function ensureStreamListeners() {
+  if (_streamListenersRegistered || typeof api2 === "undefined" || !api2.addEventListener) return;
+  _streamListenersRegistered = true;
+  api2.addEventListener("stoiqo_stream_start", (evt) => {
+    const detail = evt.detail || {};
+    const nodeId = detail.node_id;
+    if (!nodeId || !app2.graph) return;
+    const node = app2.graph.getNodeById(nodeId);
+    if (!node) return;
+    let tw = node.widgets?.find((w) => w.name === "display_text" || w.name === "text" || w.name === "synthesized_prompt");
+    if (tw) {
+      tw.value = "";
+      if (tw.inputEl) tw.inputEl.value = "";
+      node.setDirtyCanvas(true);
+    }
+  });
+  api2.addEventListener("stoiqo_stream_token", (evt) => {
+    const detail = evt.detail || {};
+    const nodeId = detail.node_id;
+    const token = detail.token;
+    if (!nodeId || token === void 0 || !app2.graph) return;
+    const node = app2.graph.getNodeById(nodeId);
+    if (!node) return;
+    let tw = node.widgets?.find((w) => w.name === "display_text" || w.name === "text" || w.name === "synthesized_prompt");
+    if (tw) {
+      tw.value = (tw.value || "") + token;
+      if (tw.inputEl) {
+        tw.inputEl.value = tw.value;
+        tw.inputEl.scrollTop = tw.inputEl.scrollHeight;
+      }
+      node.setDirtyCanvas(true);
+    }
+  });
+  api2.addEventListener("stoiqo_stream_complete", (evt) => {
+    const detail = evt.detail || {};
+    const nodeId = detail.node_id;
+    if (!nodeId || !app2.graph) return;
+    const node = app2.graph.getNodeById(nodeId);
+    if (node) {
+      node.setDirtyCanvas(true, true);
+    }
+  });
+}
 function setupShowPromptNode(nodeType, nodeData, app11) {
+  ensureStreamListeners();
   const showPromptTargetNames = [
     "StoiqoShowPromptNode",
-    "QwenVLTextDisplayNode",
-    "[STOIQO] Show Prompt",
-    "[STOIQO] Show Prompt (Legacy)"
+    "[STOIQO] Show Prompt"
   ];
   if (showPromptTargetNames.includes(nodeData.name)) {
     let setupShowPromptNode2 = function(node) {
@@ -437,8 +209,8 @@ function setupShowPromptNode(nodeType, nodeData, app11) {
       node.widgets = node.widgets || [];
       let textWidget = node.widgets.find((w) => w.name === "display_text");
       if (!textWidget) {
-        if (typeof ComfyWidgets3 !== "undefined" && ComfyWidgets3["STRING"]) {
-          textWidget = ComfyWidgets3["STRING"](
+        if (typeof ComfyWidgets2 !== "undefined" && ComfyWidgets2["STRING"]) {
+          textWidget = ComfyWidgets2["STRING"](
             node,
             "display_text",
             ["STRING", { multiline: true }],
@@ -560,16 +332,11 @@ function setupShowPromptNode(nodeType, nodeData, app11) {
     };
   }
 }
-var init_showPromptNode = __esm({
-  "src_js/nodes/showPromptNode.js"() {
-    init_core();
-  }
-});
 
 // src_js/nodes/modelLoaderNode.js
-import { app as app4 } from "../../../scripts/app.js";
-import { api as api4 } from "../../../scripts/api.js";
-import { ComfyWidgets as ComfyWidgets4 } from "../../../scripts/widgets.js";
+import { app as app3 } from "../../../scripts/app.js";
+import { api as api3 } from "../../../scripts/api.js";
+import { ComfyWidgets as ComfyWidgets3 } from "../../../scripts/widgets.js";
 function setupModelLoaderNode(nodeType, nodeData, app11) {
   const loaderTargetNames = [
     "StoiqoVLMModelLoaderNode",
@@ -600,7 +367,7 @@ function setupModelLoaderNode(nodeType, nodeData, app11) {
             this.name = "\u23F3 Selecting folder in Windows...";
             node.setDirtyCanvas(true);
             try {
-              const resp = await api4.fetchApi("/stoiqo/browse_folder", {
+              const resp = await api3.fetchApi("/stoiqo/browse_folder", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ initial_dir: currentPath })
@@ -700,16 +467,11 @@ function setupModelLoaderNode(nodeType, nodeData, app11) {
     };
   }
 }
-var init_modelLoaderNode = __esm({
-  "src_js/nodes/modelLoaderNode.js"() {
-    init_core();
-  }
-});
 
 // src_js/nodes/visualDiffNode.js
-import { app as app5 } from "../../../scripts/app.js";
-import { api as api5 } from "../../../scripts/api.js";
-import { ComfyWidgets as ComfyWidgets5 } from "../../../scripts/widgets.js";
+import { app as app4 } from "../../../scripts/app.js";
+import { api as api4 } from "../../../scripts/api.js";
+import { ComfyWidgets as ComfyWidgets4 } from "../../../scripts/widgets.js";
 function setupVisualDiffNode(nodeType, nodeData, app11) {
   const diffTargetNames = [
     "StoiqoVisualDiffNode",
@@ -746,7 +508,7 @@ function setupVisualDiffNode(nodeType, nodeData, app11) {
             this.name = "\u23F3 Selecting folder in Windows...";
             node.setDirtyCanvas(true);
             try {
-              const resp = await api5.fetchApi("/stoiqo/browse_folder", {
+              const resp = await api4.fetchApi("/stoiqo/browse_folder", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ initial_dir: currentPath })
@@ -848,16 +610,11 @@ function setupVisualDiffNode(nodeType, nodeData, app11) {
     };
   }
 }
-var init_visualDiffNode = __esm({
-  "src_js/nodes/visualDiffNode.js"() {
-    init_core();
-  }
-});
 
 // src_js/nodes/imageCompareNode.js
-import { app as app6 } from "../../../scripts/app.js";
-import { api as api6 } from "../../../scripts/api.js";
-import { ComfyWidgets as ComfyWidgets6 } from "../../../scripts/widgets.js";
+import { app as app5 } from "../../../scripts/app.js";
+import { api as api5 } from "../../../scripts/api.js";
+import { ComfyWidgets as ComfyWidgets5 } from "../../../scripts/widgets.js";
 function setupImageCompareNode(nodeType, nodeData, app11) {
   const compareTargetNames = [
     "StoiqoImageCompareNode",
@@ -865,27 +622,57 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
   ];
   if (compareTargetNames.includes(nodeData.name)) {
     let imageDataToUrl = function(data) {
-      if (!data) return "";
-      const sub = data.subfolder ? `&subfolder=${encodeURIComponent(data.subfolder)}` : "";
-      const typ = data.type ? `&type=${encodeURIComponent(data.type)}` : "&type=temp";
+      if (!data || !data.filename) return "";
+      const params = new URLSearchParams();
+      params.set("filename", data.filename);
+      params.set("type", data.type || "temp");
+      if (data.subfolder) {
+        params.set("subfolder", data.subfolder);
+      }
       const fmt = app11.getPreviewFormatParam ? app11.getPreviewFormatParam() : "";
-      const rnd = app11.getRandParam ? app11.getRandParam() : "";
-      return api6.apiURL(`/view?filename=${encodeURIComponent(data.filename)}${typ}${sub}${fmt}${rnd}`);
+      if (fmt) {
+        const clean = fmt.replace(/^&/, "");
+        const parts = clean.split("=");
+        if (parts.length === 2) params.set(parts[0], parts[1]);
+      }
+      params.set("t", Date.now().toString());
+      return api5.apiURL(`/view?${params.toString()}`);
     }, setupImageCompareNodeUI = function(node) {
       if (!node) return;
       node.hideOutputImages = true;
       node.imgs = null;
       node.images = null;
-      if (!node.size || node.size[0] < MIN_WIDTH) node.size = [MIN_WIDTH, MIN_HEIGHT];
+      if (!node.size || node.size[0] < MIN_WIDTH2) node.size = [MIN_WIDTH2, MIN_HEIGHT];
       let cmpWidget = node.widgets ? node.widgets.find((w) => w instanceof StoiqoCompareCanvasWidget) : null;
       if (!cmpWidget) {
         cmpWidget = new StoiqoCompareCanvasWidget(node);
         node.addCustomWidget(cmpWidget);
         node.cmpWidget = cmpWidget;
       }
+      const modeWidget = node.widgets?.find((w) => w.name === "initial_mode");
+      if (modeWidget && !modeWidget._stoiqoHooked) {
+        modeWidget._stoiqoHooked = true;
+        const origCallback = modeWidget.callback;
+        modeWidget.callback = function(val) {
+          if (origCallback) origCallback.apply(this, arguments);
+          if (cmpWidget) {
+            const vStr = String(val || "").toLowerCase();
+            if (vStr.includes("toggle") || vStr.includes("flicker")) {
+              cmpWidget.mode = "toggle";
+            } else if (vStr.includes("side")) {
+              cmpWidget.mode = "side";
+            } else {
+              cmpWidget.mode = "split";
+            }
+            node.setDirtyCanvas(true, true);
+          }
+        };
+      }
       const origMouseDown = node.onMouseDown;
       node.onMouseDown = function(e, localPos, graphCanvas) {
+        if (e && e._stoiqoCompareHandled) return true;
         if (cmpWidget && cmpWidget.handleMouseDown(e, localPos)) {
+          if (e) e._stoiqoCompareHandled = true;
           if (graphCanvas) {
             graphCanvas.node_capturing_input = this;
             graphCanvas.widget_capturing_input = cmpWidget;
@@ -941,17 +728,18 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
       }
       node.setDirtyCanvas(true, true);
     };
-    const MIN_WIDTH = 520;
+    const MIN_WIDTH2 = 520;
     const MIN_HEIGHT = 560;
     class StoiqoCompareCanvasWidget {
       constructor(node) {
         this.type = "custom";
         this.name = "_stoiqo_compare_canvas";
-        this.value = {};
+        this.value = [];
         this.options = { serialize: false };
         this.node = node;
         this.imgA = null;
         this.imgB = null;
+        this.imagesData = null;
         this.labelA = "Original";
         this.labelB = "Upscaled";
         this.splitX = 0.5;
@@ -965,6 +753,8 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         this.lastMouse = [0, 0];
         this.btnHitAreas = [];
         this.viewportRect = { x: 0, y: 0, w: 0, h: 0 };
+        this.loadError = null;
+        this._activePointerCleanup = null;
       }
       serializeValue() {
         return void 0;
@@ -972,8 +762,33 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
       computeSize(width) {
         return [width, 440];
       }
+      computeLayoutSize() {
+        return { minHeight: 340, minWidth: 420 };
+      }
       setImages(dataList) {
         if (!dataList || dataList.length < 2) return;
+        const latestData = dataList.slice(-2);
+        this.imagesData = latestData;
+        this.value = latestData;
+        if (this.node) {
+          this.node.properties = this.node.properties || {};
+          this.node.properties.stoiqo_images = latestData;
+        }
+        if (this.imgA) {
+          this.imgA.onload = null;
+          this.imgA.onerror = null;
+          this.imgA.src = "";
+          this.imgA = null;
+        }
+        if (this.imgB) {
+          this.imgB.onload = null;
+          this.imgB.onerror = null;
+          this.imgB.src = "";
+          this.imgB = null;
+        }
+        this.loadError = null;
+        const urlA = imageDataToUrl(latestData[0]);
+        const urlB = imageDataToUrl(latestData[1]);
         this.imgA = new Image();
         this.imgB = new Image();
         this.imgA.onload = () => {
@@ -982,10 +797,18 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         this.imgB.onload = () => {
           if (this.node) this.node.setDirtyCanvas(true, true);
         };
-        this.imgA.src = imageDataToUrl(dataList[0]);
-        this.imgB.src = imageDataToUrl(dataList[1]);
-        this.labelA = dataList[0].label || "Original";
-        this.labelB = dataList[1].label || "Upscaled";
+        this.imgA.onerror = () => {
+          this.loadError = "Impossibile caricare immagine A";
+          if (this.node) this.node.setDirtyCanvas(true, true);
+        };
+        this.imgB.onerror = () => {
+          this.loadError = "Impossibile caricare immagine B";
+          if (this.node) this.node.setDirtyCanvas(true, true);
+        };
+        this.imgA.src = urlA;
+        this.imgB.src = urlB;
+        this.labelA = latestData[0].label || "Original";
+        this.labelB = latestData[1].label || "Upscaled";
         this.resetView();
       }
       resetView() {
@@ -996,11 +819,69 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         this.toggleShowB = false;
         if (this.node) this.node.setDirtyCanvas(true, true);
       }
+      attachWindowDragListeners() {
+        if (this._activePointerCleanup) {
+          this._activePointerCleanup();
+        }
+        const cleanup = () => {
+          this.isDraggingSplit = false;
+          this.isPanning = false;
+          window.removeEventListener("pointermove", onPointerMove, true);
+          window.removeEventListener("pointerup", onPointerUp, true);
+          window.removeEventListener("pointercancel", onPointerUp, true);
+          if (this._activePointerCleanup === cleanup) {
+            this._activePointerCleanup = null;
+          }
+          if (this.node) this.node.setDirtyCanvas(true, true);
+        };
+        this._activePointerCleanup = cleanup;
+        const onPointerMove = (moveEv) => {
+          if (!this.node) return;
+          const canvas = app11.canvas;
+          let localX = 0, localY = 0;
+          if (canvas && typeof canvas.convertEventToCanvasOffset === "function") {
+            const cOffset = canvas.convertEventToCanvasOffset(moveEv);
+            localX = cOffset[0] - this.node.pos[0];
+            localY = cOffset[1] - this.node.pos[1];
+          } else {
+            const ds = canvas?.ds || { scale: 1, offset: [0, 0] };
+            const rect = canvas?.canvas?.getBoundingClientRect() || { left: 0, top: 0 };
+            const clientX = moveEv.clientX - rect.left;
+            const clientY = moveEv.clientY - rect.top;
+            localX = (clientX - ds.offset[0]) / ds.scale - this.node.pos[0];
+            localY = (clientY - ds.offset[1]) / ds.scale - this.node.pos[1];
+          }
+          if (this.isDraggingSplit) {
+            const vp = this.viewportRect;
+            if (vp.w > 0) {
+              const relX = (localX - vp.x) / vp.w;
+              this.splitX = Math.max(0.01, Math.min(0.99, relX));
+              this.node.setDirtyCanvas(true, true);
+            }
+          } else if (this.isPanning) {
+            const dx = localX - this.lastMouse[0];
+            const dy = localY - this.lastMouse[1];
+            this.panX += dx / this.zoom;
+            this.panY += dy / this.zoom;
+            this.lastMouse = [localX, localY];
+            this.node.setDirtyCanvas(true, true);
+          }
+          if (moveEv.stopPropagation) moveEv.stopPropagation();
+          if (moveEv.preventDefault) moveEv.preventDefault();
+        };
+        const onPointerUp = (upEv) => {
+          cleanup();
+          if (upEv.stopPropagation) upEv.stopPropagation();
+        };
+        window.addEventListener("pointermove", onPointerMove, { capture: true, passive: false });
+        window.addEventListener("pointerup", onPointerUp, { capture: true, passive: false });
+        window.addEventListener("pointercancel", onPointerUp, { capture: true, passive: false });
+      }
       draw(ctx, node, width, posY, height) {
-        const nodeW = node.size ? node.size[0] : width;
-        const nodeH = node.size ? node.size[1] : MIN_HEIGHT;
+        const nodeW = width || (node.size ? node.size[0] : MIN_WIDTH2);
+        const slotH = typeof height === "number" && height > 0 ? height : 440;
         const vY = posY + 6;
-        const vH = Math.max(260, nodeH - vY - 14);
+        const vH = Math.max(260, Math.min(slotH - 12, 1600));
         const vW = nodeW - 24;
         const vX = 12;
         this.viewportRect = { x: vX, y: vY + 32, w: vW, h: vH - 32 };
@@ -1020,10 +901,12 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           { key: "only_a", label: "Solo A", activeColor: "#38bdf8" },
           { key: "only_b", label: "Solo B", activeColor: "#c084fc" },
           { key: "split", label: "\u2194 Slider A-B", activeColor: "#2dd4bf" },
-          { key: "side", label: "\u25EB Side-by-Side", activeColor: "#2dd4bf" }
+          { key: "toggle", label: this.mode === "toggle" ? this.toggleShowB ? "\u{1F441} B (Click A)" : "\u{1F441} A (Click B)" : "\u{1F441} Toggle A/B", activeColor: "#f59e0b" },
+          { key: "side", label: "\u25EB Side-by-Side", activeColor: "#10b981" }
         ];
         let btnX = vX + 6;
         ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+        ctx.textBaseline = "middle";
         modes.forEach((m) => {
           const active = this.mode === m.key;
           const textW = ctx.measureText(m.label).width;
@@ -1031,7 +914,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           const bH = 18;
           const bY = barY + 4;
           const col = m.activeColor || "#2dd4bf";
-          ctx.fillStyle = active ? m.key === "only_a" ? "rgba(56, 189, 248, 0.22)" : m.key === "only_b" ? "rgba(192, 132, 252, 0.22)" : "rgba(45, 212, 191, 0.22)" : "rgba(255, 255, 255, 0.06)";
+          ctx.fillStyle = active ? m.key === "only_a" ? "rgba(56, 189, 248, 0.22)" : m.key === "only_b" ? "rgba(192, 132, 252, 0.22)" : m.key === "toggle" ? "rgba(245, 158, 11, 0.25)" : m.key === "side" ? "rgba(16, 185, 129, 0.22)" : "rgba(45, 212, 191, 0.22)" : "rgba(255, 255, 255, 0.06)";
           ctx.strokeStyle = active ? col : "rgba(255, 255, 255, 0.12)";
           ctx.lineWidth = 1;
           if (ctx.roundRect) {
@@ -1044,14 +927,18 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             ctx.strokeRect(btnX, bY, bW, bH);
           }
           ctx.fillStyle = active ? col : "#94a3b8";
-          ctx.fillText(m.label, btnX + 7, bY + 12);
+          ctx.fillText(m.label, btnX + 7, bY + bH / 2);
           this.btnHitAreas.push({
             x: btnX,
             y: bY,
             w: bW,
             h: bH,
             action: () => {
-              this.mode = m.key;
+              if (this.mode === m.key && m.key === "toggle") {
+                this.toggleShowB = !this.toggleShowB;
+              } else {
+                this.mode = m.key;
+              }
               node.setDirtyCanvas(true, true);
             }
           });
@@ -1074,7 +961,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.strokeRect(rX, rY, rW, 18);
         }
         ctx.fillStyle = "#cbd5e1";
-        ctx.fillText(resetLabel, rX + 7, rY + 12);
+        ctx.fillText(resetLabel, rX + 7, rY + 9);
         this.btnHitAreas.push({
           x: rX,
           y: rY,
@@ -1089,7 +976,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         const zTextW = ctx.measureText(zoomLabel).width;
         const zX = rX - zTextW - 14;
         ctx.fillStyle = this.zoom > 1.01 ? "#38bdf8" : "#64748b";
-        ctx.fillText(zoomLabel, zX, rY + 12);
+        ctx.fillText(zoomLabel, zX, rY + 9);
         const vp = this.viewportRect;
         ctx.fillStyle = "#090d14";
         ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
@@ -1103,11 +990,23 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.fillRect(vp.x, vp.y, vp.w, vp.h);
           ctx.strokeRect(vp.x, vp.y, vp.w, vp.h);
         }
-        if (!this.imgA || !this.imgB || !this.imgA.complete || !this.imgB.complete) {
-          ctx.fillStyle = "#64748b";
-          ctx.font = "12px sans-serif";
+        const hasValidA = this.imgA && this.imgA.complete && this.imgA.naturalWidth > 0 && this.imgA.naturalHeight > 0;
+        const hasValidB = this.imgB && this.imgB.complete && this.imgB.naturalWidth > 0 && this.imgB.naturalHeight > 0;
+        if (!hasValidA || !hasValidB) {
+          ctx.fillStyle = this.loadError ? "#f87171" : "#94a3b8";
+          ctx.font = "bold 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText("Connect image_a and image_b and click Queue Prompt to compare", vp.x + vp.w / 2, vp.y + vp.h / 2);
+          ctx.textBaseline = "middle";
+          if (this.loadError) {
+            ctx.fillText(this.loadError, vp.x + vp.w / 2, vp.y + vp.h / 2);
+          } else if (this.imgA && !this.imgA.complete) {
+            ctx.fillText("\u23F3 Caricamento anteprima immagini...", vp.x + vp.w / 2, vp.y + vp.h / 2);
+          } else {
+            ctx.fillText("Collega image_a e image_b, poi clicca Queue Prompt per visualizzare", vp.x + vp.w / 2, vp.y + vp.h / 2 - 10);
+            ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+            ctx.fillStyle = "#64748b";
+            ctx.fillText("Slider A-B \u2022 Synchronized Pan & Zoom \u2022 Toggle A/B \u2022 Side-by-Side", vp.x + vp.w / 2, vp.y + vp.h / 2 + 12);
+          }
           ctx.restore();
           return;
         }
@@ -1125,10 +1024,10 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           }
           return { w, h };
         };
-        const natWA = this.imgA.naturalWidth || 1024;
-        const natHA = this.imgA.naturalHeight || 1024;
-        const natWB = this.imgB.naturalWidth || 1024;
-        const natHB = this.imgB.naturalHeight || 1024;
+        const natWA = this.imgA.naturalWidth;
+        const natHA = this.imgA.naturalHeight;
+        const natWB = this.imgB.naturalWidth;
+        const natHB = this.imgB.naturalHeight;
         const centerX = vp.x + vp.w / 2;
         const centerY = vp.y + vp.h / 2;
         const fitA = computeFit(natWA, natHA, vp.w, vp.h);
@@ -1138,18 +1037,26 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         const halfWB = fitB.w / 2;
         const halfHB = fitB.h / 2;
         const renderImageA = (targetCtx = ctx) => {
-          targetCtx.save();
-          targetCtx.translate(centerX + this.panX * this.zoom, centerY + this.panY * this.zoom);
-          targetCtx.scale(this.zoom, this.zoom);
-          targetCtx.drawImage(this.imgA, -halfWA, -halfHA, fitA.w, fitA.h);
-          targetCtx.restore();
+          try {
+            targetCtx.save();
+            targetCtx.translate(centerX + this.panX * this.zoom, centerY + this.panY * this.zoom);
+            targetCtx.scale(this.zoom, this.zoom);
+            targetCtx.drawImage(this.imgA, -halfWA, -halfHA, fitA.w, fitA.h);
+            targetCtx.restore();
+          } catch (err) {
+            console.warn("[STOIQO Compare] Errore renderImageA:", err);
+          }
         };
         const renderImageB = (targetCtx = ctx) => {
-          targetCtx.save();
-          targetCtx.translate(centerX + this.panX * this.zoom, centerY + this.panY * this.zoom);
-          targetCtx.scale(this.zoom, this.zoom);
-          targetCtx.drawImage(this.imgB, -halfWB, -halfHB, fitB.w, fitB.h);
-          targetCtx.restore();
+          try {
+            targetCtx.save();
+            targetCtx.translate(centerX + this.panX * this.zoom, centerY + this.panY * this.zoom);
+            targetCtx.scale(this.zoom, this.zoom);
+            targetCtx.drawImage(this.imgB, -halfWB, -halfHB, fitB.w, fitB.h);
+            targetCtx.restore();
+          } catch (err) {
+            console.warn("[STOIQO Compare] Errore renderImageB:", err);
+          }
         };
         if (this.mode === "only_a") {
           ctx.save();
@@ -1207,6 +1114,17 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.textBaseline = "middle";
           ctx.fillText("\u25C4\u25BA", splitScreenX, pillY + pillH / 2 + 1);
           ctx.restore();
+        } else if (this.mode === "toggle") {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(vp.x, vp.y, vp.w, vp.h);
+          ctx.clip();
+          if (this.toggleShowB) {
+            renderImageB();
+          } else {
+            renderImageA();
+          }
+          ctx.restore();
         } else if (this.mode === "side") {
           const midX = vp.x + vp.w / 2;
           const halfW = vp.w / 2 - 1;
@@ -1239,24 +1157,45 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         }
         ctx.font = "bold 9px sans-serif";
         ctx.textAlign = "left";
-        if (this.mode === "only_a" || this.mode === "split" || this.mode === "side") {
-          const labelAText = `\u25C4 A: ${this.labelA.slice(0, 8)} (${natWA}\xD7${natHA})`;
-          const lAW = ctx.measureText(labelAText).width + 12;
-          ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-          ctx.fillRect(vp.x + 8, vp.y + 8, lAW, 18);
-          ctx.fillStyle = "#38bdf8";
-          ctx.fillText(labelAText, vp.x + 14, vp.y + 20);
-        }
-        if (this.mode === "only_b" || this.mode === "split" || this.mode === "side") {
-          const labelBText = `B: ${this.labelB.slice(0, 8)} (${natWB}\xD7${natHB}) \u25BA`;
-          const lBW = ctx.measureText(labelBText).width + 12;
-          ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-          ctx.fillRect(vp.x + vp.w - lBW - 8, vp.y + 8, lBW, 18);
-          ctx.fillStyle = "#c084fc";
-          ctx.fillText(labelBText, vp.x + vp.w - lBW - 2, vp.y + 20);
+        ctx.textBaseline = "middle";
+        if (this.mode === "toggle") {
+          const showingB = this.toggleShowB;
+          const tText = showingB ? `\u{1F441} B: ${this.labelB} (${natWB}\xD7${natHB}) \u2022 Clicca per A` : `\u{1F441} A: ${this.labelA} (${natWA}\xD7${natHA}) \u2022 Clicca per B`;
+          const tW = ctx.measureText(tText).width + 16;
+          ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+          ctx.strokeStyle = showingB ? "#c084fc" : "#38bdf8";
+          ctx.lineWidth = 1;
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(vp.x + 8, vp.y + 8, tW, 20, 3);
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.fillRect(vp.x + 8, vp.y + 8, tW, 20);
+            ctx.strokeRect(vp.x + 8, vp.y + 8, tW, 20);
+          }
+          ctx.fillStyle = showingB ? "#c084fc" : "#38bdf8";
+          ctx.fillText(tText, vp.x + 16, vp.y + 18);
+        } else {
+          if (this.mode === "only_a" || this.mode === "split" || this.mode === "side") {
+            const labelAText = `\u25C4 A: ${this.labelA.slice(0, 10)} (${natWA}\xD7${natHA})`;
+            const lAW = ctx.measureText(labelAText).width + 12;
+            ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+            ctx.fillRect(vp.x + 8, vp.y + 8, lAW, 18);
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillText(labelAText, vp.x + 14, vp.y + 17);
+          }
+          if (this.mode === "only_b" || this.mode === "split" || this.mode === "side") {
+            const labelBText = `B: ${this.labelB.slice(0, 10)} (${natWB}\xD7${natHB}) \u25BA`;
+            const lBW = ctx.measureText(labelBText).width + 12;
+            ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+            ctx.fillRect(vp.x + vp.w - lBW - 8, vp.y + 8, lBW, 18);
+            ctx.fillStyle = "#c084fc";
+            ctx.fillText(labelBText, vp.x + vp.w - lBW - 2, vp.y + 17);
+          }
         }
         if (this.zoom > 1.05) {
-          const hint = "\u{1F50D} Drag to Pan \u2022 Scroll to Zoom";
+          const hint = "\u{1F50D} Trascina per Pan \u2022 Rotella per Zoom";
           const hintW = ctx.measureText(hint).width + 16;
           const hintX = vp.x + (vp.w - hintW) / 2;
           const hintY = vp.y + vp.h - 22;
@@ -1270,7 +1209,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           }
           ctx.fillStyle = "#94a3b8";
           ctx.textAlign = "center";
-          ctx.fillText(hint, vp.x + vp.w / 2, hintY + 11);
+          ctx.fillText(hint, vp.x + vp.w / 2, hintY + 8);
         }
         ctx.restore();
       }
@@ -1287,12 +1226,19 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         }
         const vp = this.viewportRect;
         if (mx >= vp.x && mx <= vp.x + vp.w && my >= vp.y && my <= vp.y + vp.h) {
+          if (this.mode === "toggle") {
+            this.toggleShowB = !this.toggleShowB;
+            if (this.node) this.node.setDirtyCanvas(true, true);
+            if (e && e.stopPropagation) e.stopPropagation();
+            return true;
+          }
           if (this.mode === "split") {
             const splitPixelX = vp.x + this.splitX * vp.w;
             if (this.zoom <= 1.05 || Math.abs(mx - splitPixelX) < 40) {
               const relX = (mx - vp.x) / vp.w;
               this.splitX = Math.max(0.01, Math.min(0.99, relX));
               this.isDraggingSplit = true;
+              this.attachWindowDragListeners();
               if (this.node) this.node.setDirtyCanvas(true, true);
               if (e && e.stopPropagation) e.stopPropagation();
               return true;
@@ -1300,6 +1246,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           }
           this.isPanning = true;
           this.lastMouse = [mx, my];
+          this.attachWindowDragListeners();
           if (this.node) this.node.setDirtyCanvas(true, true);
           if (e && e.stopPropagation) e.stopPropagation();
           return true;
@@ -1331,14 +1278,20 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         const wasActive = this.isDraggingSplit || this.isPanning;
         this.isDraggingSplit = false;
         this.isPanning = false;
+        if (this._activePointerCleanup) {
+          this._activePointerCleanup();
+        }
         if (wasActive && this.node) {
           this.node.setDirtyCanvas(true, true);
         }
         return wasActive;
       }
       mouse(event, pos, node) {
+        if (event && event._stoiqoCompareHandled) return true;
         if (event.type === "pointerdown" || event.type === "mousedown") {
-          return this.handleMouseDown(event, pos);
+          const handled = this.handleMouseDown(event, pos);
+          if (handled && event) event._stoiqoCompareHandled = true;
+          return handled;
         }
         if (event.type === "pointermove" || event.type === "mousemove") {
           return this.handleMouseMove(event, pos);
@@ -1377,22 +1330,39 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
       this.imgs = null;
       this.images = null;
       if (origCmpCreated) origCmpCreated.apply(this, arguments);
+      this.hideOutputImages = true;
+      this.imgs = null;
+      this.images = null;
       setupImageCompareNodeUI(this);
     };
     const origCmpConfigure = nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure = function() {
+    nodeType.prototype.onConfigure = function(info) {
       this.hideOutputImages = true;
       this.imgs = null;
       this.images = null;
       if (origCmpConfigure) origCmpConfigure.apply(this, arguments);
+      this.hideOutputImages = true;
+      this.imgs = null;
+      this.images = null;
       setupImageCompareNodeUI(this);
+      const cachedImages = this.properties?.stoiqo_images || info?.properties?.stoiqo_images || this.cmpWidget?.imagesData || this.cmpWidget?.value;
+      if (cachedImages && Array.isArray(cachedImages) && cachedImages.length >= 2 && this.cmpWidget) {
+        this.cmpWidget.setImages(cachedImages.slice(-2));
+      }
     };
+    const origCmpDrawBg = nodeType.prototype.onDrawBackground;
     nodeType.prototype.onDrawBackground = function(ctx) {
       this.hideOutputImages = true;
       this.imgs = null;
       this.images = null;
+      if (origCmpDrawBg) origCmpDrawBg.apply(this, arguments);
     };
+    const origCmpExecuted = nodeType.prototype.onExecuted;
     nodeType.prototype.onExecuted = function(message) {
+      this.hideOutputImages = true;
+      this.imgs = null;
+      this.images = null;
+      if (origCmpExecuted) origCmpExecuted.apply(this, arguments);
       this.hideOutputImages = true;
       this.imgs = null;
       this.images = null;
@@ -1413,8 +1383,9 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
               w.mode = "split";
             }
           }
-          if (message.images) {
-            w.setImages(message.images);
+          const cmpImages = message.stoiqo_images || message.images;
+          if (cmpImages) {
+            w.setImages(cmpImages);
           }
         }
         if (this.widgets) {
@@ -1501,11 +1472,6 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
     };
   }
 }
-var init_imageCompareNode = __esm({
-  "src_js/nodes/imageCompareNode.js"() {
-    init_core();
-  }
-});
 
 // src_js/nodes/datasetNode.js
 function setupDatasetNode(nodeType, nodeData, app11) {
@@ -1562,13 +1528,9 @@ function setupDatasetNode(nodeType, nodeData, app11) {
     };
   }
 }
-var init_datasetNode = __esm({
-  "src_js/nodes/datasetNode.js"() {
-  }
-});
 
 // src_js/nodes/iteratorNode.js
-import { api as api7 } from "../../../scripts/api.js";
+import { api as api6 } from "../../../scripts/api.js";
 function setupIteratorNode(nodeType, nodeData, app11) {
   const targetNames = [
     "StoiqoSmartFolderImageIterator",
@@ -1593,7 +1555,7 @@ function setupIteratorNode(nodeType, nodeData, app11) {
             this.name = "\u23F3 Selecting folder in Windows...";
             node.setDirtyCanvas(true);
             try {
-              const resp = await api7.fetchApi("/stoiqo/browse_folder", {
+              const resp = await api6.fetchApi("/stoiqo/browse_folder", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ initial_dir: currentPath })
@@ -1648,21 +1610,17 @@ function setupIteratorNode(nodeType, nodeData, app11) {
     };
   }
 }
-var init_iteratorNode = __esm({
-  "src_js/nodes/iteratorNode.js"() {
-  }
-});
 
 // src_js/nodes/trioLoaderNode.js
-import { app as app7 } from "../../../scripts/app.js";
-import { api as api8 } from "../../../scripts/api.js";
+import { app as app6 } from "../../../scripts/app.js";
+import { api as api7 } from "../../../scripts/api.js";
 function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
   const targetNames = [
     "StoiqoTripleImageLoaderNode",
     "[STOIQO] Trio Image Loader (Hero & Thumbs)"
   ];
   if (!targetNames.includes(nodeData.name)) return;
-  const MIN_WIDTH = 460;
+  const MIN_WIDTH2 = 460;
   const MIN_HEIGHT = 740;
   function parseImageDescriptor(val) {
     if (!val || typeof val !== "string" || val === "none") return null;
@@ -1688,7 +1646,7 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
       params.set("subfolder", desc.subfolder);
     }
     params.set("t", Date.now().toString());
-    return api8.apiURL(`/view?${params.toString()}`);
+    return api7.apiURL(`/view?${params.toString()}`);
   }
   class StoiqoTrioGalleryWidget {
     constructor(node) {
@@ -1912,8 +1870,8 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
     this.hideOutputImages = true;
     this.imgs = null;
     this.images = null;
-    this.size = this.size || [MIN_WIDTH, MIN_HEIGHT];
-    if (this.size[0] < MIN_WIDTH) this.size[0] = MIN_WIDTH;
+    this.size = this.size || [MIN_WIDTH2, MIN_HEIGHT];
+    if (this.size[0] < MIN_WIDTH2) this.size[0] = MIN_WIDTH2;
     if (this.size[1] < MIN_HEIGHT) this.size[1] = MIN_HEIGHT;
     this.addCustomWidget(new StoiqoSectionDividerWidget(1, "MULTI-IMAGE TRIO LOADER", "#a855f7"));
     const galleryWidget = new StoiqoTrioGalleryWidget(this);
@@ -1956,21 +1914,16 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
     }
   };
 }
-var init_trioLoaderNode = __esm({
-  "src_js/nodes/trioLoaderNode.js"() {
-    init_core();
-  }
-});
 
 // src_js/nodes/textConcatNode.js
-import { app as app8 } from "../../../scripts/app.js";
+import { app as app7 } from "../../../scripts/app.js";
 function setupConcatNode(nodeType, nodeData, appInstance) {
   const concatTargetNames = [
     "StoiqoTextConcatenateNode",
     "[STOIQO] Text Concatenate & Clean"
   ];
   if (!concatTargetNames.includes(nodeData.name)) return;
-  const MIN_WIDTH = 420;
+  const MIN_WIDTH2 = 420;
   const MAX_SLOTS = 8;
   const TEXT_BOX_HEIGHT = 56;
   class StoiqoTokenHudWidget {
@@ -2062,8 +2015,8 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
   }
   function initConcatNode(node) {
     if (!node || !node.widgets) return;
-    node.size = node.size || [MIN_WIDTH, 360];
-    if (node.size[0] < MIN_WIDTH) node.size[0] = MIN_WIDTH;
+    node.size = node.size || [MIN_WIDTH2, 360];
+    if (node.size[0] < MIN_WIDTH2) node.size[0] = MIN_WIDTH2;
     let initialVisible = 2;
     for (let i = 3; i <= MAX_SLOTS; i++) {
       const wName = `text_${i}`;
@@ -2127,11 +2080,11 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       }
       if (typeof node.computeSize === "function") {
         const sz = node.computeSize();
-        node.setSize([Math.max(node.size[0] || 0, MIN_WIDTH), Math.max(Math.ceil(sz[1]), 220)]);
+        node.setSize([Math.max(node.size[0] || 0, MIN_WIDTH2), Math.max(Math.ceil(sz[1]), 220)]);
       }
       node.setDirtyCanvas(true, true);
-      if (app8.graph && app8.graph.setDirtyCanvas) {
-        app8.graph.setDirtyCanvas(true, true);
+      if (app7.graph && app7.graph.setDirtyCanvas) {
+        app7.graph.setDirtyCanvas(true, true);
       }
     }
     if (!node._stoiqoAddBtn) {
@@ -2303,10 +2256,6 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
     }
   };
 }
-var init_textConcatNode = __esm({
-  "src_js/nodes/textConcatNode.js"() {
-  }
-});
 
 // src_js/nodes/proSaverNode.js
 function setupProSaverNode(nodeType, nodeData, appInstance) {
@@ -2507,7 +2456,9 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
       }
       this.hideOutputImages = true;
       this.imgs = null;
-      this.images = null;
+      if (message && message.images) {
+        this.images = message.images;
+      }
       if (message && message.saved_info && this._stoiqo_saver_hud) {
         this._stoiqo_saver_hud.setSaveInfo(message.saved_info);
       }
@@ -2518,20 +2469,15 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
   nodeType.prototype.onDrawBackground = function(ctx) {
     this.hideOutputImages = true;
     this.imgs = null;
-    this.images = null;
     if (origDrawBackground) {
       origDrawBackground.apply(this, arguments);
     }
   };
 }
-var init_proSaverNode = __esm({
-  "src_js/nodes/proSaverNode.js"() {
-  }
-});
 
 // src_js/nodes/musicPromptNode.js
-import { app as app9 } from "../../../scripts/app.js";
-import { ComfyWidgets as ComfyWidgets7 } from "../../../scripts/widgets.js";
+import { app as app8 } from "../../../scripts/app.js";
+import { ComfyWidgets as ComfyWidgets6 } from "../../../scripts/widgets.js";
 function setupMusicPromptNode(nodeType, nodeData, app11) {
   const musicTargetNames = [
     "StoiqoMusicPromptEngineNode",
@@ -2556,7 +2502,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     "custom_directives": 54
   };
   const PLACEHOLDERS = {
-    "idea": "Song theme, story, or emotion (e.g. 'A death metal song about...')...",
+    "idea": "Describe ANY musical vision, emotion, story, artist/band influence, or concept in free natural language (e.g. 'un brano baroque pop in italiano con clavicembalo e archi', 'cyberpunk industrial synthwave', 'fuga per organo')...",
     "custom_system_prompt": "Active only when system_prompt = 'Custom'. Write your custom AI music producer system instructions here...",
     "custom_lyrics": "Optional: Write or paste your own lyrics. Leave blank for full AI lyric generation...",
     "custom_directives": "Optional constraints (e.g. 'acoustic cello solo', 'no drums in verse 1')..."
@@ -2673,12 +2619,31 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
         node.widgets.splice(targetIdx, 0, divider);
       }
     }
+    let trackInfoDisplay = node.widgets.find((w) => w.name === "preview_track_info");
+    if (!trackInfoDisplay) {
+      const trackDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: TRACK TELEMETRY & STYLE", "#06b6d4");
+      node.widgets.push(trackDivider);
+      trackInfoDisplay = node.addWidget(
+        "text",
+        "preview_track_info",
+        "\u{1F3B5} Waiting for generation...",
+        function() {
+        },
+        { serialize: false }
+      );
+      if (trackInfoDisplay) {
+        trackInfoDisplay.name = "preview_track_info";
+        trackInfoDisplay.options = trackInfoDisplay.options || {};
+        trackInfoDisplay.options.serialize = false;
+        trackInfoDisplay.computeSize = function(width) {
+          return [width, 24];
+        };
+      }
+    }
     let styleDisplay = node.widgets.find((w) => w.name === "preview_style");
     if (!styleDisplay) {
-      const styleDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: STYLE DESCRIPTOR", "#06b6d4");
-      node.widgets.push(styleDivider);
-      if (typeof ComfyWidgets7 !== "undefined" && ComfyWidgets7["STRING"]) {
-        styleDisplay = ComfyWidgets7["STRING"](
+      if (typeof ComfyWidgets6 !== "undefined" && ComfyWidgets6["STRING"]) {
+        styleDisplay = ComfyWidgets6["STRING"](
           node,
           "preview_style",
           ["STRING", { multiline: true }],
@@ -2735,8 +2700,8 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     if (!lyricsDisplay) {
       const lyricsDivider = new StoiqoSectionDividerWidget("9", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ec4899");
       node.widgets.push(lyricsDivider);
-      if (typeof ComfyWidgets7 !== "undefined" && ComfyWidgets7["STRING"]) {
-        lyricsDisplay = ComfyWidgets7["STRING"](
+      if (typeof ComfyWidgets6 !== "undefined" && ComfyWidgets6["STRING"]) {
+        lyricsDisplay = ComfyWidgets6["STRING"](
           node,
           "preview_lyrics",
           ["STRING", { multiline: true }],
@@ -2861,8 +2826,19 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     if (origOnExecuted) origOnExecuted.apply(this, arguments);
     if (message && message.music_info && message.music_info.length > 0) {
       const info = message.music_info[0];
+      const tw = this.widgets?.find((w) => w.name === "preview_track_info");
       const sw = this.widgets?.find((w) => w.name === "preview_style");
       const lw = this.widgets?.find((w) => w.name === "preview_lyrics");
+      if (tw) {
+        const durSec = Math.round(info.max_duration || 0);
+        const durMin = Math.floor(durSec / 60);
+        const durRemSec = String(durSec % 60).padStart(2, "0");
+        const durStr = durSec > 0 ? `${durSec}s (~${durMin}:${durRemSec}m)` : "Dynamic";
+        const modeStr = info.mode === "full" ? "Full Song" : info.mode === "melody" ? "Melody Lead" : "Vocal";
+        const summaryText = `\u{1F3B5} ${info.title || "Untitled"} | \u23F1\uFE0F ${durStr} | \u{1F941} ${info.bpm || 120} BPM | \u{1F3B9} ${info.musical_key || "N/A"} | \u{1F39A}\uFE0F ${modeStr}`;
+        tw.value = summaryText;
+        if (tw.inputEl) tw.inputEl.value = summaryText;
+      }
       if (sw && info.style) {
         sw.value = info.style;
         if (sw.inputEl) sw.inputEl.value = info.style;
@@ -2875,43 +2851,1117 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     }
   };
 }
-var init_musicPromptNode = __esm({
-  "src_js/nodes/musicPromptNode.js"() {
-    init_core();
-  }
-});
 
-// src_js/index.js
-import { app as app10 } from "../../scripts/app.js";
-var require_index = __commonJS({
-  "src_js/index.js"() {
-    init_engineNode();
-    init_showPromptNode();
-    init_modelLoaderNode();
-    init_visualDiffNode();
-    init_imageCompareNode();
-    init_datasetNode();
-    init_iteratorNode();
-    init_trioLoaderNode();
-    init_textConcatNode();
-    init_proSaverNode();
-    init_musicPromptNode();
-    app10.registerExtension({
-      name: "Stoiqo.PromptGeneratorEngine.Dividers",
-      async beforeRegisterNodeDef(nodeType, nodeData, app11) {
-        setupEngineNode(nodeType, nodeData, app11);
-        setupShowPromptNode(nodeType, nodeData, app11);
-        setupModelLoaderNode(nodeType, nodeData, app11);
-        setupVisualDiffNode(nodeType, nodeData, app11);
-        setupImageCompareNode(nodeType, nodeData, app11);
-        setupDatasetNode(nodeType, nodeData, app11);
-        setupIteratorNode(nodeType, nodeData, app11);
-        setupTrioLoaderNode(nodeType, nodeData, app11);
-        setupConcatNode(nodeType, nodeData, app11);
-        setupProSaverNode(nodeType, nodeData, app11);
-        setupMusicPromptNode(nodeType, nodeData, app11);
+// src_js/nodes/pipelineNodes.js
+var CONFIGURATIONS = {
+  // 1. Watermark & Logo Stamp
+  StoiqoWatermarkNode: {
+    minWidth: 380
+  },
+  // 2. Turbo Sampler & Direct Decoder
+  StoiqoTurboSamplerNode: {
+    minWidth: 420,
+    multilineHeights: {
+      positive_prompt: 72,
+      negative_prompt: 48
+    }
+  },
+  // 3. Tri-Model Loader Hub
+  StoiqoTriLoaderHubNode: {
+    minWidth: 380
+  },
+  // 4. Smart Seed & Variance Controller
+  StoiqoSeedControllerNode: {
+    minWidth: 340
+  },
+  // 5. Inpaint Stitcher & Composite
+  StoiqoInpaintStitcherNode: {
+    minWidth: 360
+  },
+  // 6. Pro Audio Saver (YuE2)
+  StoiqoAudioSaverNode: {
+    minWidth: 400,
+    multilineHeights: {
+      lyrics: 68,
+      style: 48
+    }
+  },
+  // 7. Pro Video Saver (MiniMax)
+  StoiqoVideoSaverNode: {
+    minWidth: 400,
+    multilineHeights: {
+      motion_prompt: 56
+    }
+  },
+  // 8. Modular Prompt Synthesizer Engine
+  StoiqoPromptSynthesizerNode: {
+    minWidth: 420,
+    multilineHeights: {
+      user_directives: 68
+    }
+  },
+  // 9. AI Persona & Style Directives
+  StoiqoStyleDirectivesNode: {
+    minWidth: 380,
+    multilineHeights: {
+      custom_system_prompt: 52
+    }
+  },
+  // 10. LLM Sampling & Precision
+  StoiqoSamplingOptionsNode: {
+    minWidth: 360
+  },
+  // 11. Multi-Image Context Hub
+  StoiqoMultiImageContextNode: {
+    minWidth: 380
+  },
+  // 12. Character Consistency Memory Bank (Lorebook & DNA)
+  StoiqoCharacterMemoryNode: {
+    minWidth: 420,
+    multilineHeights: {
+      face_and_skin: 52,
+      signature_outfit: 52,
+      negative_constraints: 48,
+      user_prompt: 48
+    }
+  },
+  // 13. Universal Context Pipe (In / Bus)
+  StoiqoUniversalPipeInNode: {
+    minWidth: 320
+  },
+  // 14. Universal Context Pipe (Out / Unpack)
+  StoiqoUniversalPipeOutNode: {
+    minWidth: 320
+  },
+  // 15. Webhook Notifier & Pipeline Exporter
+  StoiqoWebhookNotifierNode: {
+    minWidth: 400,
+    multilineHeights: {
+      message: 56
+    }
+  }
+};
+function setupPipelineNodes(nodeType, nodeData, appInstance) {
+  const nodeName = nodeData.name;
+  const config = CONFIGURATIONS[nodeName];
+  if (!config) return;
+  const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+  nodeType.prototype.onNodeCreated = function() {
+    if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+    const node = this;
+    if (!node || !node.widgets) return;
+    node.widgets = node.widgets.filter((w) => !w.isStoiqoDivider);
+    if (config.minWidth && node.size && node.size[0] < config.minWidth) {
+      node.size[0] = config.minWidth;
+    }
+    if (config.multilineHeights) {
+      for (const [widgetName, hVal] of Object.entries(config.multilineHeights)) {
+        const w = node.widgets.find((w2) => w2.name === widgetName);
+        if (w) {
+          w.computeSize = function(width) {
+            return [width, hVal];
+          };
+          if (w.inputEl) {
+            w.inputEl.style.boxSizing = "border-box";
+            w.inputEl.style.height = `${hVal}px`;
+            w.inputEl.style.minHeight = `${hVal}px`;
+            w.inputEl.style.maxHeight = `${hVal}px`;
+            w.inputEl.style.resize = "none";
+            w.inputEl.style.fontSize = "11.5px";
+            w.inputEl.style.lineHeight = "1.45";
+          }
+        }
+      }
+    }
+    if (nodeName === "StoiqoPromptSynthesizerNode") {
+      let tw = node.widgets.find((w) => w.name === "synthesized_prompt");
+      if (!tw) {
+        tw = node.addWidget(
+          "customtext",
+          "synthesized_prompt",
+          "",
+          function() {
+          },
+          { multiline: true }
+        );
+        tw.options = { serialize: false };
+        tw.computeSize = function(width) {
+          return [width, 100];
+        };
+        const styleTw = (el) => {
+          if (!el) return;
+          el.readOnly = true;
+          el.placeholder = "Prompt stream output...";
+          el.style.boxSizing = "border-box";
+          el.style.fontSize = "11.5px";
+          el.style.lineHeight = "1.45";
+          el.style.fontFamily = "monospace, -apple-system, sans-serif";
+          el.style.opacity = "0.92";
+        };
+        if (tw.inputEl) {
+          styleTw(tw.inputEl);
+        } else {
+          let rawEl = null;
+          Object.defineProperty(tw, "inputEl", {
+            configurable: true,
+            enumerable: true,
+            get() {
+              return rawEl;
+            },
+            set(v) {
+              rawEl = v;
+              styleTw(v);
+            }
+          });
+        }
+      }
+    }
+    if (nodeName === "StoiqoStyleDirectivesNode") {
+      const updateCustomPromptVisibility = () => {
+        const sys = node.widgets.find((w) => w.name === "system_prompt");
+        const custom = node.widgets.find((w) => w.name === "custom_system_prompt");
+        if (!custom) return;
+        if (!custom._stoiqoOrig) {
+          custom._stoiqoOrig = { computeSize: custom.computeSize, draw: custom.draw };
+        }
+        const show = !!sys && String(sys.value || "").includes("Custom");
+        custom.hidden = !show;
+        custom.computeSize = show ? custom._stoiqoOrig.computeSize : () => [0, -4];
+        custom.draw = show ? custom._stoiqoOrig.draw : () => {
+        };
+        if (custom.inputEl) {
+          custom.inputEl.hidden = !show;
+          custom.inputEl.style.display = show ? "" : "none";
+        }
+        if (typeof node.computeSize === "function") {
+          const computed = node.computeSize();
+          node.size[1] = Math.max(Math.ceil(computed[1]), 60);
+        }
+        node.setDirtyCanvas?.(true, true);
+      };
+      const sysWidget = node.widgets.find((w) => w.name === "system_prompt");
+      if (sysWidget && !sysWidget._stoiqoHooked) {
+        sysWidget._stoiqoHooked = true;
+        const origCb = sysWidget.callback;
+        sysWidget.callback = function() {
+          if (origCb) origCb.apply(this, arguments);
+          updateCustomPromptVisibility();
+        };
+      }
+      node._stoiqoUpdateCustomPrompt = updateCustomPromptVisibility;
+      setTimeout(updateCustomPromptVisibility, 50);
+    }
+    if (nodeName === "StoiqoAudioSaverNode") {
+      createAudioPlayerWidget(node, null);
+    }
+    if (nodeName === "StoiqoVideoSaverNode") {
+      createVideoPlayerWidget(node, null);
+    }
+    if (node.setDirtyCanvas) {
+      node.setDirtyCanvas(true, true);
+    }
+  };
+  if (nodeName === "StoiqoStyleDirectivesNode") {
+    const origOnConfigure = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function() {
+      if (origOnConfigure) origOnConfigure.apply(this, arguments);
+      if (this._stoiqoUpdateCustomPrompt) setTimeout(this._stoiqoUpdateCustomPrompt, 50);
+    };
+  }
+  if (nodeName === "StoiqoPromptSynthesizerNode") {
+    const origOnExecuted = nodeType.prototype.onExecuted;
+    nodeType.prototype.onExecuted = function(message) {
+      if (origOnExecuted) origOnExecuted.apply(this, arguments);
+      if (message && message.text) {
+        const tw = this.widgets?.find((w) => w.name === "synthesized_prompt");
+        if (tw) {
+          const txt = Array.isArray(message.text) ? message.text.join("\n") : String(message.text || "");
+          tw.value = txt;
+          if (tw.inputEl) tw.inputEl.value = txt;
+        }
+        this.setDirtyCanvas(true, true);
+      }
+    };
+  }
+  if (nodeName === "StoiqoAudioSaverNode") {
+    const origOnExecuted = nodeType.prototype.onExecuted;
+    nodeType.prototype.onExecuted = function(message) {
+      if (origOnExecuted) origOnExecuted.apply(this, arguments);
+      if (message && message.audio && message.audio.length > 0) {
+        createAudioPlayerWidget(this, message.audio[0]);
+      }
+    };
+  }
+  if (nodeName === "StoiqoVideoSaverNode") {
+    const origOnExecuted = nodeType.prototype.onExecuted;
+    nodeType.prototype.onExecuted = function(message) {
+      if (origOnExecuted) origOnExecuted.apply(this, arguments);
+      const vData = message?.videos && message.videos[0] || message?.gifs && message.gifs[0] || message?.images && message.images[0];
+      if (vData) {
+        createVideoPlayerWidget(this, vData);
+      }
+    };
+  }
+}
+function createAudioPlayerWidget(node, audioData) {
+  if (!node || !node.addDOMWidget) return;
+  let widget = node.widgets?.find((w) => w.name === "audio_player");
+  if (!widget) {
+    const container = document.createElement("div");
+    container.className = "stoiqo-audio-player";
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.gap = "6px";
+    container.style.padding = "8px 10px";
+    container.style.background = "linear-gradient(135deg, rgba(18, 20, 29, 0.95), rgba(10, 12, 18, 0.98))";
+    container.style.border = "1px solid rgba(0, 229, 255, 0.25)";
+    container.style.borderRadius = "8px";
+    container.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.4)";
+    container.style.fontFamily = "system-ui, -apple-system, sans-serif";
+    container.style.color = "#e2e8f0";
+    container.style.userSelect = "none";
+    container.style.marginTop = "4px";
+    const audio = document.createElement("audio");
+    audio.preload = "metadata";
+    const header = document.createElement("div");
+    header.style.display = "flex";
+    header.style.justifyContent = "space-between";
+    header.style.alignItems = "center";
+    header.style.fontSize = "11px";
+    header.style.fontWeight = "600";
+    header.style.color = "#00e5ff";
+    const titleEl = document.createElement("span");
+    titleEl.textContent = audioData?.filename || "YuE2 / Suno Track Preview";
+    titleEl.style.overflow = "hidden";
+    titleEl.style.textOverflow = "ellipsis";
+    titleEl.style.whiteSpace = "nowrap";
+    titleEl.style.maxWidth = "220px";
+    const timeEl = document.createElement("span");
+    timeEl.textContent = "0:00 / 0:00";
+    timeEl.style.fontFamily = "monospace";
+    timeEl.style.color = "#94a3b8";
+    header.appendChild(titleEl);
+    header.appendChild(timeEl);
+    const controls = document.createElement("div");
+    controls.style.display = "flex";
+    controls.style.alignItems = "center";
+    controls.style.gap = "8px";
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.style.background = "linear-gradient(135deg, #00e5ff, #7928ca)";
+    playBtn.style.border = "none";
+    playBtn.style.borderRadius = "50%";
+    playBtn.style.width = "28px";
+    playBtn.style.height = "28px";
+    playBtn.style.display = "flex";
+    playBtn.style.alignItems = "center";
+    playBtn.style.justifyContent = "center";
+    playBtn.style.cursor = "pointer";
+    playBtn.style.color = "#ffffff";
+    playBtn.style.flexShrink = "0";
+    playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+    const progress = document.createElement("input");
+    progress.type = "range";
+    progress.min = "0";
+    progress.max = "100";
+    progress.value = "0";
+    progress.style.flex = "1";
+    progress.style.accentColor = "#00e5ff";
+    progress.style.cursor = "pointer";
+    progress.style.height = "4px";
+    controls.appendChild(playBtn);
+    controls.appendChild(progress);
+    container.appendChild(header);
+    container.appendChild(controls);
+    container.appendChild(audio);
+    const formatTime = (secs) => {
+      if (!secs || isNaN(secs)) return "0:00";
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${m}:${s < 10 ? "0" : ""}${s}`;
+    };
+    playBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (audio.paused) {
+        audio.play();
+        playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+      } else {
+        audio.pause();
+        playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+      }
+    };
+    audio.ontimeupdate = () => {
+      if (!audio.duration) return;
+      progress.value = audio.currentTime / audio.duration * 100;
+      timeEl.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+    };
+    audio.onended = () => {
+      playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+      progress.value = 0;
+    };
+    progress.oninput = (e) => {
+      e.stopPropagation();
+      if (audio.duration) {
+        audio.currentTime = progress.value / 100 * audio.duration;
+      }
+    };
+    widget = node.addDOMWidget("audio_player", "AUDIO_PLAYER", container, {
+      serialize: false,
+      hideOnZoom: false
+    });
+    widget.computeSize = function(width) {
+      return [width, 68];
+    };
+    widget.audioEl = audio;
+    widget.titleEl = titleEl;
+  }
+  if (audioData && widget && widget.audioEl) {
+    const url = `/view?filename=${encodeURIComponent(audioData.filename)}&subfolder=${encodeURIComponent(audioData.subfolder || "")}&type=${encodeURIComponent(audioData.type || "output")}`;
+    widget.audioEl.src = url;
+    if (widget.titleEl) widget.titleEl.textContent = audioData.filename;
+    if (node.setDirtyCanvas) node.setDirtyCanvas(true, true);
+  }
+}
+function createVideoPlayerWidget(node, videoData) {
+  if (!node || !node.addDOMWidget) return;
+  let widget = node.widgets?.find((w) => w.name === "video_player");
+  if (!widget) {
+    const container = document.createElement("div");
+    container.className = "stoiqo-video-player";
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.gap = "6px";
+    container.style.padding = "8px 10px";
+    container.style.background = "linear-gradient(135deg, rgba(16, 20, 30, 0.96), rgba(8, 10, 16, 0.98))";
+    container.style.border = "1px solid rgba(0, 229, 255, 0.3)";
+    container.style.borderRadius = "8px";
+    container.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.5)";
+    container.style.fontFamily = "system-ui, -apple-system, sans-serif";
+    container.style.color = "#e2e8f0";
+    container.style.userSelect = "none";
+    container.style.marginTop = "4px";
+    const video = document.createElement("video");
+    video.preload = "auto";
+    video.playsInline = true;
+    video.muted = true;
+    video.loop = true;
+    video.style.width = "100%";
+    video.style.maxHeight = "190px";
+    video.style.objectFit = "contain";
+    video.style.display = "block";
+    video.style.borderRadius = "6px";
+    video.style.background = "#040608";
+    video.style.border = "1px solid rgba(255, 255, 255, 0.08)";
+    const header = document.createElement("div");
+    header.style.display = "flex";
+    header.style.justifyContent = "space-between";
+    header.style.alignItems = "center";
+    header.style.fontSize = "11px";
+    header.style.fontWeight = "600";
+    header.style.color = "#00e5ff";
+    const titleEl = document.createElement("span");
+    titleEl.textContent = videoData?.filename || "MiniMax / Wan Video Preview";
+    titleEl.style.overflow = "hidden";
+    titleEl.style.textOverflow = "ellipsis";
+    titleEl.style.whiteSpace = "nowrap";
+    titleEl.style.maxWidth = "200px";
+    const timeEl = document.createElement("span");
+    timeEl.textContent = "00:00.00 / 00:00.00 (F: 0/0)";
+    timeEl.style.fontFamily = "monospace";
+    timeEl.style.fontSize = "10.5px";
+    timeEl.style.color = "#94a3b8";
+    header.appendChild(titleEl);
+    header.appendChild(timeEl);
+    const progress = document.createElement("input");
+    progress.type = "range";
+    progress.min = "0";
+    progress.max = "1000";
+    progress.value = "0";
+    progress.style.width = "100%";
+    progress.style.accentColor = "#00e5ff";
+    progress.style.cursor = "pointer";
+    progress.style.height = "5px";
+    progress.style.margin = "2px 0";
+    const controls = document.createElement("div");
+    controls.style.display = "flex";
+    controls.style.alignItems = "center";
+    controls.style.justifyContent = "space-between";
+    controls.style.gap = "6px";
+    controls.style.fontSize = "11px";
+    const leftControls = document.createElement("div");
+    leftControls.style.display = "flex";
+    leftControls.style.alignItems = "center";
+    leftControls.style.gap = "6px";
+    const createBtn = (text, title, padding = "3px 8px") => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.title = title;
+      btn.textContent = text;
+      btn.style.background = "rgba(255, 255, 255, 0.06)";
+      btn.style.border = "1px solid rgba(255, 255, 255, 0.15)";
+      btn.style.borderRadius = "4px";
+      btn.style.padding = padding;
+      btn.style.cursor = "pointer";
+      btn.style.color = "#cbd5e1";
+      btn.style.fontSize = "10.5px";
+      btn.style.fontFamily = "inherit";
+      btn.style.transition = "all 0.15s ease";
+      btn.onmouseenter = () => btn.style.background = "rgba(0, 229, 255, 0.15)";
+      btn.onmouseleave = () => {
+        if (!btn.dataset.active) btn.style.background = "rgba(255, 255, 255, 0.06)";
+      };
+      return btn;
+    };
+    const prevFrameBtn = createBtn("\u23EE -1F", "Step backward 1 frame");
+    const nextFrameBtn = createBtn("+1F \u23ED", "Step forward 1 frame");
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.title = "Play / Pause";
+    playBtn.style.background = "linear-gradient(135deg, #00e5ff, #7928ca)";
+    playBtn.style.border = "none";
+    playBtn.style.borderRadius = "50%";
+    playBtn.style.width = "28px";
+    playBtn.style.height = "28px";
+    playBtn.style.display = "flex";
+    playBtn.style.alignItems = "center";
+    playBtn.style.justifyContent = "center";
+    playBtn.style.cursor = "pointer";
+    playBtn.style.color = "#ffffff";
+    playBtn.style.flexShrink = "0";
+    playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+    const loopBtn = createBtn("\u{1F501} Loop", "Toggle Continuous Loop");
+    loopBtn.dataset.active = "true";
+    loopBtn.style.background = "rgba(0, 229, 255, 0.2)";
+    loopBtn.style.borderColor = "rgba(0, 229, 255, 0.5)";
+    loopBtn.style.color = "#00e5ff";
+    leftControls.appendChild(prevFrameBtn);
+    leftControls.appendChild(playBtn);
+    leftControls.appendChild(nextFrameBtn);
+    leftControls.appendChild(loopBtn);
+    const rightControls = document.createElement("div");
+    rightControls.style.display = "flex";
+    rightControls.style.alignItems = "center";
+    rightControls.style.gap = "6px";
+    const speedBtn = createBtn("1.0x", "Playback Speed (1.0x / 0.5x / 0.25x)", "3px 6px");
+    const muteBtn = createBtn("\u{1F507}", "Mute / Unmute", "3px 6px");
+    const popoutBtn = createBtn("\u2197", "Open video in new tab", "3px 6px");
+    rightControls.appendChild(speedBtn);
+    rightControls.appendChild(muteBtn);
+    rightControls.appendChild(popoutBtn);
+    controls.appendChild(leftControls);
+    controls.appendChild(rightControls);
+    container.appendChild(header);
+    container.appendChild(video);
+    container.appendChild(progress);
+    container.appendChild(controls);
+    let activeFps = 24;
+    let activeTotalFrames = 0;
+    const formatTime = (secs) => {
+      if (!secs || isNaN(secs)) return "00:00.00";
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      const ms = Math.floor(secs % 1 * 100);
+      return `${m < 10 ? "0" : ""}${m}:${s < 10 ? "0" : ""}${s}.${ms < 10 ? "0" : ""}${ms}`;
+    };
+    const updateDisplay = () => {
+      const dur = video.duration || 0;
+      const cur = video.currentTime || 0;
+      const curFrame = Math.round(cur * activeFps);
+      const totFrames = activeTotalFrames || Math.round(dur * activeFps);
+      timeEl.textContent = `${formatTime(cur)} / ${formatTime(dur)} (F: ${curFrame}/${totFrames})`;
+      if (dur > 0) {
+        progress.value = cur / dur * 1e3;
+      }
+    };
+    playBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (video.paused) {
+        video.play();
+        playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+      } else {
+        video.pause();
+        playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+      }
+    };
+    prevFrameBtn.onclick = (e) => {
+      e.stopPropagation();
+      video.pause();
+      playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+      video.currentTime = Math.max(0, video.currentTime - 1 / activeFps);
+      updateDisplay();
+    };
+    nextFrameBtn.onclick = (e) => {
+      e.stopPropagation();
+      video.pause();
+      playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+      video.currentTime = Math.min(video.duration || 0, video.currentTime + 1 / activeFps);
+      updateDisplay();
+    };
+    loopBtn.onclick = (e) => {
+      e.stopPropagation();
+      video.loop = !video.loop;
+      if (video.loop) {
+        loopBtn.dataset.active = "true";
+        loopBtn.style.background = "rgba(0, 229, 255, 0.2)";
+        loopBtn.style.borderColor = "rgba(0, 229, 255, 0.5)";
+        loopBtn.style.color = "#00e5ff";
+      } else {
+        delete loopBtn.dataset.active;
+        loopBtn.style.background = "rgba(255, 255, 255, 0.06)";
+        loopBtn.style.borderColor = "rgba(255, 255, 255, 0.15)";
+        loopBtn.style.color = "#cbd5e1";
+      }
+    };
+    const SPEEDS = [1, 0.5, 0.25];
+    let speedIdx = 0;
+    speedBtn.onclick = (e) => {
+      e.stopPropagation();
+      speedIdx = (speedIdx + 1) % SPEEDS.length;
+      const newSpeed = SPEEDS[speedIdx];
+      video.playbackRate = newSpeed;
+      speedBtn.textContent = `${newSpeed}x`;
+    };
+    muteBtn.onclick = (e) => {
+      e.stopPropagation();
+      video.muted = !video.muted;
+      muteBtn.textContent = video.muted ? "\u{1F507}" : "\u{1F50A}";
+    };
+    popoutBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (video.src) window.open(video.src, "_blank");
+    };
+    video.ontimeupdate = () => {
+      updateDisplay();
+    };
+    video.onended = () => {
+      if (!video.loop) {
+        playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+        progress.value = 0;
+      }
+    };
+    progress.oninput = (e) => {
+      e.stopPropagation();
+      if (video.duration) {
+        video.currentTime = progress.value / 1e3 * video.duration;
+        updateDisplay();
+      }
+    };
+    widget = node.addDOMWidget("video_player", "VIDEO_PLAYER", container, {
+      serialize: false,
+      hideOnZoom: false
+    });
+    widget.computeSize = function(width) {
+      return [width, 275];
+    };
+    widget.videoEl = video;
+    widget.titleEl = titleEl;
+    widget.setFps = (fps) => {
+      activeFps = fps || 24;
+    };
+    widget.setTotalFrames = (tf) => {
+      activeTotalFrames = tf || 0;
+    };
+  }
+  if (videoData && widget && widget.videoEl) {
+    const url = `/view?filename=${encodeURIComponent(videoData.filename)}&subfolder=${encodeURIComponent(videoData.subfolder || "")}&type=${encodeURIComponent(videoData.type || "output")}`;
+    widget.videoEl.src = url;
+    widget.videoEl.load();
+    if (widget.setFps) widget.setFps(videoData.fps);
+    if (widget.setTotalFrames) widget.setTotalFrames(videoData.total_frames);
+    if (widget.titleEl) widget.titleEl.textContent = videoData.filename;
+    if (node.setDirtyCanvas) node.setDirtyCanvas(true, true);
+  }
+}
+
+// src_js/nodes/loraStackNode.js
+import { app as app9 } from "../../../scripts/app.js";
+import { api as api8 } from "../../../scripts/api.js";
+var LORA_NODE_NAMES = ["StoiqoLoraStackNode", "[STOIQO] LoRA Stack"];
+var MIN_WIDTH = 400;
+var PAD = 6;
+var HEAD_H = 24;
+var ROW_H = 28;
+var BTN_H = 30;
+var STEP = 0.05;
+var _loraListCache = null;
+async function fetchLoraList(force = false) {
+  if (_loraListCache && !force) return _loraListCache;
+  try {
+    const resp = await api8.fetchApi("/stoiqo/loras");
+    const data = await resp.json();
+    _loraListCache = Array.isArray(data.loras) ? data.loras : [];
+  } catch (err) {
+    console.warn("[STOIQO LoRA Stack] Impossibile leggere la lista LoRA:", err);
+    _loraListCache = [];
+  }
+  return _loraListCache;
+}
+function roundRect(ctx, x, y, w, h, r) {
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+  }
+}
+function baseName(path) {
+  const parts = String(path).split(/[\\/]/);
+  const file = parts[parts.length - 1] || "";
+  return file.replace(/\.(safetensors|ckpt|pt|pth|bin)$/i, "");
+}
+function fitText(ctx, text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + "\u2026").width > maxW) {
+    t = t.slice(0, -1);
+  }
+  return t + "\u2026";
+}
+var StoiqoLoraStackWidget = class {
+  constructor(node, storeWidget) {
+    this.type = "custom";
+    this.name = "_stoiqo_lora_stack";
+    this.node = node;
+    this.store = storeWidget;
+    this.options = { serialize: false };
+    this.loras = [];
+    this.hits = [];
+    this.lastClick = 0;
+  }
+  // The UI state lives in the hidden store widget; this widget carries no value of its own.
+  get value() {
+    return "";
+  }
+  set value(_v) {
+  }
+  rowsCount() {
+    return Math.max(this.loras.length, 1);
+  }
+  totalHeight() {
+    return PAD + HEAD_H + this.rowsCount() * ROW_H + 6 + BTN_H + PAD;
+  }
+  computeSize(width) {
+    return [width, this.totalHeight()];
+  }
+  computeLayoutSize() {
+    const h = this.totalHeight();
+    return { minHeight: h, maxHeight: h, minWidth: MIN_WIDTH };
+  }
+  loadFromStore() {
+    let parsed = [];
+    try {
+      const raw = this.store ? this.store.value : "[]";
+      const data = JSON.parse(raw || "[]");
+      if (Array.isArray(data)) parsed = data;
+    } catch (e) {
+      parsed = [];
+    }
+    this.loras = parsed.filter((it) => it && typeof it.name === "string" && it.name).map((it) => ({
+      name: it.name,
+      strength: Number.isFinite(Number(it.strength)) ? Number(it.strength) : 1,
+      enabled: it.enabled !== false
+    }));
+  }
+  sync() {
+    if (this.store) {
+      this.store.value = JSON.stringify(
+        this.loras.map((l) => ({
+          name: l.name,
+          strength: l.strength,
+          strength_clip: l.strength,
+          enabled: l.enabled
+        }))
+      );
+    }
+    this.resizeNode();
+    if (this.node) this.node.setDirtyCanvas(true, true);
+  }
+  resizeNode() {
+    const node = this.node;
+    if (!node) return;
+    const sz = node.computeSize();
+    node.setSize([Math.max(node.size[0], MIN_WIDTH), sz[1]]);
+  }
+  draw(ctx, node, width, posY) {
+    this.hits = [];
+    const x0 = 10;
+    const w = width - 20;
+    let y = posY + PAD;
+    ctx.save();
+    ctx.textBaseline = "middle";
+    const activeCount = this.loras.filter((l) => l.enabled).length;
+    ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText(`LoRA Stack \xB7 ${activeCount}/${this.loras.length} attivi`, x0 + 2, y + HEAD_H / 2);
+    const allLabel = activeCount > 0 ? "Disattiva tutti" : "Attiva tutti";
+    ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+    const allW = ctx.measureText(allLabel).width + 16;
+    const allX = x0 + w - allW;
+    if (this.loras.length > 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.07)";
+      roundRect(ctx, allX, y + 3, allW, HEAD_H - 6, 4);
+      ctx.fill();
+      ctx.fillStyle = "#cbd5e1";
+      ctx.textAlign = "center";
+      ctx.fillText(allLabel, allX + allW / 2, y + HEAD_H / 2);
+      this.hits.push({
+        x: allX,
+        y: y + 3,
+        w: allW,
+        h: HEAD_H - 6,
+        action: () => {
+          const target = activeCount === 0;
+          this.loras.forEach((l) => {
+            l.enabled = target;
+          });
+          this.sync();
+        }
+      });
+    }
+    y += HEAD_H;
+    if (this.loras.length === 0) {
+      ctx.font = "italic 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+      ctx.fillStyle = "#64748b";
+      ctx.textAlign = "center";
+      ctx.fillText("Nessun LoRA \u2014 premi \u201C+ Aggiungi LoRA\u201D", x0 + w / 2, y + ROW_H / 2);
+      y += ROW_H;
+    } else {
+      this.loras.forEach((lora, idx) => {
+        const rY = y + 2;
+        const rH = ROW_H - 4;
+        const on = lora.enabled;
+        ctx.fillStyle = on ? "rgba(45, 212, 191, 0.08)" : "rgba(255, 255, 255, 0.04)";
+        roundRect(ctx, x0, rY, w, rH, 5);
+        ctx.fill();
+        ctx.strokeStyle = on ? "rgba(45, 212, 191, 0.35)" : "rgba(255, 255, 255, 0.08)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        const tW = 28, tH = 14;
+        const tX = x0 + 8, tY = rY + (rH - tH) / 2;
+        ctx.fillStyle = on ? "#2dd4bf" : "#475569";
+        roundRect(ctx, tX, tY, tW, tH, 7);
+        ctx.fill();
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.arc(on ? tX + tW - 7 : tX + 7, tY + tH / 2, 5, 0, Math.PI * 2);
+        ctx.fill();
+        this.hits.push({
+          x: tX - 2,
+          y: rY,
+          w: tW + 4,
+          h: rH,
+          action: () => {
+            lora.enabled = !lora.enabled;
+            this.sync();
+          }
+        });
+        const btnW = 18, valW = 46, xW = 18, gap = 3;
+        const ctrlW = btnW + valW + btnW + gap + xW;
+        const cX = x0 + w - ctrlW - 6;
+        const cY = rY + 3;
+        const cH = rH - 6;
+        const drawBtn = (bx, bw, label, color) => {
+          ctx.fillStyle = "rgba(255,255,255,0.08)";
+          roundRect(ctx, bx, cY, bw, cH, 3);
+          ctx.fill();
+          ctx.fillStyle = color;
+          ctx.font = "bold 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(label, bx + bw / 2, cY + cH / 2 + 0.5);
+        };
+        drawBtn(cX, btnW, "\u2212", "#e2e8f0");
+        this.hits.push({
+          x: cX,
+          y: cY,
+          w: btnW,
+          h: cH,
+          action: () => {
+            lora.strength = Math.round((lora.strength - STEP) * 100) / 100;
+            this.sync();
+          }
+        });
+        const vX = cX + btnW;
+        ctx.fillStyle = "rgba(0,0,0,0.25)";
+        ctx.fillRect(vX, cY, valW, cH);
+        ctx.fillStyle = on ? "#f1f5f9" : "#64748b";
+        ctx.font = "11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(lora.strength.toFixed(2), vX + valW / 2, cY + cH / 2 + 0.5);
+        this.hits.push({
+          x: vX,
+          y: cY,
+          w: valW,
+          h: cH,
+          action: (ev) => {
+            app9.canvas.prompt("Strength", lora.strength, (v) => {
+              const num = parseFloat(v);
+              if (Number.isFinite(num)) {
+                lora.strength = Math.round(Math.max(-10, Math.min(10, num)) * 100) / 100;
+                this.sync();
+              }
+            }, ev);
+          }
+        });
+        drawBtn(vX + valW, btnW, "+", "#e2e8f0");
+        this.hits.push({
+          x: vX + valW,
+          y: cY,
+          w: btnW,
+          h: cH,
+          action: () => {
+            lora.strength = Math.round((lora.strength + STEP) * 100) / 100;
+            this.sync();
+          }
+        });
+        const xX = vX + valW + btnW + gap;
+        drawBtn(xX, xW, "\u2715", "#f87171");
+        this.hits.push({
+          x: xX,
+          y: cY,
+          w: xW,
+          h: cH,
+          action: () => {
+            this.loras.splice(idx, 1);
+            this.sync();
+          }
+        });
+        const nX = tX + tW + 10;
+        const nW = cX - nX - 8;
+        ctx.font = "12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillStyle = on ? "#e2e8f0" : "#64748b";
+        ctx.fillText(fitText(ctx, baseName(lora.name), nW), nX, rY + rH / 2 + 0.5);
+        this.hits.push({
+          x: nX,
+          y: rY,
+          w: nW,
+          h: rH,
+          action: (ev) => this.pickLora(ev, (picked) => {
+            lora.name = picked;
+            this.sync();
+          })
+        });
+        y += ROW_H;
+      });
+    }
+    y += 6;
+    ctx.fillStyle = "rgba(45, 212, 191, 0.14)";
+    roundRect(ctx, x0, y, w, BTN_H - 4, 6);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(45, 212, 191, 0.55)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = "#2dd4bf";
+    ctx.font = "bold 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("+ Aggiungi LoRA", x0 + w / 2, y + (BTN_H - 4) / 2 + 0.5);
+    this.hits.push({
+      x: x0,
+      y,
+      w,
+      h: BTN_H - 4,
+      action: (ev) => this.pickLora(ev, (picked) => {
+        this.loras.push({ name: picked, strength: 1, enabled: true });
+        this.sync();
+      })
+    });
+    ctx.restore();
+  }
+  async pickLora(event, onPick) {
+    const list = await fetchLoraList(true);
+    const LG = window.LiteGraph;
+    if (!LG || !LG.ContextMenu) return;
+    if (!list.length) {
+      new LG.ContextMenu([{ content: "Nessun LoRA trovato in models/loras", disabled: true }], { event });
+      return;
+    }
+    const choose = (v) => {
+      if (v && typeof v.value === "string") onPick(v.value);
+    };
+    const hasFolders = list.some((n) => /[\\/]/.test(n));
+    if (!hasFolders) {
+      new LG.ContextMenu(
+        list.map((n) => ({ content: baseName(n), value: n })),
+        { event, title: "LoRA", callback: choose }
+      );
+      return;
+    }
+    const groups = /* @__PURE__ */ new Map();
+    const rootFiles = [];
+    for (const n of list) {
+      const parts = n.split(/[\\/]/);
+      if (parts.length === 1) {
+        rootFiles.push(n);
+      } else {
+        const folder = parts.slice(0, -1).join("/");
+        if (!groups.has(folder)) groups.set(folder, []);
+        groups.get(folder).push(n);
+      }
+    }
+    const items = [];
+    for (const [folder, files] of [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      items.push({
+        content: `\u{1F4C1} ${folder}`,
+        has_submenu: true,
+        callback: (_value, _options, e, menu) => {
+          new LG.ContextMenu(
+            files.map((n) => ({ content: baseName(n), value: n })),
+            { event: e, parentMenu: menu, callback: choose }
+          );
+          return true;
+        }
+      });
+    }
+    rootFiles.forEach((n) => items.push({ content: baseName(n), value: n }));
+    new LG.ContextMenu(items, { event, title: "LoRA", callback: choose });
+  }
+  mouse(event, pos, node) {
+    if (!event || event.type !== "pointerdown" && event.type !== "mousedown") return false;
+    if (!pos) return false;
+    const now = performance.now();
+    if (now - this.lastClick < 150) return true;
+    const [mx, my] = pos;
+    for (const h of this.hits) {
+      if (mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h) {
+        this.lastClick = now;
+        h.action(event);
+        return true;
+      }
+    }
+    return false;
+  }
+};
+function setupLoraStackNodeUI(node) {
+  if (!node) return;
+  if (node.size && node.size[0] < MIN_WIDTH) node.size[0] = MIN_WIDTH;
+  let loraWidget = node.widgets ? node.widgets.find((w) => w instanceof StoiqoLoraStackWidget) : null;
+  if (!loraWidget) {
+    const store = node.widgets ? node.widgets.find((w) => w.name === "lora_stack") : null;
+    if (store) {
+      store.hidden = true;
+      store.computeSize = () => [0, -4];
+      store.draw = () => {
+      };
+      if (store.inputEl) {
+        store.inputEl.hidden = true;
+        store.inputEl.style.display = "none";
+      }
+    }
+    loraWidget = new StoiqoLoraStackWidget(node, store);
+    node.addCustomWidget(loraWidget);
+    node.stoiqoLoraWidget = loraWidget;
+  }
+  loraWidget.loadFromStore();
+  loraWidget.resizeNode();
+  node.setDirtyCanvas(true, true);
+}
+function setupLoraStackNode(nodeType, nodeData, appInstance) {
+  if (!LORA_NODE_NAMES.includes(nodeData.name)) return;
+  const origCreated = nodeType.prototype.onNodeCreated;
+  nodeType.prototype.onNodeCreated = function() {
+    if (origCreated) origCreated.apply(this, arguments);
+    setupLoraStackNodeUI(this);
+  };
+  const origConfigure = nodeType.prototype.onConfigure;
+  nodeType.prototype.onConfigure = function() {
+    if (origConfigure) origConfigure.apply(this, arguments);
+    setupLoraStackNodeUI(this);
+  };
+}
+
+// src_js/utils/telemetry.js
+import { api as api9 } from "../../scripts/api.js";
+var listenerAttached = false;
+function initGlobalTelemetryListener(appInstance) {
+  if (listenerAttached) return;
+  listenerAttached = true;
+  if (api9 && api9.addEventListener) {
+    api9.addEventListener("stoiqo_node_telemetry", (event) => {
+      const data = event.detail;
+      if (!data) return;
+      if (appInstance && appInstance.graph && data.node_id) {
+        const node = appInstance.graph.getNodeById(data.node_id);
+        if (node) {
+          node.stoiqo_telemetry = data;
+          if (node.setDirtyCanvas) node.setDirtyCanvas(true, false);
+        }
       }
     });
   }
+}
+function setupTelemetryBadge(nodeType, nodeData, appInstance) {
+  initGlobalTelemetryListener(appInstance);
+  const origOnExecuted = nodeType.prototype.onExecuted;
+  nodeType.prototype.onExecuted = function(message) {
+    if (origOnExecuted) origOnExecuted.apply(this, arguments);
+    if (message && message.stoiqo_telemetry && message.stoiqo_telemetry.length > 0) {
+      this.stoiqo_telemetry = message.stoiqo_telemetry[0];
+      if (this.setDirtyCanvas) this.setDirtyCanvas(true, false);
+    }
+  };
+  const origOnDrawForeground = nodeType.prototype.onDrawForeground;
+  nodeType.prototype.onDrawForeground = function(ctx) {
+    if (origOnDrawForeground) origOnDrawForeground.apply(this, arguments);
+    if (this.stoiqo_telemetry) {
+      drawTelemetryBadge(this, ctx);
+    }
+  };
+}
+function drawTelemetryBadge(node, ctx) {
+  const stats = node.stoiqo_telemetry;
+  if (!stats || typeof stats.time_ms !== "number") return;
+  const timeStr = stats.time_ms < 1e3 ? `${Math.round(stats.time_ms)}ms` : `${(stats.time_ms / 1e3).toFixed(2)}s`;
+  const vramStr = stats.vram_gb && stats.vram_gb > 0 ? `${stats.vram_gb.toFixed(1)} GB` : "0 GB";
+  const badgeText = `${timeStr} | ${vramStr}`;
+  ctx.save();
+  ctx.font = "bold 9.5px 'JetBrains Mono', SFMono-Regular, Consolas, monospace";
+  const textMetrics = ctx.measureText(badgeText);
+  const iconWidth = 12;
+  const paddingX = 7;
+  const badgeW = textMetrics.width + iconWidth + paddingX * 2;
+  const badgeH = 16;
+  const nodeWidth = node.flags?.collapsed && node._collapsed_width ? node._collapsed_width : node.size ? node.size[0] : 200;
+  const posX = Math.max(8, nodeWidth - badgeW - 8);
+  const posY = -24;
+  ctx.fillStyle = "rgba(10, 14, 22, 0.88)";
+  ctx.strokeStyle = "rgba(6, 182, 212, 0.45)";
+  ctx.lineWidth = 1;
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(posX, posY, badgeW, badgeH, 4);
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.fillRect(posX, posY, badgeW, badgeH);
+    ctx.strokeRect(posX, posY, badgeW, badgeH);
+  }
+  ctx.fillStyle = "#06b6d4";
+  ctx.fillText("\u26A1", posX + paddingX, posY + 12);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText(badgeText, posX + paddingX + iconWidth, posY + 12);
+  ctx.restore();
+}
+
+// src_js/index.js
+app10.registerExtension({
+  name: "Stoiqo.PromptGeneratorEngine.Dividers",
+  async beforeRegisterNodeDef(nodeType, nodeData, app11) {
+    if (nodeData.category === "STOIQO" || nodeData.name && nodeData.name.startsWith("Stoiqo")) {
+      setupTelemetryBadge(nodeType, nodeData, app11);
+    }
+    setupShowPromptNode(nodeType, nodeData, app11);
+    setupModelLoaderNode(nodeType, nodeData, app11);
+    setupVisualDiffNode(nodeType, nodeData, app11);
+    setupImageCompareNode(nodeType, nodeData, app11);
+    setupDatasetNode(nodeType, nodeData, app11);
+    setupIteratorNode(nodeType, nodeData, app11);
+    setupTrioLoaderNode(nodeType, nodeData, app11);
+    setupConcatNode(nodeType, nodeData, app11);
+    setupProSaverNode(nodeType, nodeData, app11);
+    setupMusicPromptNode(nodeType, nodeData, app11);
+    setupPipelineNodes(nodeType, nodeData, app11);
+    setupLoraStackNode(nodeType, nodeData, app11);
+  }
 });
-export default require_index();

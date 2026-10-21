@@ -22,14 +22,11 @@ from core.image import (
     MULTI_IMAGE_SYSTEM_PROMPT,
     resolve_system_prompt,
     PROMPT_TYPES,
-    PROMPT_TYPE_DIRECTIVES,
     resolve_prompt_type,
 )
 from core.text_processing import (
-    build_task_prompt,
     parse_three_way_prompt,
     convert_to_tags,
-    clean_llm_output,
 )
 
 

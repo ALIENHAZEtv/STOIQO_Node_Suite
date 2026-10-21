@@ -14,7 +14,7 @@ class StoiqoShowPromptNode:
     OUTPUT_IS_LIST = (True,)
     FUNCTION = "display"
     OUTPUT_NODE = True
-    CATEGORY = "STOIQO/Prompt Engine"
+    CATEGORY = "STOIQO"
 
     def display(self, text):
         if isinstance(text, list):

@@ -172,20 +172,3 @@ export class StoiqoSectionDividerWidget {
         ctx.restore();
     }
 }
-
-
-    
-    
-        const engineTargetNames = [
-            "StoiqoPromptGeneratorEngineNode",
-            "QwenVLCaptionerNode",
-            "[STOIQO] Prompt Generator Engine",
-            "[STOIQO] Prompt Generator Engine (Legacy)",
-        ];
-
-        const showPromptTargetNames = [
-            "StoiqoShowPromptNode",
-            "QwenVLTextDisplayNode",
-            "[STOIQO] Show Prompt",
-            "[STOIQO] Show Prompt (Legacy)",
-        ];

@@ -15,9 +15,6 @@ if root not in sys.path:
 from core.music import (
     build_music_task_prompt,
     YUE2_SYSTEM_PROMPT,
-    GENRE_PRESETS,
-    VOCAL_PRESETS,
-    LANGUAGE_PRESETS,
     SONG_STRUCTURES,
     TEMPO_PRESETS,
     MUSIC_SYSTEM_PROMPT_PRESETS,
@@ -99,6 +96,8 @@ class TestPromptEngineering(unittest.TestCase):
             structure=SONG_STRUCTURES[0],
             tempo=TEMPO_PRESETS[3],
         )
+        self.assertIn("COMPLETEZZA", prompt_it)
+
     def test_custom_lyrics_prompt_instruction(self):
         prompt = build_music_task_prompt(
             idea="Una canzone",
@@ -109,6 +108,7 @@ class TestPromptEngineering(unittest.TestCase):
             tempo=TEMPO_PRESETS[3],
             custom_lyrics="[Verse 1]\nParole mie scritte a mano",
         )
+        self.assertIn("PRESERVE 100% UNTOUCHED", prompt)
     def test_music_system_prompt_presets(self):
         self.assertIn("YuE2 / Suno Master Lyricist & Sound Architect", MUSIC_SYSTEM_PROMPT_PRESETS)
         self.assertIn("Pop & Radio Hitmaker", MUSIC_SYSTEM_PROMPT_PRESETS)

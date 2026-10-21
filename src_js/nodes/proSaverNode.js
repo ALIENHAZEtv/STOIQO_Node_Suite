@@ -252,10 +252,12 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
                 origOnExecuted.apply(this, arguments);
             }
 
-            // Immediately destroy any default preview images created by LiteGraph/ComfyUI
+            // Suppress bulky output preview rendering on canvas while preserving metadata for sidebar
             this.hideOutputImages = true;
             this.imgs = null;
-            this.images = null;
+            if (message && message.images) {
+                this.images = message.images;
+            }
 
             if (message && message.saved_info && this._stoiqo_saver_hud) {
                 this._stoiqo_saver_hud.setSaveInfo(message.saved_info);
@@ -264,12 +266,11 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
         };
     };
 
-    // Override onDrawBackground to avoid default preview image rendering
+    // Override onDrawBackground to avoid default preview image rendering on canvas
     const origDrawBackground = nodeType.prototype.onDrawBackground;
     nodeType.prototype.onDrawBackground = function (ctx) {
         this.hideOutputImages = true;
         this.imgs = null;
-        this.images = null;
         if (origDrawBackground) {
             origDrawBackground.apply(this, arguments);
         }

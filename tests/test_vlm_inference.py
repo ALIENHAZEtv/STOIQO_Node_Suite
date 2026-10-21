@@ -26,6 +26,8 @@ class TestVLMInference(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        if os.environ.get("STOIQO_RUN_HW_TEST", "").strip() not in ("1", "true", "True", "yes"):
+            raise unittest.SkipTest("Live VLM hardware inference skipped by default. Set environment variable STOIQO_RUN_HW_TEST=1 to run.")
         import torch
         if not torch.cuda.is_available():
             raise unittest.SkipTest("CUDA GPU not available for live VLM inference test.")

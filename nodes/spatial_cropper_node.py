@@ -11,9 +11,38 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 try:
-    from ..core import tensor_to_pil, ModelManager
+    from ..core import tensor_to_pil
 except (ImportError, ValueError):
-    from core import tensor_to_pil, ModelManager
+    from core import tensor_to_pil
+
+try:
+    import impact.core
+    SEGClass = getattr(impact.core, "SEG", None)
+except Exception:
+    SEGClass = None
+
+if SEGClass is None:
+    class SEGClass:
+        """Impact-Pack standard Segment structure: cropped_image, cropped_mask, confidence, crop_region, bbox, label."""
+        def __init__(self, cropped_image, cropped_mask, confidence, crop_region, bbox, label, control_net_wrapper=None):
+            self.cropped_image = cropped_image
+            self.cropped_mask = cropped_mask
+            self.confidence = float(confidence)
+            self.crop_region = crop_region
+            self.bbox = bbox
+            self.label = str(label)
+            self.control_net_wrapper = control_net_wrapper
+
+        def __iter__(self):
+            return iter((
+                self.cropped_image,
+                self.cropped_mask,
+                self.confidence,
+                self.crop_region,
+                self.bbox,
+                self.label,
+                self.control_net_wrapper,
+            ))
 
 
 def parse_bounding_box(raw_text: str, fed_width: int = 1000, fed_height: int = 1000, is_qwen_standard: bool = True):
@@ -211,11 +240,11 @@ class StoiqoSpatialCropperNode:
             },
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK", "STRING")
-    RETURN_NAMES = ("cropped_image", "mask", "bbox_info")
-    OUTPUT_IS_LIST = (False, False, False)
+    RETURN_TYPES = ("IMAGE", "MASK", "STRING", "SEGS")
+    RETURN_NAMES = ("cropped_image", "mask", "bbox_info", "segs")
+    OUTPUT_IS_LIST = (False, False, False, False)
     FUNCTION = "crop_and_mask"
-    CATEGORY = "STOIQO/Vision"
+    CATEGORY = "STOIQO"
 
     def crop_and_mask(
         self,
@@ -301,7 +330,8 @@ class StoiqoSpatialCropperNode:
                 "width": int(W),
                 "height": int(H),
             }
-            return (crop_tensor, mask_tensor, json.dumps(bbox_metadata, indent=2))
+            segs_empty = ((int(H), int(W)), [])
+            return (crop_tensor, mask_tensor, json.dumps(bbox_metadata, indent=2), segs_empty)
 
         ymin_norm, xmin_norm, ymax_norm, xmax_norm = parsed
 
@@ -397,4 +427,20 @@ class StoiqoSpatialCropperNode:
             "raw_response": raw_response,
         }
 
-        return (crop_tensor, mask_tensor, json.dumps(bbox_metadata, indent=2))
+        # Construct Impact-Pack compatible SEGS output
+        cropped_img_np = crop_tensor[0].cpu().numpy()
+        cropped_mask_np = mask_tensor[0, ymin_px:ymax_px, xmin_px:xmax_px].cpu().numpy()
+        seg_box = (int(xmin_px), int(ymin_px), int(xmax_px), int(ymax_px))
+
+        seg_item = SEGClass(
+            cropped_image=cropped_img_np,
+            cropped_mask=cropped_mask_np,
+            confidence=0.99,
+            crop_region=seg_box,
+            bbox=seg_box,
+            label=str(clean_target),
+            control_net_wrapper=None,
+        )
+        segs_output = ((int(H), int(W)), [seg_item])
+
+        return (crop_tensor, mask_tensor, json.dumps(bbox_metadata, indent=2), segs_output)

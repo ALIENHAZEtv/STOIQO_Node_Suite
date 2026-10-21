@@ -46,6 +46,7 @@ LANGUAGE_PRESETS = [
 ]
 
 SONG_STRUCTURES = [
+    "Auto / Inferred by AI (Optimal for Song Dynamic)",
     "Standard Pop/Rock (Verse 1, Chorus, Verse 2, Chorus, Bridge, Chorus, Outro)",
     "Full Extended Anthem (Intro, Verse 1, Pre-Chorus, Chorus, Verse 2, Chorus, Bridge, Chorus, Outro)",
     "Short & Punchy (Verse 1, Chorus, Verse 2, Chorus, Outro)",

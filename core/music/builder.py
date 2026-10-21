@@ -163,22 +163,24 @@ def build_music_task_prompt(
     if genre and not genre.startswith("Auto"):
         spec_lines.append(f"- Genre Target: {genre}")
     else:
-        spec_lines.append(f"- Genre Target: Inferred directly from concept: '{clean_idea}'")
+        spec_lines.append("- Genre Target: Determine optimal genre and hybrid acoustic aesthetics freely from the user's vision.")
 
     if is_instrumental:
-        spec_lines.append("- Vocal Target: Instrumental Only (No vocals)")
+        spec_lines.append("- Vocal Target: Instrumental Only (No sung vocals)")
     elif vocal and not vocal.startswith("Auto"):
         spec_lines.append(f"- Vocal Target: {vocal}")
     else:
-        spec_lines.append("- Vocal Target: Inferred optimal delivery matching genre")
+        spec_lines.append("- Vocal Target: Determine optimal vocal delivery, gender, and timbre matching the song's emotion.")
 
-    if structure:
-        spec_lines.append(f"- Structure: {structure}")
+    if structure and not structure.startswith("Auto"):
+        spec_lines.append(f"- Structure Target: {structure}")
+    else:
+        spec_lines.append("- Structure Target: Choose optimal musical structure dynamically (e.g. [Verse 1] -> [Chorus] -> [Verse 2] -> [Chorus] -> [Bridge] -> [Chorus] -> [Outro]).")
 
     if tempo and not tempo.startswith("Auto"):
         spec_lines.append(f"- Tempo Target: {tempo}")
     else:
-        spec_lines.append("- Tempo Target: Optimal BPM tailored to genre")
+        spec_lines.append("- Tempo Target: Determine precise BPM and rhythmic groove optimal for the genre.")
 
     if custom_directives and custom_directives.strip():
         parts.append(
@@ -191,12 +193,18 @@ def build_music_task_prompt(
     parts.append(
         "CRITICAL SONGWRITING INVARIANT:\n"
         "- Under [LYRICS], write EXCLUSIVELY genuine, emotional, human-singable vocal lyrics in rhyming poetic stanzas.\n"
-        "- ABSOLUTELY FORBIDDEN IN [LYRICS]: NEVER output numbers (e.g. 1 2 3, 45, 120), string gauge sizes, fret markers, BPM numbers, or guitar technical specs inside the lyrics.\n"
+        "- ABSOLUTELY FORBIDDEN IN [LYRICS]: NEVER output numbers, string gauge sizes, fret markers, or stage directions like '(guitar solo)' inside [LYRICS].\n"
         "- Every single line in [LYRICS] must be a complete, grammatical poetic sentence ready to be sung into a microphone.\n\n"
         "Output Format Requirements (Strictly follow this structure):\n"
         "[TITLE]\nOriginal Song Title\n\n"
-        "[DURATION]\n210.0 (Full song length in seconds: typically 180.0 to 240.0 for a complete 3 to 4 minute track)\n\n"
-        "[STYLE]\nDense technical acoustic descriptors (subgenre, BPM, vocal delivery, instruments, mix profile - in English for YuE2/Suno)\n\n"
+        "[BPM]\n120 (Exact numeric BPM)\n\n"
+        "[KEY]\nC Minor (Musical key & scale)\n\n"
+        "[TIME_SIGNATURE]\n4/4 (Rhythmic meter, e.g. 4/4, 3/4, 6/8)\n\n"
+        "[GENRE_TAGS]\nExact comma-separated genre & subgenre tags\n\n"
+        "[VOCAL_DESCRIPTION]\nDetailed vocal delivery and timbre description\n\n"
+        "[DURATION]\n220.0 (Calculated song length in seconds matching verse pacing, e.g. 200.0 to 270.0 for full song with Outro)\n\n"
+        "[MODE]\nfull (YuE2 planning mode: 'full' or 'melody')\n\n"
+        "[STYLE]\nDense technical acoustic descriptors (Language, vocal delivery, exact genres, BPM, instruments, mix profile - in English for YuE2/Suno)\n\n"
         "[LYRICS]\n"
         "[Verse 1]\n"
         "...\n\n"

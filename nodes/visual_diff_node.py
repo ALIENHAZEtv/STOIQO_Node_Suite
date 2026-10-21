@@ -189,7 +189,7 @@ class StoiqoVisualDiffNode:
     OUTPUT_IS_LIST = (True, True, True)
     FUNCTION = "compare_images"
     OUTPUT_NODE = True
-    CATEGORY = "STOIQO/Visual & Compare"
+    CATEGORY = "STOIQO"
 
     def compare_images(
         self,
@@ -236,7 +236,7 @@ class StoiqoVisualDiffNode:
         )
 
         prompt_parts = [
-            f"Comparison Task: Evaluate visual differences between <Image 1> (Reference) and <Image 2> (Altered).",
+            "Comparison Task: Evaluate visual differences between <Image 1> (Reference) and <Image 2> (Altered).",
             f"Primary Focus: {analysis_focus}.",
             f"Report Format: {analysis_depth}.",
         ]

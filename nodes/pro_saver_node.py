@@ -9,11 +9,25 @@ import json
 import re
 from datetime import datetime
 import numpy as np
-import torch
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
-import folder_paths
+try:
+    import folder_paths
+except ImportError:
+    import tempfile
+
+    class _MockFolderPaths:
+        @staticmethod
+        def get_output_directory():
+            return "./output"
+        @staticmethod
+        def get_temp_directory():
+            return tempfile.gettempdir()
+        @staticmethod
+        def get_save_image_path(filename_prefix, output_dir, image_width=0, image_height=0):
+            return (output_dir, filename_prefix, 0, "", filename_prefix)
+    folder_paths = _MockFolderPaths()
 
 
 def _extract_graph_metadata(prompt_dict):
@@ -206,7 +220,7 @@ class StoiqoProImageSaverNode:
     RETURN_NAMES = ("images", "file_path", "filename", "folder_path", "metadata_json")
     FUNCTION = "save_images_pro"
     OUTPUT_NODE = True
-    CATEGORY = "STOIQO/Loaders & IO"
+    CATEGORY = "STOIQO"
 
     def save_images_pro(
         self,
@@ -351,10 +365,20 @@ class StoiqoProImageSaverNode:
             })
             counter += 1
 
+        ui_images = [
+            {
+                "filename": s["filename"],
+                "subfolder": s["subfolder"],
+                "type": self.type,
+            }
+            for s in saved_infos
+        ]
+
         metadata_dump = json.dumps(saved_infos, indent=2)
 
         return {
             "ui": {
+                "images": ui_images,
                 "saved_info": saved_infos,
             },
             "result": (

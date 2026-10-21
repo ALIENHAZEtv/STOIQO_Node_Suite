@@ -77,7 +77,7 @@ def build_task_prompt(
     if is_dual_prompt:
         parts.append(
             "⚡ DUAL-PROMPT SPECIALIZATION DIRECTIVE (CLIP + T5/DECODER COUPLING):\n"
-            "- In the <PROMPT> block: Generate an expansive, descriptive, natural-language narrative optimized for T5-XXL and modern diffusion decoders (Flux / SD3 / AuraFlow).\n"
+            "- In the <PROMPT> block: Generate an expansive, descriptive, natural-language narrative optimized for modern high-fidelity diffusion decoders and text encoders.\n"
             "- In the <TAGS> block: Generate a compact, comma-separated list of individual keywords (< 75 tokens) strictly optimized for CLIP-L conditioning."
         )
 
