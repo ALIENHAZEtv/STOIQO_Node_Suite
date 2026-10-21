@@ -1,4 +1,9 @@
-# STOIQO-Comfyui-Nodes
+# STOIQO Node Suite
+
+[![CI](https://github.com/ALIENHAZEtv/STOIQO_Node_Suite/actions/workflows/ci.yml/badge.svg)](https://github.com/ALIENHAZEtv/STOIQO_Node_Suite/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-brightgreen.svg)](https://www.python.org/downloads/)
+[![ComfyUI-Manager](https://img.shields.io/badge/ComfyUI--Manager-Registered-purple.svg)](https://github.com/ltdrdata/ComfyUI-Manager)
 
 A production-ready ComfyUI custom node suite for **Visual Prompt Generation, Multimodal Comparison, and Creative Utilities** powered by Vision-Language Models (Qwen2.5-VL and compatible architectures).
 
