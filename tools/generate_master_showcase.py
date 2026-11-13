@@ -1237,7 +1237,8 @@ if __name__ == "__main__":
     print(f"[STOIQO Generator V2] Saved to: {p1}")
 
     # Destination 2: STOIQO_Node_Suite examples
-    p2 = r"y:\Project_ExCathedra\Project_CustomNodes\STOIQO_Node_Suite\examples\00_stoiqo_master_showcase.json"
+    p2 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples", "00_stoiqo_master_showcase.json")
+    os.makedirs(os.path.dirname(p2), exist_ok=True)
     with open(p2, "w", encoding="utf-8") as f:
         json.dump(wf, f, indent=2)
     print(f"[STOIQO Generator V2] Saved to: {p2}")
