@@ -29,6 +29,13 @@ from .parser import (
     normalize_lyrics_sections,
     parse_music_response,
 )
+from .metrics import (
+    count_poetic_syllables_line,
+    classify_meter,
+    analyze_lyrics_metrics,
+    auto_structure_unstructured_lyrics,
+    auto_balance_long_lines,
+)
 
 __all__ = [
     "GENRE_PRESETS",
@@ -49,4 +56,9 @@ __all__ = [
     "clean_repetition_artifacts",
     "normalize_lyrics_sections",
     "parse_music_response",
+    "count_poetic_syllables_line",
+    "classify_meter",
+    "analyze_lyrics_metrics",
+    "auto_structure_unstructured_lyrics",
+    "auto_balance_long_lines",
 ]

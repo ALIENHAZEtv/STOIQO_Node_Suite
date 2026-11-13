@@ -83,6 +83,52 @@ class TestPromptGeneratorEngine(unittest.TestCase):
         self.assertIn("blue eyes", tags)
         self.assertIn("blonde hair", tags)
 
+    def test_prompt_generator_caching_and_low_vram_offload(self):
+        from nodes.prompt_generator_node import StoiqoPromptGeneratorNode, _PROMPT_CACHE
+        gen = StoiqoPromptGeneratorNode()
+
+        class MockVLM:
+            def __init__(self):
+                self.calls = 0
+                self.unloaded = False
+                self.keep_in_vram = False
+
+            def generate_single(self, **kwargs):
+                self.calls += 1
+                return "<PROMPT>Cached cybernetic city</PROMPT><TAGS>cyberpunk, city</TAGS><NEGATIVE>low quality</NEGATIVE>"
+
+            def unload_model(self):
+                self.unloaded = True
+
+        mock_vlm = MockVLM()
+        _PROMPT_CACHE.clear()
+
+        # Run 1: with enable_cache=True -> executes generation and unloads
+        out1 = gen.generate_prompt(
+            user_directives="cybernetic city",
+            model=mock_vlm,
+            enable_cache=True,
+            seed=12345,
+        )
+        self.assertEqual(mock_vlm.calls, 1)
+        self.assertTrue(mock_vlm.unloaded)
+        self.assertIn("cybernetic city", out1["result"][0][0])
+
+        # Reset unload flag for second run
+        mock_vlm.unloaded = False
+
+        # Run 2: identical parameters with enable_cache=True -> hits cache without calling VLM again
+        out2 = gen.generate_prompt(
+            user_directives="cybernetic city",
+            model=mock_vlm,
+            enable_cache=True,
+            seed=12345,
+        )
+        self.assertEqual(mock_vlm.calls, 1)  # Cache hit, calls counter unchanged!
+        self.assertTrue(mock_vlm.unloaded)   # Low-VRAM offloading executed in finally block
+        self.assertEqual(out1["result"][0], out2["result"][0])
+
 
 if __name__ == "__main__":
     unittest.main()
+

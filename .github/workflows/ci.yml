@@ -8,6 +8,25 @@ on:
   workflow_dispatch:
 
 jobs:
+  bundle-check:
+    name: Frontend Bundle Sync Check (Node.js 20)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Check Bundle Synchronicity
+        run: npm run check:bundle
+
   test:
     name: Test Suite (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest

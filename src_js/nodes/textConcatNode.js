@@ -319,31 +319,37 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
             "_stoiqo_rem_btn": 10,
             "separator": 11,
             "custom_separator": 12,
-            "prefix": 13,
-            "suffix": 14,
-            "deduplicate_tags": 15,
-            "clean_whitespace": 16,
-            "convert_underscores": 17,
-            "skip_empty": 18,
-            "_stoiqo_token_hud": 19,
+            "_stoiqo_settings_drawer": 13,
+            "template": 14,
+            "prefix": 15,
+            "suffix": 16,
+            "deduplicate_tags": 17,
+            "clean_whitespace": 18,
+            "convert_underscores": 19,
+            "skip_empty": 20,
+            "_stoiqo_token_hud": 25,
         };
 
         node._stoiqoAddBtn.name_key = "_stoiqo_add_btn";
         node._stoiqoRemBtn.name_key = "_stoiqo_rem_btn";
+
+        // Add Token HUD Widget (deduplicated by name)
+        const hudDups = node.widgets.filter((w) => w.name === "_stoiqo_token_hud");
+        for (const extra of hudDups.slice(1)) {
+            node.widgets.splice(node.widgets.indexOf(extra), 1);
+        }
+        let tokenHud = node.widgets.find((w) => w.name === "_stoiqo_token_hud");
+        if (!tokenHud) {
+            tokenHud = new StoiqoTokenHudWidget(node);
+            node.addCustomWidget(tokenHud);
+            node._stoiqo_hud = tokenHud;
+        }
 
         node.widgets.sort((a, b) => {
             const pa = orderPriority[a.name_key || a.name] || 99;
             const pb = orderPriority[b.name_key || b.name] || 99;
             return pa - pb;
         });
-
-        // Add Token HUD Widget
-        let tokenHud = node.widgets.find((w) => w instanceof StoiqoTokenHudWidget);
-        if (!tokenHud) {
-            tokenHud = new StoiqoTokenHudWidget(node);
-            node.addCustomWidget(tokenHud);
-            node._stoiqo_hud = tokenHud;
-        }
 
         // Hook separator callback
         const sepW = node.widgets.find((w) => w.name === "separator");

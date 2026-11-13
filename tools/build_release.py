@@ -85,7 +85,15 @@ def build_release(deploy=False):
     print(">>> 4. Copying node definitions...")
     total_files += copy_clean_tree(os.path.join(PROJECT_ROOT, "nodes"), os.path.join(RELEASE_DIR, "nodes"))
 
-    print(">>> 5. Copying compiled JS bundle...")
+    print(">>> 5. Copying workflow examples...")
+    if os.path.exists(os.path.join(PROJECT_ROOT, "examples")):
+        total_files += copy_clean_tree(os.path.join(PROJECT_ROOT, "examples"), os.path.join(RELEASE_DIR, "examples"))
+
+    print(">>> 5b. Copying presets...")
+    if os.path.exists(os.path.join(PROJECT_ROOT, "presets")):
+        total_files += copy_clean_tree(os.path.join(PROJECT_ROOT, "presets"), os.path.join(RELEASE_DIR, "presets"))
+
+    print(">>> 6. Copying compiled JS bundle...")
     os.makedirs(os.path.join(RELEASE_DIR, "js"), exist_ok=True)
     bundle_src = os.path.join(PROJECT_ROOT, "js", "stoiqo_suite.js")
     if os.path.exists(bundle_src):

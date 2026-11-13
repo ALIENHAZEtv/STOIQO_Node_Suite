@@ -18,11 +18,10 @@ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-from nodes.frequency_separation_nodes import StoiqoFrequencySplitNode, StoiqoFrequencyMergeNode
-from nodes.depth_parallax_node import StoiqoDepthParallaxExtractor
-from nodes.spatial_reroll_node import StoiqoSpatialRerollNode
-from nodes.face_restore_hub_node import StoiqoFaceRestoreHub
-from nodes.video_enhancement_nodes import StoiqoTemporalDeflickerNode, StoiqoFrameInterpolateNode
+from nodes.frequency_separation_nodes import StoiqoFrequencySeparationNode, StoiqoFrequencySplitNode, StoiqoFrequencyMergeNode
+from nodes.inpaint_stitcher_node import StoiqoInpaintStitcherNode
+from nodes.spatial_cropper_node import StoiqoSpatialCropperNode
+from nodes.video_enhancement_nodes import StoiqoVideoEnhancerNode, StoiqoTemporalDeflickerNode, StoiqoFrameInterpolateNode
 
 
 class TestCreativeSuiteNodes(unittest.TestCase):
@@ -62,72 +61,92 @@ class TestCreativeSuiteNodes(unittest.TestCase):
         diff = torch.abs(merged - self.dummy_image).mean().item()
         self.assertLess(diff, 0.05)
 
-    def test_depth_parallax_extractor(self):
-        extractor = StoiqoDepthParallaxExtractor()
+    def test_inpaint_stitcher_and_reroll_node(self):
+        stitcher = StoiqoInpaintStitcherNode()
 
-        depth, fg, mid, bg, meta_json = extractor.extract_depth_parallax(
-            image=self.dummy_image,
-            fg_threshold=0.65,
-            bg_threshold=0.35,
-            feather_radius=4,
-            invert_depth=False,
-            mesh_subdivisions=16,
-        )
-
-        self.assertEqual(depth.shape, self.dummy_image.shape)
-        self.assertEqual(fg.shape, (1, 64, 64))
-        self.assertEqual(mid.shape, (1, 64, 64))
-        self.assertEqual(bg.shape, (1, 64, 64))
-
-        meta = json.loads(meta_json)
-        self.assertIn("perspective_layers", meta)
-        self.assertEqual(len(meta["perspective_layers"]), 3)
-
-    def test_spatial_reroll_node(self):
-        reroller = StoiqoSpatialRerollNode()
-
-        # Step 1: Crop ROI without replacement
+        # Step 1: Crop ROI without edited_image
         bbox_in = json.dumps({"x": 10, "y": 10, "width": 30, "height": 30})
-        comp, crop, mask, out_bbox = reroller.process_spatial_reroll(
-            image=self.dummy_image,
+        comp, mask, crop, out_bbox = stitcher.stitch_composite(
+            original_image=self.dummy_image,
             feather_radius=4,
-            color_harmonization=True,
+            color_match=True,
             crop_padding_percent=0.1,
-            bbox_json=bbox_in,
+            bbox_info=bbox_in,
         )
 
         self.assertEqual(comp.shape, self.dummy_image.shape)
         self.assertEqual(crop.shape[1], 30)
         self.assertEqual(crop.shape[2], 30)
-        self.assertEqual(mask.shape, (1, 30, 30))
+        self.assertEqual(mask.shape, (1, 64, 64))
 
-        # Step 2: Composite replacement image into ROI
+        # Step 2: Composite edited_image into ROI
         replacement = torch.ones_like(crop)
-        comp_rep, _, _, _ = reroller.process_spatial_reroll(
-            image=self.dummy_image,
+        comp_rep, mask_rep, crop_rep, _ = stitcher.stitch_composite(
+            original_image=self.dummy_image,
+            edited_image=replacement,
             feather_radius=4,
-            color_harmonization=False,
+            color_match=False,
             crop_padding_percent=0.0,
-            replacement_image=replacement,
-            bbox_json=bbox_in,
+            bbox_info=bbox_in,
         )
         self.assertEqual(comp_rep.shape, self.dummy_image.shape)
+        self.assertEqual(mask_rep.shape, (1, 64, 64))
 
-    def test_face_restore_hub(self):
-        restorer = StoiqoFaceRestoreHub()
-
-        restored, primary_crop, primary_mask, count, meta = restorer.restore_portrait(
-            image=self.dummy_image,
-            fidelity_weight=0.8,
-            skin_smoothing=0.3,
-            eye_clarity=1.2,
-            feather_edges=8,
-            face_padding_percent=0.2,
+        # Step 3: Aspect-protected replacement with different shape
+        non_square_rep = torch.ones((1, 60, 40, 3), dtype=torch.float32)
+        comp_aspect, _, _, _ = stitcher.stitch_composite(
+            original_image=self.dummy_image,
+            edited_image=non_square_rep,
+            feather_radius=8,
+            color_match=True,
+            color_match_strength=0.75,
+            fit_mode="Center Crop (Preserve Aspect)",
+            blend_mode="Soft Gradient",
+            crop_padding_percent=0.0,
+            bbox_info=bbox_in,
         )
+        self.assertEqual(comp_aspect.shape, self.dummy_image.shape)
 
-        self.assertEqual(restored.shape, self.dummy_image.shape)
-        self.assertTrue(count >= 1)
-        self.assertEqual(primary_mask.shape, (1, 64, 64))
+    def test_face_restore_fast_detect_and_beauty_polish(self):
+        cropper = StoiqoSpatialCropperNode()
+        stitcher = StoiqoInpaintStitcherNode()
+
+        # Step 1: Detect face using zero-model OpenCV fast detection fallback in cropper
+        crop, mask, meta_str, segs = cropper.crop_and_mask(
+            image=self.dummy_image,
+            detect_prompt="portrait face",
+            padding_percent=10,
+        )
+        self.assertTrue(crop.shape[1] > 10)
+        self.assertTrue(crop.shape[2] > 10)
+
+        # Step 2: Inpaint Stitcher with Beauty Polish (skin smoothing + eye clarity)
+        polished_comp, p_mask, roi, _ = stitcher.stitch_composite(
+            original_image=self.dummy_image,
+            bbox_info=meta_str,
+            skin_smoothing=0.5,
+            detail_clarity=0.4,
+        )
+        self.assertEqual(polished_comp.shape, self.dummy_image.shape)
+        self.assertEqual(p_mask.shape, (1, 64, 64))
+
+    def test_inpaint_stitcher_seamless_external_crop(self):
+        stitcher = StoiqoInpaintStitcherNode()
+        bbox_in = json.dumps({"crop_box": [10, 10, 40, 40]})
+
+        # Simulate external model editing the crop
+        simulated_crop = torch.ones((1, 30, 30, 3), dtype=torch.float32)
+
+        stitched, mask, roi, _ = stitcher.stitch_composite(
+            original_image=self.dummy_image,
+            edited_image=simulated_crop,
+            bbox_info=bbox_in,
+            color_match=True,
+            feather_radius=8,
+            skin_smoothing=0.2,
+        )
+        self.assertEqual(stitched.shape, self.dummy_image.shape)
+        self.assertEqual(mask.shape, (1, 64, 64))
 
     def test_video_enhancements(self):
         deflickerer = StoiqoTemporalDeflickerNode()
@@ -155,6 +174,16 @@ class TestCreativeSuiteNodes(unittest.TestCase):
         self.assertEqual(out_count, expected_frames)
         self.assertEqual(interp.shape[0], expected_frames)
         self.assertEqual(interp.shape[1:], self.dummy_video.shape[1:])
+
+        # Test 5D video tensor unrolling [1, N, H, W, C]
+        dummy_video_5d = self.dummy_video.unsqueeze(0)
+        stab_5d, _ = deflickerer.deflicker_video(dummy_video_5d, window_size=3, luminance_tolerance=0.08, stabilization_strength=0.85)
+        self.assertEqual(stab_5d.shape, self.dummy_video.shape)
+
+        interp_5d, count_5d, _ = interpolator.interpolate_frames(dummy_video_5d, multiplier="4x (Quad FPS)", motion_smoothness=1.2, blend_curve="bidirectional_linear")
+        expected_4x = (6 - 1) * 4 + 1
+        self.assertEqual(count_5d, expected_4x)
+        self.assertEqual(interp_5d.shape[0], expected_4x)
 
 
 if __name__ == "__main__":

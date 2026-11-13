@@ -5,6 +5,7 @@ Defines industry-standard genres, vocal timbres, lyrical structures, and BPM ran
 
 GENRE_PRESETS = [
     "Auto / From Idea (Infers from prompt)",
+    "Trap / Hip-Hop",
     "Pop (Contemporary, Synthpop, Indie Pop)",
     "Rock (Classic Rock, Alternative, Indie Rock, Hard Rock)",
     "Metal (Heavy Metal, Symphonic Metal, Modern Metalcore)",
@@ -22,6 +23,7 @@ GENRE_PRESETS = [
 
 VOCAL_PRESETS = [
     "Auto / Matched to Genre",
+    "Male Melodic Trap / Autotuned Emotion",
     "Warm Expressive Female Vocal",
     "Ethereal Airy Female Vocal",
     "Gritty Powerful Male Vocal",
@@ -37,6 +39,8 @@ LANGUAGE_PRESETS = [
     "Auto (Detect from Idea)",
     "English",
     "Italian",
+    "it",
+    "en",
     "Spanish",
     "French",
     "Japanese",
@@ -47,6 +51,7 @@ LANGUAGE_PRESETS = [
 
 SONG_STRUCTURES = [
     "Auto / Inferred by AI (Optimal for Song Dynamic)",
+    "Standard (Intro - Verse - Chorus - Verse - Chorus - Outro)",
     "Standard Pop/Rock (Verse 1, Chorus, Verse 2, Chorus, Bridge, Chorus, Outro)",
     "Full Extended Anthem (Intro, Verse 1, Pre-Chorus, Chorus, Verse 2, Chorus, Bridge, Chorus, Outro)",
     "Short & Punchy (Verse 1, Chorus, Verse 2, Chorus, Outro)",
@@ -57,6 +62,7 @@ SONG_STRUCTURES = [
 
 TEMPO_PRESETS = [
     "Auto (Optimal for Genre)",
+    "Fast (130-170+ BPM)",
     "Slow Ballad (65-78 BPM)",
     "Mid-Tempo Groove (85-105 BPM)",
     "Upbeat Driving (115-128 BPM)",

@@ -5,7 +5,13 @@ broadcasting metrics via WebSocket and embedding them in ComfyUI node UI payload
 """
 
 import time
-import torch
+
+try:
+    import torch
+    HAS_TORCH = True
+except (ImportError, ModuleNotFoundError):
+    torch = None
+    HAS_TORCH = False
 
 try:
     from server import PromptServer
@@ -27,7 +33,7 @@ class NodeTelemetryTimer:
         self.node_id = str(node_id) if node_id is not None else None
         self.node_name = node_name
         self.start_time = 0.0
-        self.has_cuda = torch.cuda.is_available()
+        self.has_cuda = bool(HAS_TORCH and torch is not None and hasattr(torch, "cuda") and torch.cuda.is_available())
 
     def __enter__(self):
         if self.has_cuda:

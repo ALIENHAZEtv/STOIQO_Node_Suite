@@ -121,6 +121,68 @@ class TestCharacterMemoryNode(unittest.TestCase):
         self.assertEqual(ref_out.shape, (1, 128, 128, 3))
         self.assertTrue(torch.equal(ref_in, ref_out))
 
+    def test_json_disk_save_and_load(self):
+        # 1. Save profile to disk
+        test_save_name = "test_unit_hero"
+        full_p, ctx, dna, tag, neg, _ = self.node.process_character(
+            character_name="Nova Prime",
+            trigger_tag="nova_prime_lora",
+            character_profile="Custom (Manual Edit)",
+            physical_dna="android warrior with glowing gold ocular optics, polished chrome plating",
+            outfit_and_gear="quantum energy shield, solar energy cannon",
+            negative_constraints="human skin, organic tissue, broken armor",
+            personality_vibe="calculating, protective, resolute",
+            save_profile_as=test_save_name,
+        )
+        self.assertEqual(ctx["character_name"], "Nova Prime")
+        self.assertIn("glowing gold ocular optics", dna)
+
+        # Verify file exists on disk
+        presets_dir = os.path.join(root, "presets", "characters")
+        saved_file = os.path.join(presets_dir, f"{test_save_name}.character.json")
+        self.assertTrue(os.path.exists(saved_file))
+
+        # 2. Load from disk via custom_json_data file path
+        _, ctx_loaded, dna_loaded, _, _, _ = self.node.process_character(
+            custom_json_data=saved_file,
+            injection_mode="Always Prepend (Force Character DNA)",
+        )
+        self.assertEqual(ctx_loaded["character_name"], "Nova Prime")
+        self.assertEqual(ctx_loaded["trigger_tag"], "nova_prime_lora")
+        self.assertIn("glowing gold ocular optics", dna_loaded)
+
+        # Cleanup
+        try:
+            if os.path.exists(saved_file):
+                os.remove(saved_file)
+        except Exception:
+            pass
+
+    def test_word_boundary_safety(self):
+        # Ensure 'Mia' does NOT match 'Miami' or 'Marianne'
+        full_p, _, _, _, _, _ = self.node.process_character(
+            character_name="Mia",
+            trigger_tag="mia",
+            character_profile="Custom (Manual Edit)",
+            physical_dna="athletic runner",
+            injection_mode="Smart Detect (Inject only when Name or Trigger is in Prompt)",
+            user_prompt="Traveling across Miami at dusk",
+        )
+        # Should NOT inject because 'Mia' is part of 'Miami'
+        self.assertEqual(full_p, "Traveling across Miami at dusk")
+
+        # Now test with exact word 'Mia'
+        full_p_match, _, _, _, _, _ = self.node.process_character(
+            character_name="Mia",
+            trigger_tag="mia",
+            character_profile="Custom (Manual Edit)",
+            physical_dna="athletic runner",
+            injection_mode="Smart Detect (Inject only when Name or Trigger is in Prompt)",
+            user_prompt="Mia is jogging through the city park",
+        )
+        self.assertIn("athletic runner", full_p_match)
+        self.assertIn("Mia is jogging", full_p_match)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,30 @@ def register_stoiqo_routes():
                     initial_dir = data.get("initial_dir", "")
                     selected_path = await asyncio.to_thread(open_native_folder_dialog, initial_dir)
                     return web.json_response({"path": selected_path})
+
+            if not any(getattr(r, "path", None) == "/stoiqo/open_folder" for r in routes):
+                @routes.post("/stoiqo/open_folder")
+                async def open_system_folder(request):
+                    import sys
+                    import subprocess
+                    import os
+                    data = {}
+                    try:
+                        if request.can_read_body:
+                            data = await request.json()
+                    except Exception:
+                        pass
+                    folder_path = data.get("folder_path", "")
+                    if folder_path and os.path.exists(folder_path):
+                        norm_path = os.path.normpath(folder_path)
+                        if sys.platform == "win32":
+                            os.startfile(norm_path)
+                        elif sys.platform == "darwin":
+                            subprocess.Popen(["open", norm_path])
+                        else:
+                            subprocess.Popen(["xdg-open", norm_path])
+                        return web.json_response({"success": True, "path": norm_path})
+                    return web.json_response({"success": False, "error": "Folder not found"}, status=404)
     except Exception as exc:
         print(f"[STOIQO] Notice: route registration deferred: {exc}")
 

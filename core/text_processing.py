@@ -1,31 +1,15 @@
 """
 [STOIQO] Prompt Generator Engine — Text & Prompt Processing
 LoRA tag processing, blacklist filtering, tag shuffling, Dual-Prompt (CLIP/T5) parsing,
-surgical negative prompt extraction, and task prompt construction.
+surgical negative prompt extraction, and lean user-message construction.
+
+NOTE: prompt_type and artistic_style are NO LONGER injected here as appended text.
+They are baked into the VLM system prompt via build_dynamic_system_prompt() in
+core/image/system_prompts.py — so the model generates the complete styled output natively.
 """
 
 import re
 import random
-try:
-    from .image.prompt_types import (
-        PROMPT_TYPE_DIRECTIVES,
-        STYLE_PROMPTS,
-        resolve_prompt_type,
-    )
-    from .image.styles import (
-        ARTISTIC_STYLE_DIRECTIVES,
-        resolve_artistic_style,
-    )
-except (ImportError, ValueError):
-    from core.image.prompt_types import (
-        PROMPT_TYPE_DIRECTIVES,
-        STYLE_PROMPTS,
-        resolve_prompt_type,
-    )
-    from core.image.styles import (
-        ARTISTIC_STYLE_DIRECTIVES,
-        resolve_artistic_style,
-    )
 
 
 def clean_llm_output(text):
@@ -51,57 +35,48 @@ def build_task_prompt(
     is_dual_prompt=False,
     is_artifact_audit=False,
 ):
-    """Builds the comprehensive user instruction prompt sent to the LLM incorporating type, style, and directives."""
-    resolved_type = resolve_prompt_type(prompt_type)
-    resolved_style = resolve_artistic_style(artistic_style)
-    base = PROMPT_TYPE_DIRECTIVES.get(resolved_type, STYLE_PROMPTS.get(resolved_type, ""))
-    style_dir = ARTISTIC_STYLE_DIRECTIVES.get(resolved_style, "")
+    """
+    Builds the lean user message sent to the VLM.
+
+    prompt_type and artistic_style are intentionally ignored here:
+    they have already been integrated into the system prompt via
+    build_dynamic_system_prompt() before the VLM call, so the model
+    will generate the correct structure and aesthetic natively without
+    any scripted text being appended to the user message.
+    """
     parts = []
 
     if input_text and input_text.strip():
-        parts.append(f"FOUNDATIONAL SOURCE TEXT / CONCEPT TO EXPAND OR REFINE:\n{input_text.strip()}\n")
+        parts.append(f"SOURCE CONCEPT:\n{input_text.strip()}\n")
 
-    if base:
-        parts.append(f"Task Format: {base}")
-    if style_dir:
-        parts.append(f"{style_dir}")
     if directives and directives.strip():
         parts.append(
-            "⚠️ MANDATORY USER MODIFICATION DIRECTIVE (SUPREME PRIORITY):\n"
+            "⚠️ MANDATORY USER DIRECTIVE (SUPREME PRIORITY):\n"
             f"{directives.strip()}\n"
-            "INSTRUCTION FOR USER DIRECTIVES: Enforce these specific modifications into the final generated prompt and tags. "
-            "You MUST substitute or overwrite any conflicting traits or attributes in the scene/subject with these requested modifications "
-            "(e.g., hair color, clothing, accessories, lighting, environment elements), while keeping the rest of the visual scene intact and coherent."
+            "Enforce these specific modifications into the final generated prompt and tags. "
+            "Substitute or overwrite any conflicting traits or attributes (e.g., hair color, "
+            "clothing, accessories, lighting, environment elements) while keeping the rest of "
+            "the visual scene intact and coherent."
         )
 
     if is_dual_prompt:
         parts.append(
-            "⚡ DUAL-PROMPT SPECIALIZATION DIRECTIVE (CLIP + T5/DECODER COUPLING):\n"
-            "- In the <PROMPT> block: Generate an expansive, descriptive, natural-language narrative optimized for modern high-fidelity diffusion decoders and text encoders.\n"
-            "- In the <TAGS> block: Generate a compact, comma-separated list of individual keywords (< 75 tokens) strictly optimized for CLIP-L conditioning."
+            "⚡ DUAL-PROMPT MODE:\n"
+            "- <PROMPT>: Expansive natural-language narrative for the diffusion decoder.\n"
+            "- <TAGS>: Compact comma-separated keywords (< 75 tokens) for CLIP-L conditioning."
         )
 
     if is_artifact_audit:
         parts.append(
-            "🔍 FORENSIC ARTIFACT AUDIT DIRECTIVE (SURGICAL NEGATIVE PROMPT):\n"
-            "- Scrutinize the visual input forensically for anatomical errors (e.g. extra/fused fingers, distorted eyes, asymmetrical limbs), lighting incoherencies, compression artifacts, blurred details, and rendering flaws.\n"
-            "- In the <NEGATIVE> block: Compile a comprehensive, targeted negative prompt enumerating every detected flaw and potential generation deformity to suppress them."
+            "🔍 FORENSIC ARTIFACT AUDIT:\n"
+            "Scrutinize the input for anatomical errors, lighting incoherencies, compression "
+            "artifacts, and rendering flaws. List every detected flaw in <NEGATIVE>."
         )
 
-    # Universal Three-Part Output Requirement & Strict Block Scope Rules:
-    parts.append(
-        "CRITICAL THREE-PART OUTPUT FORMAT & SCOPE RULES: You must structure the final output into exactly three clearly delineated blocks:\n\n"
-        "<PROMPT>\n"
-        "[Write the primary generative prompt here. Apply the Task Format (Layer 2), Artistic Style (Layer 3), and User Modification Directives (Layer 4) STRICTLY inside this block.]\n"
-        "</PROMPT>\n\n"
-        "<TAGS>\n"
-        "[Write a flat, comma-separated list of individual visual keywords and concepts here (< 75 tokens). This must remain an objective catalog of visible elements, clothes, setting, and traits. Do NOT apply narrative prose, categorical labels, or style overrides to this block.]\n"
-        "</TAGS>\n\n"
-        "<NEGATIVE>\n"
-        "[Write targeted negative prompt tokens here, identifying flaws, anatomical deformities, rendering artifacts, and bad lighting to avoid. Do NOT include scene categories or positive style adjectives here.]\n"
-        "</NEGATIVE>\n\n"
-        "Output ONLY these three blocks without conversational preambles, commentary, or markdown fences."
-    )
+    # If the user provided nothing at all, ask for a creative scene
+    if not parts:
+        parts.append("Generate a visually stunning, detailed, and compositionally rich scene.")
+
     return "\n".join(parts)
 
 

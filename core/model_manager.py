@@ -208,25 +208,31 @@ class ModelManager:
     def current_attn(self, val):
         ModelManager._shared_attn = val
 
-    def resolve_model_repo(self, model_preset, local_model_path, model_mode=None):
-        """Resolves target model path from unified preset dropdown or local folder path with safety validation."""
+    def resolve_model_repo(self, model_preset, local_model_path="", model_mode=None):
+        """Resolves target model path from dynamic local discovery, unified presets, API endpoints, or disk path."""
+        # 1. API endpoint check
         is_api = (
             model_preset == API_ENDPOINT_KEY
             or "API Endpoint" in str(model_preset)
-            or (local_model_path and (local_model_path.strip().startswith("http://") or local_model_path.strip().startswith("https://")))
+            or (local_model_path and (str(local_model_path).strip().startswith("http://") or str(local_model_path).strip().startswith("https://")))
         )
         if is_api:
-            endpoint = local_model_path.strip() if local_model_path and local_model_path.strip() else os.environ.get("STOIQO_API_URL", "http://localhost:11434/v1")
+            default_api = os.environ.get("STOIQO_API_URL")
+            if not default_api:
+                # Detect ExCathedra Director Ollama port 42030 first, then standard 11434
+                default_api = "http://127.0.0.1:42030/v1"
+            endpoint = str(local_model_path).strip() if local_model_path and str(local_model_path).strip() else default_api
             print(f"[STOIQO] Configured for Universal API Endpoint: {endpoint}")
             return f"api://{endpoint}"
 
+        # 2. Custom local folder path check
         is_custom = (
             model_preset == CUSTOM_MODEL_KEY
             or "Custom" in str(model_preset)
             or (model_mode is not None and "Local Folder" in str(model_mode))
         )
         if is_custom:
-            path = local_model_path.strip()
+            path = str(local_model_path).strip() if local_model_path else ""
             if not path:
                 raise ValueError(
                     "[STOIQO] Model is set to 'Custom Model' but local_model_path is empty.\n"
@@ -236,22 +242,57 @@ class ModelManager:
                 raise ValueError(
                     f"[STOIQO] local_model_path must be an absolute path, got: '{path}'"
                 )
-            if not os.path.isdir(path):
+            if not os.path.exists(path):
                 raise FileNotFoundError(
                     f"[STOIQO] local_model_path folder does not exist: '{path}'\n"
                     "Double-check the path."
                 )
-            if not os.path.exists(os.path.join(path, "config.json")):
+            if os.path.isdir(path) and not os.path.exists(os.path.join(path, "config.json")):
                 print(f"[STOIQO] Warning: '{path}' has no config.json — may not be a valid model folder.")
             print(f"[STOIQO] Loading model from local disk: {path}")
             return path
 
-        # Preset mode: lookup by exact key, fallback to 7B
-        repo = MODEL_PRESETS.get(model_preset)
-        if repo:
-            return repo
-        print(f"[STOIQO] Warning: preset '{model_preset}' not found in MODEL_PRESETS. Falling back to 7B.")
-        return list(MODEL_PRESETS.values())[1]
+        # 3. Dynamic Local Discovered Models check
+        from .config import DISCOVERED_LOCAL_MODELS, scan_local_vlm_models, DEFAULT_MODEL_REPO
+        if not DISCOVERED_LOCAL_MODELS:
+            scan_local_vlm_models()
+        if model_preset in DISCOVERED_LOCAL_MODELS:
+            target_path = DISCOVERED_LOCAL_MODELS[model_preset]
+            try:
+                print(f"[STOIQO] Selected local model: {model_preset} -> {target_path}")
+            except (UnicodeEncodeError, UnicodeError):
+                safe_preset = str(model_preset).encode("ascii", "replace").decode("ascii")
+                print(f"[STOIQO] Selected local model: {safe_preset} -> {target_path}")
+            return target_path
+
+        # Check if model_preset starts with local label
+        if str(model_preset).startswith("📁 [Local] "):
+            for label, p in DISCOVERED_LOCAL_MODELS.items():
+                if label == model_preset or model_preset in label:
+                    return p
+
+        # 4. Standard preset lookup
+        if model_preset in MODEL_PRESETS:
+            return MODEL_PRESETS[model_preset]
+
+        # 5. Direct Hugging Face repo ID or disk path passed as string
+        if model_preset and isinstance(model_preset, str) and model_preset.strip():
+            clean_str = model_preset.strip()
+            # If it's an existing file or directory, return directly
+            if os.path.exists(clean_str):
+                return clean_str
+            # If it looks like an HF repo id (org/repo), return directly
+            if "/" in clean_str and not clean_str.startswith("<="):
+                return clean_str
+
+        # Fallback to local discovered model if available, else DEFAULT_MODEL_REPO
+        if DISCOVERED_LOCAL_MODELS:
+            first_local = list(DISCOVERED_LOCAL_MODELS.values())[0]
+            print(f"[STOIQO] Notice: Fallback to discovered local model: {first_local}")
+            return first_local
+
+        print(f"[STOIQO] Warning: preset '{model_preset}' not found in MODEL_PRESETS. Falling back to default.")
+        return DEFAULT_MODEL_REPO
 
     def resolve_quant_config(self, quantization):
         """Builds BitsAndBytesConfig with hardware-accelerated bfloat16/float16 compute_dtype."""
@@ -466,7 +507,10 @@ class ModelManager:
                 self.api_base_url, self.api_model_name = raw_target.split("#", 1)
             else:
                 self.api_base_url = raw_target
-                self.api_model_name = os.environ.get("STOIQO_API_MODEL", "qwen2.5-vl")
+                if "42030" in self.api_base_url and not os.environ.get("STOIQO_API_MODEL"):
+                    self.api_model_name = "llama3.2-vision:11b-instruct-q4_K_M"
+                else:
+                    self.api_model_name = os.environ.get("STOIQO_API_MODEL", "qwen2.5-vl")
             self.model = "API_CLIENT"
             self.processor = None
             self.current_model_repo = model_repo
@@ -555,52 +599,123 @@ class ModelManager:
             if any(k in str(model_repo).lower() for k in ("32b", "72b")):
                 print(f"[STOIQO] WARNING: Running large model ({model_repo}) without quantization requires high VRAM (>= 60 GB)!")
 
-        # Detect model class from repo path or local config.json
-        is_qwen25 = False
-        config_path = os.path.join(load_target, "config.json") if os.path.isdir(load_target) else None
-        if config_path and os.path.exists(config_path):
+        # Check if load_target is a standalone .safetensors file (e.g. text_encoders/qwen3VL*.safetensors)
+        is_safetensor_file = os.path.isfile(load_target) and str(load_target).endswith(".safetensors")
+        if is_safetensor_file:
+            print(f"[STOIQO] Loading from standalone safetensors weight file: {load_target}")
+            # Locate base processor/config snapshot from existing Qwen snapshot or hub
+            base_snap = self.find_local_model_snapshot("Qwen/Qwen2.5-VL-7B-Instruct") or self.find_local_model_snapshot("Qwen/Qwen2.5-VL-3B-Instruct")
+            ref_target = base_snap if base_snap else "Qwen/Qwen2.5-VL-7B-Instruct"
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
-                    cfg = json.load(f)
-                is_qwen25 = "2_5" in cfg.get("model_type", "") or "2.5" in cfg.get("architectures", [""])[0]
+                from transformers import Qwen2_5_VLForConditionalGeneration as BaseSafeClass
             except Exception:
-                pass
-        else:
-            is_qwen25 = "Qwen2.5" in model_repo or "qwen2.5" in model_repo.lower() or "/Qwen2.5-VL" in model_repo
+                from transformers import AutoModelForVision2Seq as BaseSafeClass
 
-        if is_qwen25:
-            from transformers import Qwen2_5_VLForConditionalGeneration as ModelClass
-        else:
-            from transformers import Qwen2VLForConditionalGeneration as ModelClass
+            safe_load_kwargs = dict(load_kwargs)
+            safe_load_kwargs.pop("local_files_only", None)
+            self.model = BaseSafeClass.from_pretrained(ref_target, **safe_load_kwargs)
+            try:
+                from safetensors.torch import load_file
+                sd = load_file(load_target)
+                missing, unexpected = self.model.load_state_dict(sd, strict=False)
+                print(f"[STOIQO] Safetensors applied to model backbone (missing: {len(missing)}, unexpected: {len(unexpected)})")
+            except Exception as sd_err:
+                print(f"[STOIQO] Notice when applying state_dict: {sd_err}")
+            load_target = ref_target
 
-        # Resilient loading with attention fallback and OOM safeguard
-        try:
-            self.model = ModelClass.from_pretrained(load_target, **load_kwargs)
-        except torch.cuda.OutOfMemoryError as oom_exc:
-            self.unload_model()
-            raise RuntimeError(
-                f"[STOIQO] CUDA Out of Memory while loading '{model_repo}'!\n"
-                "Suggestions to fix:\n"
-                "1. Set 'quantization' to '4bit - NF4' to cut VRAM usage by ~70%.\n"
-                "2. Pick a smaller model preset (e.g. 3B or 7B instead of 32B/72B).\n"
-                "3. Ensure other GPU-heavy processes or workflows are closed."
-            ) from oom_exc
-        except Exception as primary_exc:
-            print(f"[STOIQO] Failed to load with attn_implementation='{chosen_attn}': {primary_exc}")
-            if chosen_attn != "sdpa" and hasattr(torch.nn.functional, "scaled_dot_product_attention"):
-                print("[STOIQO] Falling back to 'sdpa' attention...")
-                load_kwargs["attn_implementation"] = "sdpa"
+        if not is_safetensor_file:
+            # Multi-family dynamic model class detection
+            model_repo_str = str(model_repo).lower()
+            config_path = os.path.join(load_target, "config.json") if os.path.isdir(load_target) else None
+            mtype = ""
+            archs = []
+            if config_path and os.path.exists(config_path):
                 try:
-                    self.model = ModelClass.from_pretrained(load_target, **load_kwargs)
-                    chosen_attn = "sdpa"
-                except torch.cuda.OutOfMemoryError as oom_exc:
-                    self.unload_model()
-                    raise RuntimeError(
-                        f"[STOIQO] CUDA Out of Memory while loading '{model_repo}'!\n"
-                        "Enable '4bit - NF4' quantization or use a smaller model."
-                    ) from oom_exc
-                except Exception as sdpa_exc:
-                    print(f"[STOIQO] SDPA failed ({sdpa_exc}). Falling back to 'eager' attention...")
+                    with open(config_path, "r", encoding="utf-8") as f:
+                        cfg = json.load(f)
+                    mtype = cfg.get("model_type", "").lower()
+                    archs = [a.lower() for a in cfg.get("architectures", [""])]
+                except Exception:
+                    pass
+
+            ModelClass = None
+            load_kwargs["trust_remote_code"] = True
+
+            if "florence" in mtype or any("florence" in a for a in archs) or "florence" in model_repo_str:
+                try:
+                    from transformers import AutoModelForCausalLM as ModelClass
+                except Exception:
+                    pass
+            elif "minicpm" in mtype or any("minicpm" in a for a in archs) or "minicpm" in model_repo_str:
+                try:
+                    from transformers import AutoModel as ModelClass
+                except Exception:
+                    pass
+            elif "qwen3" in mtype or any("qwen3" in a for a in archs) or "qwen3" in model_repo_str or "qwen-3" in model_repo_str:
+                try:
+                    from transformers import Qwen3VLForConditionalGeneration as ModelClass
+                except Exception:
+                    pass
+            elif "2_5" in mtype or any("2.5" in a for a in archs) or "qwen2.5" in model_repo_str:
+                try:
+                    from transformers import Qwen2_5_VLForConditionalGeneration as ModelClass
+                except Exception:
+                    pass
+            elif "qwen2" in mtype or any("qwen2" in a for a in archs):
+                try:
+                    from transformers import Qwen2VLForConditionalGeneration as ModelClass
+                except Exception:
+                    pass
+
+            if ModelClass is None:
+                try:
+                    from transformers import AutoModelForVision2Seq as ModelClass
+                except Exception:
+                    try:
+                        from transformers import AutoModelForCausalLM as ModelClass
+                    except Exception:
+                        from transformers import AutoModel as ModelClass
+
+            # Resilient loading with attention fallback and OOM safeguard
+            try:
+                self.model = ModelClass.from_pretrained(load_target, **load_kwargs)
+            except torch.cuda.OutOfMemoryError as oom_exc:
+                self.unload_model()
+                raise RuntimeError(
+                    f"[STOIQO] CUDA Out of Memory while loading '{model_repo}'!\n"
+                    "Suggestions to fix:\n"
+                    "1. Set 'quantization' to '4bit - NF4' to cut VRAM usage by ~70%.\n"
+                    "2. Pick a smaller model preset (e.g. 3B or 7B instead of 32B/72B).\n"
+                    "3. Ensure other GPU-heavy processes or workflows are closed."
+                ) from oom_exc
+            except Exception as primary_exc:
+                print(f"[STOIQO] Failed to load with attn_implementation='{chosen_attn}': {primary_exc}")
+                if chosen_attn != "sdpa" and hasattr(torch.nn.functional, "scaled_dot_product_attention"):
+                    print("[STOIQO] Falling back to 'sdpa' attention...")
+                    load_kwargs["attn_implementation"] = "sdpa"
+                    try:
+                        self.model = ModelClass.from_pretrained(load_target, **load_kwargs)
+                        chosen_attn = "sdpa"
+                    except torch.cuda.OutOfMemoryError as oom_exc:
+                        self.unload_model()
+                        raise RuntimeError(
+                            f"[STOIQO] CUDA Out of Memory while loading '{model_repo}'!\n"
+                            "Enable '4bit - NF4' quantization or use a smaller model."
+                        ) from oom_exc
+                    except Exception as sdpa_exc:
+                        print(f"[STOIQO] SDPA failed ({sdpa_exc}). Falling back to 'eager' attention...")
+                        load_kwargs["attn_implementation"] = "eager"
+                        try:
+                            self.model = ModelClass.from_pretrained(load_target, **load_kwargs)
+                            chosen_attn = "eager"
+                        except torch.cuda.OutOfMemoryError as oom_exc:
+                            self.unload_model()
+                            raise RuntimeError(
+                                f"[STOIQO] CUDA Out of Memory while loading '{model_repo}'!\n"
+                                "Enable '4bit - NF4' quantization or use a smaller model."
+                            ) from oom_exc
+                elif chosen_attn != "eager":
+                    print("[STOIQO] Falling back to 'eager' attention...")
                     load_kwargs["attn_implementation"] = "eager"
                     try:
                         self.model = ModelClass.from_pretrained(load_target, **load_kwargs)
@@ -611,20 +726,8 @@ class ModelManager:
                             f"[STOIQO] CUDA Out of Memory while loading '{model_repo}'!\n"
                             "Enable '4bit - NF4' quantization or use a smaller model."
                         ) from oom_exc
-            elif chosen_attn != "eager":
-                print("[STOIQO] Falling back to 'eager' attention...")
-                load_kwargs["attn_implementation"] = "eager"
-                try:
-                    self.model = ModelClass.from_pretrained(load_target, **load_kwargs)
-                    chosen_attn = "eager"
-                except torch.cuda.OutOfMemoryError as oom_exc:
-                    self.unload_model()
-                    raise RuntimeError(
-                        f"[STOIQO] CUDA Out of Memory while loading '{model_repo}'!\n"
-                        "Enable '4bit - NF4' quantization or use a smaller model."
-                    ) from oom_exc
-            else:
-                raise primary_exc
+                else:
+                    raise primary_exc
 
         is_local_target = os.path.isdir(load_target)
         try:
@@ -632,15 +735,20 @@ class ModelManager:
                 load_target,
                 cache_dir=llm_models_dir,
                 local_files_only=is_local_target,
+                trust_remote_code=True,
             )
         except Exception as proc_exc:
-            print(f"[STOIQO] AutoProcessor failed ({proc_exc}); retrying with trust_remote_code=True...")
-            self.processor = AutoProcessor.from_pretrained(
-                load_target,
-                cache_dir=llm_models_dir,
-                trust_remote_code=True,
-                local_files_only=is_local_target,
-            )
+            print(f"[STOIQO] AutoProcessor failed ({proc_exc}); retrying with AutoTokenizer...")
+            try:
+                from transformers import AutoTokenizer
+                self.processor = AutoTokenizer.from_pretrained(
+                    load_target,
+                    cache_dir=llm_models_dir,
+                    local_files_only=is_local_target,
+                    trust_remote_code=True,
+                )
+            except Exception as tok_exc:
+                print(f"[STOIQO] Tokenizer fallback failed: {tok_exc}")
         if hasattr(self.processor, "tokenizer") and self.processor.tokenizer is not None:
             self.processor.tokenizer.padding_side = "left"
         self.current_model_repo = model_repo
@@ -863,27 +971,43 @@ class ModelManager:
                 "role": "user",
                 "content": content_list,
             })
-
-            text = self.processor.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-
-            image_inputs, _ = process_vision_info(messages)
-            proc_kwargs = {
-                "text": [text],
-                "images": image_inputs,
-                "padding": True,
-                "return_tensors": "pt",
-            }
         else:
             messages.append({
                 "role": "user",
                 "content": task_prompt,
             })
 
-            text = self.processor.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
+        use_chat_template = False
+        text = ""
+        if hasattr(self.processor, "apply_chat_template"):
+            try:
+                text = self.processor.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
+                use_chat_template = True
+            except Exception:
+                use_chat_template = False
+
+        if pil_images is not None:
+            if use_chat_template:
+                image_inputs, _ = process_vision_info(messages)
+                proc_kwargs = {
+                    "text": [text],
+                    "images": image_inputs,
+                    "padding": True,
+                    "return_tensors": "pt",
+                }
+            else:
+                combined_prompt = f"{system_prompt.strip()}\n\n{task_prompt.strip()}".strip() if system_prompt.strip() else task_prompt.strip()
+                imgs = pil_images if isinstance(pil_images, list) else [pil_images]
+                proc_kwargs = {
+                    "text": [combined_prompt],
+                    "images": imgs[0] if len(imgs) == 1 else imgs,
+                    "return_tensors": "pt",
+                }
+        else:
+            if not use_chat_template:
+                text = f"{system_prompt.strip()}\n\n{task_prompt.strip()}".strip() if system_prompt.strip() else task_prompt.strip()
             proc_kwargs = {
                 "text": [text],
                 "padding": False,
@@ -893,11 +1017,18 @@ class ModelManager:
         inputs = self.processor(**proc_kwargs).to(next(self.model.parameters()).device)
 
         gen_kwargs = {"max_new_tokens": max_new_tokens}
-        # Suppress known Qwen hallucination glitch token (18724 = ' addCriterion')
-        if hasattr(self.processor, "tokenizer") and self.processor.tokenizer is not None:
+        # Suppress known Qwen hallucination glitch token (18724 = ' addCriterion') only on Qwen family
+        is_qwen = "qwen" in str(getattr(self, "current_model_repo", "")).lower()
+        if hasattr(self.model, "config") and hasattr(self.model.config, "_name_or_path"):
+            if "qwen" in str(self.model.config._name_or_path).lower():
+                is_qwen = True
+
+        if is_qwen and hasattr(self.processor, "tokenizer") and self.processor.tokenizer is not None:
             vocab_size = getattr(self.processor.tokenizer, "vocab_size", 151643)
             if 18724 < vocab_size:
                 gen_kwargs["suppress_tokens"] = [18724]
+
+        if hasattr(self.processor, "tokenizer") and self.processor.tokenizer is not None:
             if getattr(self.processor.tokenizer, "eos_token_id", None) is not None:
                 gen_kwargs["eos_token_id"] = self.processor.tokenizer.eos_token_id
             if getattr(self.processor.tokenizer, "pad_token_id", None) is not None:
@@ -1000,10 +1131,15 @@ class ModelManager:
                         out[len(inp):] for inp, out in zip(inputs.input_ids, generated_ids)
                     ]
                     tokens_count = len(trimmed[0])
-                    print(f"[STOIQO] Inference complete: {tokens_count} tokens generated (budget: {max_new_tokens}, temp: {temperature})")
-                    decoded = self.processor.batch_decode(
-                        trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-                    )[0].strip()
+                    decoder = getattr(self.processor, "batch_decode", None)
+                    if decoder is None and hasattr(self.processor, "tokenizer"):
+                        decoder = getattr(self.processor.tokenizer, "batch_decode", None)
+                    if decoder is not None:
+                        decoded = decoder(
+                            trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+                        )[0].strip()
+                    else:
+                        decoded = str(trimmed)
         except torch.cuda.OutOfMemoryError as oom_exc:
             self.unload_model()
             raise RuntimeError(

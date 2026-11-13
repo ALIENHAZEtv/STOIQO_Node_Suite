@@ -23,9 +23,7 @@ def _load(name, filename):
     return mod
 
 
-synth_mod = _load("stoiqo_synth_node", "prompt_synthesizer_node.py")
-style_mod = _load("stoiqo_style_node", "style_directives_node.py")
-sampling_mod = _load("stoiqo_sampling_node", "sampling_options_node.py")
+synth_mod = _load("stoiqo_generator_node", "prompt_generator_node.py")
 
 from core.image import MULTI_IMAGE_SYSTEM_PROMPT, TEXT_EXPANSION_SYSTEM_PROMPT  # noqa: E402
 
@@ -50,28 +48,26 @@ class TestMentions(unittest.TestCase):
         self.assertFalse(synth_mod._mentions("anything", ""))
 
 
-class TestSatellites(unittest.TestCase):
-    def test_style_bundle_defaults_and_prefix(self):
-        node = style_mod.StoiqoStyleDirectivesNode()
+class TestAllInOneGenerator(unittest.TestCase):
+    def test_direct_controls_defaults_and_prefix(self):
+        node = synth_mod.StoiqoPromptGeneratorNode()
         req = node.INPUT_TYPES()["required"]
-        (bundle,) = node.build_style(
-            req["system_prompt"][1]["default"],
-            req["prompt_type"][1]["default"],
-            req["artistic_style"][1]["default"],
-            negative_prompt_prefix="worst quality, ",
-        )
-        self.assertTrue(bundle["enable_dual_prompt"])
-        self.assertTrue(bundle["audit_artifacts"])
-        self.assertEqual(bundle["negative_prompt_prefix"], "worst quality, ")
-
-    def test_sampling_bundle(self):
-        (b,) = sampling_mod.StoiqoSamplingOptionsNode().build_sampling_options(seed=7, top_k=10)
-        self.assertEqual((b["seed"], b["top_k"]), (7, 10))
+        opt = node.INPUT_TYPES()["optional"]
+        self.assertIn("prompt_type", req)
+        self.assertIn("prompt_style", req)
+        self.assertIn("custom_modifications", req)
+        self.assertIn("seed", req)
+        self.assertIn("text_input", opt)
+        self.assertIn("image_input", opt)
+        self.assertIn("model", opt)
+        self.assertIn("character", opt)
+        self.assertIn("preset", opt)
+        self.assertIn("fusion_mode", opt)
 
 
 class TestSynthesizer(unittest.TestCase):
     def setUp(self):
-        self.node = synth_mod.StoiqoPromptSynthesizerNode()
+        self.node = synth_mod.StoiqoPromptGeneratorNode()
         self.model = StubModel()
 
     def test_text_only_uses_text_expansion_system_prompt(self):
@@ -79,7 +75,8 @@ class TestSynthesizer(unittest.TestCase):
         self.assertEqual((len(prompts), len(tags), len(negs), len(raws)), (1, 1, 1, 1))
         call = self.model.calls[0]
         self.assertIsNone(call["pil_images"])
-        self.assertEqual(call["system_prompt"], TEXT_EXPANSION_SYSTEM_PROMPT)
+        self.assertTrue(call["system_prompt"].startswith(TEXT_EXPANSION_SYSTEM_PROMPT) or "ROLE & IDENTITY" in call["system_prompt"])
+        self.assertIn("LAYER 2", call["system_prompt"])
 
     def test_batch_is_captioned_independently_with_incrementing_seed(self):
         batch = torch.rand(6, 64, 64, 3)
@@ -96,13 +93,31 @@ class TestSynthesizer(unittest.TestCase):
         call = self.model.calls[0]
         self.assertTrue(call["is_multi_image"])
         self.assertEqual(len(call["pil_images"]), 2)
-        self.assertEqual(call["system_prompt"], MULTI_IMAGE_SYSTEM_PROMPT)
+        self.assertTrue(call["system_prompt"].startswith(MULTI_IMAGE_SYSTEM_PROMPT) or "ROLE & IDENTITY" in call["system_prompt"])
+        self.assertIn("LAYER 2", call["system_prompt"])
 
     def test_primary_image_plus_hub_are_fused_together(self):
         primary = torch.rand(1, 64, 64, 3)
         ctx = {"images": [torch.rand(1, 64, 64, 3), torch.rand(1, 64, 64, 3)], "fusion_mode": "x"}
         self.node.synthesize_prompt(self.model, "x", image=primary, multi_image_context=ctx)
         self.assertEqual(len(self.model.calls[0]["pil_images"]), 3)
+
+    def test_direct_multi_image_slots_fusion(self):
+        img1 = torch.rand(1, 64, 64, 3)
+        img2 = torch.rand(1, 64, 64, 3)
+        img3 = torch.rand(1, 64, 64, 3)
+        prompts, *_ = _result(self.node.generate_prompt(
+            user_directives="fuse subjects",
+            image=img1,
+            image_2=img2,
+            image_3=img3,
+            fusion_mode="Contextual Fusion (Blend Style & Subject)",
+            model=self.model,
+        ))
+        self.assertEqual(len(prompts), 1)
+        call = self.model.calls[0]
+        self.assertTrue(call["is_multi_image"])
+        self.assertEqual(len(call["pil_images"]), 3)
 
     def test_negative_prefix_and_top_k_are_forwarded(self):
         style = {"negative_prompt_prefix": "worst quality, ", "audit_artifacts": True}
@@ -139,6 +154,34 @@ class TestSynthesizer(unittest.TestCase):
         self.assertIn("[LEFT:", task_prompt)
         self.assertIn("[RIGHT:", task_prompt)
         self.assertIn("[BACKGROUND:", task_prompt)
+
+    def test_clip_in_memory_text_generation(self):
+        class StubClip:
+            def __init__(self):
+                self.tokenized_args = []
+                self.generated_args = []
+
+            def tokenize(self, prompt, image=None, skip_template=False, min_length=1, system_prompt=""):
+                self.tokenized_args.append({"prompt": prompt, "system_prompt": system_prompt})
+                return {"tokens": [1, 2, 3]}
+
+            def generate(self, tokens, **kwargs):
+                self.generated_args.append(kwargs)
+                return [101, 102, 103]
+
+            def decode(self, generated_ids):
+                return "<think>planning thoughts</think><PROMPT>A breathtaking cinematic soccer kick</PROMPT><TAGS>soccer, athlete, action</TAGS>"
+
+        stub_clip = StubClip()
+        prompts, tags, negs, raws = _result(self.node.synthesize_prompt(
+            stoiqo_model=None,
+            user_directives="soccer kick",
+            clip=stub_clip,
+        ))
+        self.assertEqual(len(stub_clip.tokenized_args), 1)
+        self.assertEqual(len(stub_clip.generated_args), 1)
+        self.assertIn("soccer kick", prompts[0].lower())
+
 
 
 class TestRoutesModule(unittest.TestCase):

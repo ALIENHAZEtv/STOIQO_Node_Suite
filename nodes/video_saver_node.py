@@ -8,11 +8,14 @@ framerate configuration (24/30/60 fps), and zero canvas clutter.
 import os
 import json
 import re
+import logging
 import subprocess
 from datetime import datetime
 import numpy as np
 import torch
 from PIL import Image
+
+logger = logging.getLogger("STOIQO")
 
 try:
     from ..core.telemetry import NodeTelemetryTimer, inject_telemetry
@@ -123,6 +126,12 @@ class StoiqoVideoSaverNode:
                 ),
             },
             "optional": {
+                "audio": (
+                    "AUDIO",
+                    {
+                        "tooltip": "Optional audio track to mux into video container (MP4/WebM). Format: {'waveform': tensor, 'sample_rate': int}.",
+                    },
+                ),
                 "subfolder": (
                     "STRING",
                     {
@@ -162,6 +171,7 @@ class StoiqoVideoSaverNode:
     def save_video_pro(
         self,
         images,
+        audio=None,
         fps=24.0,
         filename_prefix="%date%_minimax_%fps%",
         format="MP4 (H.264)",
@@ -173,10 +183,15 @@ class StoiqoVideoSaverNode:
         extra_pnginfo=None,
         unique_id=None,
     ):
-        with NodeTelemetryTimer(node_id=unique_id, node_name="VideoSaver") as timer:
-            if not isinstance(images, torch.Tensor) or images.ndim != 4:
-                raise ValueError("[STOIQO Pro Video Saver] Invalid frames input: expected 4D tensor [B, H, W, C]")
+        timer = NodeTelemetryTimer(node_id=unique_id, node_name="VideoSaver") if NodeTelemetryTimer else None
+        if timer:
+            timer.__enter__()
 
+        if isinstance(images, torch.Tensor) and images.ndim == 5:
+            images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
+
+        if not isinstance(images, torch.Tensor) or images.ndim != 4:
+            raise ValueError("[STOIQO Pro Video Saver] Invalid frames input: expected 4D tensor [B, H, W, C]")
 
         num_frames, h, w, c = images.shape
         duration_sec = round(float(num_frames) / max(1.0, float(fps)), 2)
@@ -204,8 +219,12 @@ class StoiqoVideoSaverNode:
         file_name = f"{raw_filename}{ext}"
         file_path = os.path.join(target_dir, file_name)
 
-        # Convert tensor to uint8 numpy frames [B, H, W, C]
-        frames_np = (255.0 * images.cpu().numpy()).clip(0, 255).astype(np.uint8)
+        # Convert tensor to uint8 numpy frames [B, H, W, C] with GPU-friendly pre-quantization
+        frames_np = (images.clamp(0.0, 1.0).mul(255).to(torch.uint8)).cpu().numpy()
+
+        # Determine if we should encode to a temporary video file first for audio muxing
+        has_audio = (audio is not None and isinstance(audio, dict) and "waveform" in audio and ext in (".mp4", ".webm"))
+        video_target_path = os.path.join(folder_paths.get_temp_directory(), f"raw_video_{datetime.now().strftime('%Y%m%d%H%M%S%f')}{ext}") if has_audio else file_path
 
         # Video Encoding Pipeline
         encoded = False
@@ -214,46 +233,42 @@ class StoiqoVideoSaverNode:
         if not encoded:
             try:
                 import imageio
+                kwargs = {"fps": fps}
                 if ext == ".mp4":
-                    writer = imageio.get_writer(
-                        file_path,
-                        fps=fps,
-                        codec="libx264",
-                        quality=max(1, min(10, int(quality / 10))),
-                        pixelformat="yuv420p",
-                    )
+                    kwargs["codec"] = "libx264"
                 elif ext == ".webm":
-                    writer = imageio.get_writer(
-                        file_path,
-                        fps=fps,
-                        codec="libvpx-vp9",
-                        pixelformat="yuv420p",
-                    )
+                    kwargs["codec"] = "libvpx-vp9"
                 elif ext == ".gif":
-                    writer = imageio.get_writer(file_path, duration=1000.0 / max(1.0, float(fps)))
-                else:
-                    writer = imageio.get_writer(file_path, fps=fps)
+                    kwargs = {"duration": 1000.0 / max(1.0, float(fps))}
+
+                try:
+                    writer = imageio.get_writer(video_target_path, format="FFMPEG", pixelformat="yuv420p", **kwargs)
+                except Exception:
+                    try:
+                        writer = imageio.get_writer(video_target_path, **kwargs)
+                    except Exception:
+                        writer = imageio.get_writer(video_target_path)
 
                 for idx in range(num_frames):
                     writer.append_data(frames_np[idx])
                 writer.close()
                 encoded = True
             except Exception as e:
-                print(f"[STOIQO Video Saver] imageio encoding fallback: {e}")
+                logger.warning(f"[Video Saver] imageio encoding fallback: {e}")
 
         # Attempt 2: OpenCV cv2 VideoWriter
         if not encoded and ext == ".mp4":
             try:
                 import cv2
                 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-                out_writer = cv2.VideoWriter(file_path, fourcc, float(fps), (int(w), int(h)))
+                out_writer = cv2.VideoWriter(video_target_path, fourcc, float(fps), (int(w), int(h)))
                 for idx in range(num_frames):
                     bgr = cv2.cvtColor(frames_np[idx], cv2.COLOR_RGB2BGR)
                     out_writer.write(bgr)
                 out_writer.release()
                 encoded = True
             except Exception as e:
-                print(f"[STOIQO Video Saver] cv2 encoding fallback: {e}")
+                logger.warning(f"[Video Saver] cv2 encoding fallback: {e}")
 
         # Attempt 3: PIL Animated GIF / WebP fallback
         if not encoded:
@@ -263,8 +278,9 @@ class StoiqoVideoSaverNode:
                 if ext != ".gif":
                     file_name = os.path.splitext(file_name)[0] + ".gif"
                     file_path = os.path.splitext(file_path)[0] + ".gif"
+                    video_target_path = file_path
                 pil_frames[0].save(
-                    file_path,
+                    video_target_path,
                     save_all=True,
                     append_images=pil_frames[1:],
                     duration=frame_duration_ms,
@@ -272,7 +288,89 @@ class StoiqoVideoSaverNode:
                 )
                 encoded = True
             except Exception as e:
-                print(f"[STOIQO Video Saver] PIL fallback failed: {e}")
+                logger.warning(f"[Video Saver] PIL fallback failed: {e}")
+
+        # Audio Muxing Pipeline (if audio provided and container supports audio)
+        audio_muxed = False
+        if has_audio and encoded:
+            try:
+                waveform = audio["waveform"]
+                sample_rate = int(audio.get("sample_rate", 44100))
+
+                if isinstance(waveform, torch.Tensor):
+                    w_tensor = waveform.detach().cpu().float()
+                    if w_tensor.ndim == 3:
+                        w_tensor = w_tensor[0]
+                    elif w_tensor.ndim == 1:
+                        w_tensor = w_tensor.unsqueeze(0)
+                else:
+                    w_tensor = torch.from_numpy(np.array(waveform)).float()
+                    if w_tensor.ndim == 1:
+                        w_tensor = w_tensor.unsqueeze(0)
+
+                temp_audio_name = f"temp_audio_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.wav"
+                temp_audio_path = os.path.join(folder_paths.get_temp_directory(), temp_audio_name)
+
+                try:
+                    import torchaudio
+                    torchaudio.save(temp_audio_path, w_tensor, sample_rate, encoding="PCM_S", bits_per_sample=16)
+                except Exception:
+                    import wave
+                    pcm_np = (w_tensor.clamp(-1.0, 1.0).transpose(0, 1).numpy() * 32767.0).astype(np.int16)
+                    num_ch = pcm_np.shape[1] if pcm_np.ndim > 1 else 1
+                    with wave.open(temp_audio_path, "wb") as wf:
+                        wf.setnchannels(num_ch)
+                        wf.setsampwidth(2)
+                        wf.setframerate(sample_rate)
+                        wf.writeframes(pcm_np.tobytes())
+
+                codec_a = "aac" if ext == ".mp4" else "libopus"
+                import shutil
+                ffmpeg_bin = shutil.which("ffmpeg")
+                if not ffmpeg_bin:
+                    try:
+                        import imageio_ffmpeg
+                        ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+                    except Exception:
+                        ffmpeg_bin = "ffmpeg"
+
+                cmd = [
+                    ffmpeg_bin, "-y",
+                    "-i", video_target_path,
+                    "-i", temp_audio_path,
+                    "-c:v", "copy",
+                    "-c:a", codec_a,
+                    "-b:a", "320k",
+                    "-shortest",
+                    file_path,
+                ]
+                proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+                if proc.returncode == 0 and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                    audio_muxed = True
+                    logger.info(f"[Video Saver] Audio ({sample_rate}Hz) successfully muxed into {file_name}")
+                else:
+                    err_msg = proc.stderr.decode("utf-8", errors="ignore")
+                    logger.warning(f"[Video Saver] ffmpeg muxing warning: {err_msg[:200]}")
+                    # Fallback: copy video_target_path to file_path
+                    if os.path.exists(video_target_path):
+                        import shutil
+                        shutil.copy2(video_target_path, file_path)
+
+                try:
+                    if os.path.exists(temp_audio_path):
+                        os.remove(temp_audio_path)
+                except Exception:
+                    pass
+                try:
+                    if os.path.exists(video_target_path):
+                        os.remove(video_target_path)
+                except Exception:
+                    pass
+            except Exception as ae:
+                logger.warning(f"[Video Saver] Audio muxing fallback: {ae}")
+                if os.path.exists(video_target_path) and not os.path.exists(file_path):
+                    import shutil
+                    shutil.copy2(video_target_path, file_path)
 
         file_bytes = os.path.getsize(file_path) if os.path.exists(file_path) else 0
         size_mb = file_bytes / (1024 * 1024)
@@ -287,6 +385,7 @@ class StoiqoVideoSaverNode:
             "duration_seconds": duration_sec,
             "file_size": size_str,
             "format": format,
+            "has_audio": audio_muxed,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "motion_prompt": motion_prompt.strip(),
         }
@@ -297,7 +396,7 @@ class StoiqoVideoSaverNode:
                 with open(json_path, "w", encoding="utf-8") as jf:
                     json.dump(sidecar_data, jf, indent=2, ensure_ascii=False)
             except Exception as e:
-                print(f"[STOIQO Video Saver] Warning saving JSON sidecar: {e}")
+                logger.warning(f"[Video Saver] Warning saving JSON sidecar: {e}")
 
         if sidecar_metadata in ("Both (.json + .txt)", "TXT Prompt (.txt)") and motion_prompt.strip():
             txt_path = os.path.splitext(file_path)[0] + ".txt"
@@ -305,7 +404,7 @@ class StoiqoVideoSaverNode:
                 with open(txt_path, "w", encoding="utf-8") as tf:
                     tf.write(f"=== MINIMAX VIDEO MOTION PROMPT ===\nFPS: {fps}\nFRAMES: {num_frames}\n\n{motion_prompt.strip()}\n")
             except Exception as e:
-                print(f"[STOIQO Video Saver] Warning saving TXT prompt: {e}")
+                logger.warning(f"[Video Saver] Warning saving TXT prompt: {e}")
 
         meta_dump = json.dumps(sidecar_data, indent=2)
 
@@ -323,7 +422,7 @@ class StoiqoVideoSaverNode:
             }
         ]
 
-        print(f"[STOIQO] Pro Video Saver: Successfully exported '{file_name}' ({num_frames} frames @ {fps} fps, {duration_sec}s, {size_str})")
+        logger.info(f"[Video Saver] Successfully exported '{file_name}' ({num_frames} frames @ {fps} fps, {duration_sec}s, {size_str})")
 
         return inject_telemetry({
             "ui": {
@@ -337,5 +436,5 @@ class StoiqoVideoSaverNode:
                 file_name,
                 meta_dump,
             ),
-        }, timer.get_stats())
+        }, timer.get_stats() if timer else None)
 

@@ -1,8 +1,15 @@
 """
 [STOIQO] Prompt Generator Engine — Layer 1: System Prompts (Industrial Grade + User Override)
 Advanced system prompts featuring cognitive chains, token budgeting, layer priority, few-shot grounding, 
-and mandatory user override injection.
+mandatory user override injection, and dynamic prompt_type + artistic_style fusion into the system prompt.
 """
+
+try:
+    from .prompt_types import PROMPT_TYPE_DIRECTIVES, LEGACY_PROMPT_TYPE_ALIASES
+    from .styles import ARTISTIC_STYLE_DIRECTIVES, LEGACY_ARTISTIC_STYLE_ALIASES
+except (ImportError, ValueError):
+    from core.image.prompt_types import PROMPT_TYPE_DIRECTIVES, LEGACY_PROMPT_TYPE_ALIASES
+    from core.image.styles import ARTISTIC_STYLE_DIRECTIVES, LEGACY_ARTISTIC_STYLE_ALIASES
 
 # ── LAYER 1: SYSTEM PROMPT PRESETS (AI AGENT PERSONAS) ─────────────────────
 SYSTEM_PROMPT_PRESETS = {
@@ -339,3 +346,63 @@ def resolve_system_prompt(
     print(f"[STOIQO] Active system prompt: {target_key if target_key in SYSTEM_PROMPT_PRESETS else 'Generative Prompt'} (Single Image).")
     return active_prompt
 
+
+def build_dynamic_system_prompt(
+    base_system_prompt: str,
+    prompt_type: str = "Detailed Narrative",
+    artistic_style: str = "Auto-Detect / Preserve Original",
+) -> str:
+    """
+    Fuses the base VLM system prompt with the structural prompt_type directive
+    and the artistic_style aesthetic injection into a single, cohesive system prompt.
+
+    This is the architectural single source of truth: instead of appending style/type
+    instructions to the user message (which degrades VLM output quality), they are
+    baked directly into the system persona so the model generates the complete,
+    correctly-styled output natively in one pass.
+
+    Layer priority:
+      [Layer 1] Base agent persona & inviolable rules  (base_system_prompt)
+      [Layer 2] Structural output format               (prompt_type directive)
+      [Layer 3] Visual aesthetic injection             (artistic_style directive)
+    """
+    # Resolve aliases to canonical keys
+    resolved_type = LEGACY_PROMPT_TYPE_ALIASES.get(prompt_type, prompt_type)
+    resolved_style = LEGACY_ARTISTIC_STYLE_ALIASES.get(artistic_style, artistic_style)
+
+    type_directive = PROMPT_TYPE_DIRECTIVES.get(resolved_type, "")
+    style_directive = ARTISTIC_STYLE_DIRECTIVES.get(resolved_style, "")
+
+    # Nothing to inject — return base unchanged
+    if not type_directive and not style_directive:
+        return base_system_prompt
+
+    # Build the fused system prompt, appending the layers before the output contract
+    # We split at the last "# REQUIRED OUTPUT CONTRACT" anchor to keep it at the bottom
+    anchor = "# REQUIRED OUTPUT CONTRACT"
+    if anchor in base_system_prompt:
+        pre, _, post = base_system_prompt.rpartition(anchor)
+        injected_layers = []
+        if type_directive:
+            injected_layers.append(
+                f"# LAYER 2 — STRUCTURAL OUTPUT FORMAT\n{type_directive}"
+            )
+        if style_directive:
+            injected_layers.append(
+                f"# LAYER 3 — VISUAL AESTHETIC INJECTION\n{style_directive}"
+            )
+        fused = pre.rstrip() + "\n\n" + "\n\n".join(injected_layers) + "\n\n" + anchor + post
+    else:
+        # Fallback: plain append at the end
+        injected_layers = []
+        if type_directive:
+            injected_layers.append(
+                f"# LAYER 2 — STRUCTURAL OUTPUT FORMAT\n{type_directive}"
+            )
+        if style_directive:
+            injected_layers.append(
+                f"# LAYER 3 — VISUAL AESTHETIC INJECTION\n{style_directive}"
+            )
+        fused = base_system_prompt.rstrip() + "\n\n" + "\n\n".join(injected_layers)
+
+    return fused

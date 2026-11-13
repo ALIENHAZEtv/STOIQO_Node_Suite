@@ -16,6 +16,9 @@ The suite provides complete modularity across Prompt Generation, VLM caching, Fo
 | Feature | Details |
 |---|---|
 | **Live WebSocket Token Streaming** | Real-time token streaming with live canvas typewriter effect via `TextIteratorStreamer` |
+| **Integrated Video Audio Muxing** | Native FFmpeg AAC/Opus (320kbps) audio-video container muxing in `Pro Video Saver` with zero sync drift |
+| **Conditioning Bypass & 16-Ch DiT** | Direct `CONDITIONING` inputs and native 16-channel latent synthesis in `Turbo Sampler` (FLUX/DiT) |
+| **Flow-Matching Presets Hub** | Automatic flow-matching shifts in `Tri-Model Loader Hub` for Z-Image Turbo, FLUX.1, Ace-Step 1.5, SD3.5, and MiniMax H3 |
 | **Instant Interrupt Support** | Immediate generation abort when user cancels via `comfy.model_management` |
 | **Impact-Pack SEGS Bridge** | Direct `SEGS` output in `[STOIQO] Spatial Cropper` for open-vocabulary detection in Impact-Pack Detailers |
 | **rgthree Context Compatibility** | Dual-compatible universal `pipe` connection in `Turbo Sampler` and `Tri-Model Loader Hub` |
@@ -260,11 +263,12 @@ Audio exporter dedicated to the YuE 2 / Suno production ecosystem:
 - **Outputs:** `audio` (AUDIO pass-through), `file_path` (STRING), `filename` (STRING), `metadata_json` (STRING).
 
 ### 15. `[STOIQO] Pro Video Saver & Frame Exporter`
-High-efficiency video container exporter for MiniMax Video (Hailuo / Video-01):
+High-efficiency video container exporter with native audiovisual multiplexing:
 - **Frame Batch Encoding:** Converts frame sequences into high-bitrate `MP4 (H.264)`, `WebM (VP9)`, or animated `GIF`.
+- **Integrated Audio Muxing (FFmpeg):** Dedicated optional `audio` input pin. Automatically encodes audio to AAC (MP4) or Opus (WebM) at 320 kbps and muxes directly into the output video container with zero quality loss or sync drift.
 - **Cinematic Framerates:** Configurable framerates (`24.0 fps` cinema standard, `30.0 fps`, `60.0 fps`) and bitrate quality controls.
 - **Motion Metadata:** Saves paired `.txt` and `.json` sidecars containing camera kinematics and motion prompts.
-- **Inputs:** `images` (IMAGE tensor batch `[B, H, W, C]`), `fps` (FLOAT), `filename_prefix`, `format`, `quality` (INT), optional `subfolder`, `motion_prompt`, `sidecar_metadata`.
+- **Inputs:** `images` (IMAGE tensor batch `[B, H, W, C]`), `fps` (FLOAT), `filename_prefix`, `format`, `quality` (INT), optional `audio` (AUDIO), `subfolder`, `motion_prompt`, `sidecar_metadata`.
 - **Outputs:** `images` (IMAGE pass-through), `file_path` (STRING), `filename` (STRING), `metadata_json` (STRING).
 
 ### 16. `[STOIQO] Inpaint Stitcher & Composite`
@@ -284,23 +288,27 @@ Replaces bloated 8-node math and overlay setups with a clean, single-node brandi
 
 ### 18. `[STOIQO] Tri-Model Loader Hub`
 Consolidates modular UNET / DiT, CLIP, and VAE loading into a single clean node for modern architectures:
-- **Unified Pipeline Emitting:** Loads UNET (with FP8 options), CLIP (with `krea2`, `minimax`, `yue2` recipes), and VAE in one pass, outputting individual pins plus a consolidated `STOIQO_PIPE` dictionary.
+- **Unified Pipeline Emitting:** Loads UNET (with FP8 options), CLIP (with `krea2`, `flux`, `minimax`, `yue2`, `ace`, `sd3`, `lumina2`, `wan`, `ltxv`, `qwen_image` recipes), and VAE in one pass, outputting individual pins plus a consolidated `STOIQO_PIPE` dictionary.
+- **Integrated Flow-Matching Presets:** Built-in automatic shifts for `Z-Image Turbo (Shift: 3.0)`, `Ace-Step 1.5 (Shift: 3.0)`, `Qwen-Image (Shift: 3.1)`, `FLUX.1 Schnell/Dev (Auto-Shift: 1.15)`, `SD3/SD3.5 (Shift: 3.0, Multi: 1000)`, `AuraFlow (Shift: 1.73)`, `MiniMax H3`, and `Custom`.
+- **Multimodal Support:** Optional `clip_name2` for Dual-CLIP architectures and optional `audio_vae_name` for multimodal video/audio models.
 - **VRAM Conservation:** Optional CPU offloading for CLIP text encoders on memory-constrained GPUs.
-- **Inputs:** `unet_name`, `weight_dtype` (`default`, `fp8_e4m3fn`, etc.), `clip_name`, `clip_type` (`krea2`, `stable_diffusion`, etc.), `vae_name`, optional `clip_device`.
-- **Outputs:** `model` (MODEL), `clip` (CLIP), `vae` (VAE), `stoiqo_pipe` (STOIQO_PIPE).
+- **Inputs:** `unet_name`, `weight_dtype`, `clip_name`, `clip_type`, `vae_name`, `flow_shift_preset`, optional `clip_name2`, `audio_vae_name`, `pipe`, `clip_device`, `custom_shift`.
+- **Outputs:** `model` (MODEL), `clip` (CLIP), `vae` (VAE), `audio_vae` (VAE), `stoiqo_pipe` (STOIQO_PIPE).
 
 ### 19. `[STOIQO] Turbo Sampler & Direct Decoder`
-High-speed end-to-end generation tailored for lightning-fast models like Krea 2 Turbo:
+High-speed end-to-end generation tailored for lightning-fast models like Krea 2 Turbo, FLUX, and DiT architectures:
 - **All-in-One Generation Pipeline:** In a single step, creates Empty Latents at target dimensions, tokenizes prompts, applies negative zero-out (eliminating CFG burns), executes KSampler (4-8 steps), and decodes directly via VAE.
+- **Conditioning Bypass:** Dedicated optional `positive` and `negative` (`CONDITIONING`) inputs to accept pre-encoded conditioning directly from external CLIP encoders, LoRAs, or ControlNets without requiring text re-tokenization.
+- **16-Channel DiT Latents:** Automatically detects and synthesizes 16-channel latents (FLUX, modern DiT) or 4-channel latents (SD1.5, SDXL, Krea 2).
 - **Pipe & Pin Flexibility:** Works seamlessly via individual MODEL / CLIP / VAE wires or a single `STOIQO_PIPE` link from the Tri-Model Loader Hub.
-- **Inputs:** `positive_prompt` (STRING), `seed` (INT), `steps` (INT, default 4), `cfg` (FLOAT, default 1.0), `sampler_name`, `scheduler`, `width` (INT), `height` (INT), `negative_mode`, `negative_prompt`, `denoise`, optional `model`, `clip`, `vae`, `stoiqo_pipe`, `latent_image`.
+- **Inputs:** `positive_prompt` (STRING), `seed` (INT), `steps` (INT), `cfg` (FLOAT), `sampler_name`, `scheduler`, `width` (INT), `height` (INT), `negative_mode`, `negative_prompt`, `denoise`, optional `positive` (CONDITIONING), `negative` (CONDITIONING), `model`, `clip`, `vae`, `stoiqo_pipe`, `latent_image`.
 - **Outputs:** `image` (IMAGE decoded), `latent` (LATENT raw), `stoiqo_pipe` (STOIQO_PIPE enriched).
 
 ### 20. `[STOIQO] Modular Prompt Synthesizer Engine`
 Ultra-lean, next-generation modular prompt engine:
-- **Zero-Setup Tri-Output:** Automatically synthesizes high-fidelity `prompt` (for Krea 2), concise `tags` (<75 tokens for CLIP), and surgical `negative` (detecting blurs and anatomical defects) with tuned factory defaults (`temp=0.6`, `top_p=0.9`, `1.0 MP`).
-- **Lean Interface:** Only requires `stoiqo_model` and `user_directives` + optional `image`.
-- **Inputs:** `stoiqo_model` (STOIQO_MODEL), `user_directives` (STRING), optional `image` (IMAGE), `style_directives` (STOIQO_STYLE), `sampling_options` (STOIQO_SAMPLING), `multi_image_context` (STOIQO_CONTEXT).
+- **Zero-Setup Tri-Output:** Automatically synthesizes high-fidelity `prompt` (for Krea 2 / Flux), concise `tags` (<75 tokens for CLIP), and surgical `negative` (detecting blurs and anatomical defects) with tuned factory defaults (`temp=0.6`, `top_p=0.9`, `1.0 MP`).
+- **Live Token Streaming:** Real-time token streaming with live canvas typewriter effect via WebSocket integration.
+- **Inputs:** `stoiqo_model` (STOIQO_MODEL), `user_directives` (STRING), optional `image` (IMAGE), `style_directives` (STOIQO_STYLE), `sampling_options` (STOIQO_SAMPLING), `multi_image_context` (STOIQO_CONTEXT), `character_context` (STOIQO_CHARACTER).
 - **Outputs:** `prompt` (STRING), `tags` (STRING), `negative` (STRING), `raw_response` (STRING).
 
 ### 21. `[STOIQO] AI Persona & Style Directives`
@@ -321,23 +329,81 @@ Satellite node for multimodal reasoning across multiple images:
 - **Inputs:** `image_1` (IMAGE), `image_2` (IMAGE), `fusion_mode`, optional `image_3` (IMAGE).
 - **Outputs:** `multi_image_context` (STOIQO_CONTEXT).
 
+### 24. `[STOIQO] LoRA Stack Hub`
+Dynamic multi-LoRA stacking and weighting hub:
+- **Multi-LoRA Chaining:** Stacks up to 4 LoRAs with independent model and CLIP weights without canvas clutter.
+- **JSON Stack Export:** Emits standard `LORA_STACK` compatible with downstream samplers and loaders.
+- **Outputs:** `lora_stack` (LORA_STACK).
+
+### 25. `[STOIQO] Character Memory Bank (Lorebook & DNA)`
+Character consistency manager for multi-scene narrative generation:
+- **Character DNA Injection:** Stores identity triggers, facial attributes, hairstyle, wardrobe, and lorebooks.
+- **Injection Modes:** `Always Prepend (Force Character DNA)` or `Smart Detect (Inject only when Name or Trigger is in Prompt)`.
+- **Outputs:** `character_context` (STOIQO_CHARACTER).
+
+### 26. `[STOIQO] Temporal Video Deflicker`
+Temporal luminance smoother for AI-generated video:
+- **Flicker Reduction:** Eliminates lighting oscillations and micro-jitter between frames in generative video models (LTX-Video, MiniMax, Wan).
+- **Inputs:** `images` (IMAGE video batch), `window_size` (INT), `blend_strength` (FLOAT).
+- **Outputs:** `images` (IMAGE smoothed).
+
+### 27. `[STOIQO] Video Frame Rate Multiplier (2x / 4x)`
+High-performance frame interpolator:
+- **Smooth Playback:** Multiplies frame rates (e.g. 24fps -> 48fps or 60fps) using bidirectional optical flow motion estimation.
+- **Inputs:** `images` (IMAGE), `multiplier` (2x, 4x), `motion_sensitivity`.
+- **Outputs:** `images` (IMAGE interpolated).
+
+### 28. `[STOIQO] Depth Map & 3D Parallax Extractor`
+Depth estimation and camera motion synthesizer:
+- **3D Parallax Effect:** Generates monocular depth maps and creates cinematic 3D camera pan/dolly animations from a single still image.
+- **Outputs:** `depth_map` (IMAGE), `parallax_frames` (IMAGE video batch).
+
+### 29. `[STOIQO] Face Restoration & Portrait Hub`
+Dual-engine facial restoration hub:
+- **Portrait Recovery:** Integrates CodeFormer and GFPGAN algorithms with fidelity weighting and face-mask feathering.
+- **Outputs:** `restored_image` (IMAGE).
+
+### 30. `[STOIQO] Frequency Split (Texture & Color)`
+High/Low frequency decomposition for professional skin retouching:
+- **Wavelet Separation:** Splits image into high-frequency texture (pores, hair, fine lines) and low-frequency color/tone.
+- **Outputs:** `low_frequency` (IMAGE), `high_frequency` (IMAGE).
+
+### 31. `[STOIQO] Frequency Merge & Recomposite`
+Recombines frequency layers after independent filtering:
+- **Recomposite:** Merges retouched texture and color layers back into a single flawless image without losing micro-detail.
+- **Outputs:** `merged_image` (IMAGE).
+
+### 32. `[STOIQO] Spatial Re-Roll & Contextual Fill`
+Targeted compositional regeneration:
+- **Local Variator:** Allows regenerating specific quadrants or masked areas while preserving surrounding canvas context.
+- **Outputs:** `image` (IMAGE).
+
+### 33. `[STOIQO] Universal Context Pipe (In / Bus)`
+Clean workflow bus packer:
+- **Signal Packaging:** Consolidates MODEL, CLIP, VAE, LATENT, IMAGE, and PROMPT signals into a single unified wire.
+- **Outputs:** `pipe` (STOIQO_PIPE).
+
+### 34. `[STOIQO] Universal Context Pipe (Out / Unpack)`
+Clean workflow bus unpacker:
+- **Signal Extraction:** Unpacks individual MODEL, CLIP, VAE, LATENT, IMAGE, and PROMPT pins at destination nodes.
+- **Outputs:** `model`, `clip`, `vae`, `latent`, `image`, `positive`, `negative`.
+
+### 35. `[STOIQO] Webhook Notifier & Pipeline Exporter`
+Automated webhook integration:
+- **Event Dispatch:** Dispatches HTTP POST webhooks with generation status, elapsed time, output paths, and metadata upon pipeline completion.
+- **Outputs:** `status` (STRING).
+
 ---
 
-## Ready-to-Use Example Workflows
+## 🚀 Production Workflows & Master Workbench
 
-The suite includes production-ready workflow templates in the [`examples/`](file:///o:/.Softwares/Project_CustomNodes/STOIQO_Node_Suite/examples) directory. Simply drag and drop any `.json` workflow into your ComfyUI canvas:
-
-1. **`01_prompt_synthesis_live_streaming.json`**:
-   - Demonstrates the modular Prompt Synthesizer with real-time WebSocket token streaming, live canvas typewriter effect, style directives, and sampling options.
-2. **`02_turbo_sampler_krea2_pipeline.json`**:
-   - Ultra-fast end-to-end Krea 2 Turbo generation pipeline featuring `Tri-Model Loader Hub`, `Turbo Sampler` (Zero-Out negative conditioning), `Resolution Node`, and `Pro Image Saver`.
-3. **`03_spatial_grounding_impact_pack_segs.json`**:
-   - Open-vocabulary subject detection with `Spatial Cropper` emitting native `SEGS` for Impact-Pack Detailers, GPU tensor inpaint stitching, and logo watermark stamp.
-4. **`04_music_production_yue2_audio.json`**:
-   - Complete AI music production setup: YuE 2 / Suno lyrics and acoustic descriptors generator paired with `Pro Audio Saver` and the interactive canvas audio player.
+The suite powers 18 production workflows available in `workspace/workflows/` and mapped in `WORKFLOWS_CATALOG.md`:
+- **Grand Master Workbench** (`stoiqo_master_all_in_one_workbench.json`): 13 production pipelines arranged on a single 2D grid with 13 LiteGraph groups and 116 nodes.
+- **Master Showcase** (`examples/00_stoiqo_master_showcase.json`): Interactive reference canvas hosting all 35 custom nodes.
 
 ---
 
 ## License
 
 Apache 2.0.
+

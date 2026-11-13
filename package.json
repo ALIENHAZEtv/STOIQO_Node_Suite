@@ -5,9 +5,11 @@
   "main": "js/stoiqo_suite.js",
   "scripts": {
     "build": "esbuild src_js/index.js --bundle --outfile=js/stoiqo_suite.js --format=esm --external:../../scripts/* --external:../../../scripts/*",
+    "watch": "esbuild src_js/index.js --bundle --outfile=js/stoiqo_suite.js --format=esm --external:../../scripts/* --external:../../../scripts/* --watch",
+    "check:bundle": "esbuild src_js/index.js --bundle --outfile=js/stoiqo_suite.js --format=esm --external:../../scripts/* --external:../../../scripts/* && git diff --exit-code js/stoiqo_suite.js",
     "release": "python tools/build_release.py",
     "release:deploy": "python tools/build_release.py --deploy",
-    "test": "python -m unittest discover tests"
+    "test": "pytest tests/ -v"
   },
   "keywords": ["comfyui", "custom-nodes", "vlm", "qwen", "prompt-generation"],
   "author": "ALIENHAZEtv / STOIQO",

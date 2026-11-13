@@ -14,6 +14,8 @@ from .config import (
     ATTENTION_OPTIONS,
     BATCH_MODES,
     SYSTEM_PROMPT_MODES,
+    get_vlm_model_choices,
+    DISCOVERED_LOCAL_MODELS,
 )
 from .image import (
     SYSTEM_PROMPT_PRESETS,
@@ -25,6 +27,7 @@ from .image import (
     BASE_MULTI_IMAGE_PROMPT,
     LEGACY_SYSTEM_PROMPT_ALIASES,
     resolve_system_prompt,
+    build_dynamic_system_prompt,
     PROMPT_TYPES,
     PROMPT_TYPE_DIRECTIVES,
     resolve_prompt_type,
@@ -49,6 +52,11 @@ from .music import (
     parse_music_response,
     clean_user_custom_lyrics,
     clean_user_custom_directives,
+    count_poetic_syllables_line,
+    classify_meter,
+    analyze_lyrics_metrics,
+    auto_structure_unstructured_lyrics,
+    auto_balance_long_lines,
 )
 
 from .vision import (
@@ -73,8 +81,17 @@ from .storage import (
     open_native_folder_dialog,
     build_dataset_manifest,
 )
-from .model_manager import ModelManager
+try:
+    from .model_manager import ModelManager
+except (ImportError, ModuleNotFoundError):
+    ModelManager = None
 from .telemetry import NodeTelemetryTimer, inject_telemetry, TelemetryResult
+from .universal_loader import (
+    UniversalModelEngine,
+    get_universal_model_choices,
+    scan_all_system_models,
+    MODEL_TYPE_OVERRIDE_OPTIONS,
+)
 
 KREA2_PROMPT_IMAGE = SYSTEM_PROMPT_PRESETS["Generative Prompt"]
 KREA2_PROMPT_TEXT = BASE_TEXT_EXPANSION_PROMPT
@@ -113,6 +130,7 @@ __all__ = [
     "KREA2_PROMPT_TEXT",
     "KREA2_PROMPT_MULTI_IMAGE",
     "resolve_system_prompt",
+    "build_dynamic_system_prompt",
     "GENRE_PRESETS",
     "VOCAL_PRESETS",
     "LANGUAGE_PRESETS",
@@ -127,6 +145,11 @@ __all__ = [
     "parse_music_response",
     "clean_user_custom_lyrics",
     "clean_user_custom_directives",
+    "count_poetic_syllables_line",
+    "classify_meter",
+    "analyze_lyrics_metrics",
+    "auto_structure_unstructured_lyrics",
+    "auto_balance_long_lines",
     "process_vision_info",
     "tensor_to_pil",
     "clean_llm_output",

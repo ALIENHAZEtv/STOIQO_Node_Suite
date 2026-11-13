@@ -5,6 +5,10 @@ directly feedable into YuE2, Suno, and AI music workflows.
 Supports optional multimodal visual grounding from cover art or video frames.
 """
 
+import logging
+
+logger = logging.getLogger("STOIQO")
+
 
 try:
     from ..core.music import (
@@ -136,10 +140,10 @@ class StoiqoMusicPromptEngineNode:
                         "tooltip": "Optional visual inspiration (album cover, concept art). The model analyzes its mood and aesthetic.",
                     },
                 ),
-                "stoiqo_model": (
-                    "STOIQO_MODEL",
+                "model": (
+                    "*",
                     {
-                        "tooltip": "Shared VLM model loaded via [STOIQO] VLM Model Loader to save VRAM.",
+                        "tooltip": "Universal model connection (from [STOIQO] Universal Model Loader or VLM loader).",
                     },
                 ),
                 "seed": (
@@ -234,6 +238,7 @@ class StoiqoMusicPromptEngineNode:
         custom_lyrics="",
         cover_image=None,
         custom_directives="",
+        model=None,
         stoiqo_model=None,
         seed=0,
         temperature=0.55,
@@ -242,12 +247,19 @@ class StoiqoMusicPromptEngineNode:
         unique_id=None,
         prompt=None,
         extra_pnginfo=None,
+        **kwargs,
     ):
+        # Graceful compatibility mapping for legacy inputs / connections
+        if cover_image is None and "image_inspiration" in kwargs:
+            cover_image = kwargs.pop("image_inspiration")
+        if model is None and "stoiqo_model" in kwargs:
+            model = kwargs.pop("stoiqo_model")
+
         clean_idea = (idea or "").strip()
         if not clean_idea:
             clean_idea = f"An original {genre} song featuring {vocal_type} in {language} with {tempo} tempo."
 
-        active_mgr = stoiqo_model if stoiqo_model is not None else self.model_mgr
+        active_mgr = model if model is not None else (stoiqo_model if stoiqo_model is not None else self.model_mgr)
         if active_mgr.model is None:
             if getattr(active_mgr, "last_load_params", None) is not None:
                 active_mgr.load_model(**active_mgr.last_load_params)
@@ -260,9 +272,9 @@ class StoiqoMusicPromptEngineNode:
         if cover_image is not None:
             try:
                 img_pil = tensor_to_pil(cover_image[0:1])
-                print("[STOIQO Music] Multimodal mode enabled: analyzing visual cover artwork...")
+                logger.info("[Music] Multimodal mode enabled: analyzing visual cover artwork...")
             except Exception as e:
-                print(f"[STOIQO Music] Warning converting cover image: {e}")
+                logger.warning(f"[Music] Warning converting cover image: {e}")
 
         # Sanitize any shifted widget values from LiteGraph deserialization (e.g. 'randomize', numbers)
         clean_lyrics_in = clean_user_custom_lyrics(custom_lyrics)
@@ -289,9 +301,9 @@ class StoiqoMusicPromptEngineNode:
         # and start hallucinating numbers, guitar gauges, and corrupted tokens.
         eff_temperature = min(max(float(temperature), 0.1), 0.60)
         if abs(eff_temperature - float(temperature)) > 0.01:
-            print(f"[STOIQO Music] Notice: Clamping temperature from {temperature:.2f} to {eff_temperature:.2f} to ensure coherent, rhyming singable lyrics.")
+            logger.info(f"[Music] Clamping temperature from {temperature:.2f} to {eff_temperature:.2f} for structured lyrics.")
 
-        print(f"[STOIQO Music] Generating music style & lyrics for: '{clean_idea[:60]}'...")
+        logger.info(f"[Music] Generating music style & lyrics for: '{clean_idea[:60]}'...")
 
         # Discover target node IDs for live WebSocket streaming
         stream_ids = []
@@ -306,22 +318,31 @@ class StoiqoMusicPromptEngineNode:
                             if isinstance(inval, list) and len(inval) > 0 and str(inval[0]) == uid_str:
                                 stream_ids.append(str(nid))
 
-        raw_output = active_mgr.generate_single(
-            img_pil,
-            task_prompt,
-            active_system_prompt,
-            max_new_tokens=max_new_tokens,
-            temperature=eff_temperature,
-            top_p=0.85,
-            repetition_penalty=repetition_penalty,
-            is_multi_image=False,
-            seed=seed,
-            node_id=stream_ids,
-        )
+        try:
+            raw_output = active_mgr.generate_single(
+                img_pil,
+                task_prompt,
+                active_system_prompt,
+                max_new_tokens=max_new_tokens,
+                temperature=eff_temperature,
+                top_p=0.85,
+                repetition_penalty=repetition_penalty,
+                is_multi_image=False,
+                seed=seed,
+                node_id=stream_ids,
+            )
+        finally:
+            # Low-VRAM offload: Free GPU memory for downstream audio generation models (YuE2 / Suno / ACE)
+            if not getattr(active_mgr, "keep_in_vram", True):
+                try:
+                    active_mgr.unload_model()
+                    logger.info("[Music] Low-VRAM mode: Model successfully offloaded from GPU.")
+                except Exception as e:
+                    logger.warning(f"[Music] Warning unloading model: {e}")
 
-        print(f"[STOIQO Music] Raw LLM output: {len(raw_output)} chars generated.")
+        logger.debug(f"[Music] Raw LLM output: {len(raw_output)} chars generated.")
         if len(raw_output) < 200:
-            print(f"[STOIQO Music Debug] Short raw output: {repr(raw_output)}")
+            logger.debug(f"[Music Debug] Short raw output: {repr(raw_output)}")
 
         parsed = parse_music_response(
             raw_output,
@@ -338,8 +359,10 @@ class StoiqoMusicPromptEngineNode:
         words = len(parsed["lyrics"].split())
         chars = len(parsed["lyrics"])
 
-        print(f"[STOIQO Music] Generated Song: '{parsed['title']}' | {words} words in lyrics.")
-        print(f"[STOIQO Music] Style: {parsed['style'][:80]}...")
+        logger.info(f"[Music] Generated Song: '{parsed['title']}' | {words} words in lyrics.")
+        logger.info(f"[Music] Style: {parsed['style'][:80]}...")
+        if parsed.get("metric_summary"):
+            logger.info(f"[Music Metric] {parsed['metric_summary']}")
 
         bpm_val = int(parsed.get("bpm", 120))
         key_val = str(parsed.get("musical_key", "C Minor"))
@@ -361,6 +384,10 @@ class StoiqoMusicPromptEngineNode:
             "time_signature": time_sig_val,
             "genre_tags": gtags_val,
             "vocal_description": vdesc_val,
+            "metric_summary": parsed.get("metric_summary", ""),
+            "dominant_meter": parsed.get("dominant_meter", ""),
+            "rhythmic_score": parsed.get("rhythmic_score", 85),
+            "metrics": parsed.get("metrics", {}),
         }]
 
         return {

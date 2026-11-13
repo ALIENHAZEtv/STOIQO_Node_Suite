@@ -45,7 +45,7 @@
     },
     {
       "id": 3,
-      "type": "StoiqoPromptSynthesizerNode",
+      "type": "StoiqoPromptGeneratorNode",
       "pos": [460, 100],
       "size": [440, 480],
       "flags": {},
@@ -63,7 +63,7 @@
         { "name": "style_tags", "type": "STRING", "links": null, "slot_index": 2 },
         { "name": "raw_response", "type": "STRING", "links": null, "slot_index": 3 }
       ],
-      "properties": { "Node name for S&R": "StoiqoPromptSynthesizerNode" },
+      "properties": { "Node name for S&R": "StoiqoPromptGeneratorNode" },
       "widgets_values": [
         "A futuristic high-fashion android model walking a neon-drenched Tokyo avenue in light rain",
         1.0,

@@ -1,161 +1,123 @@
 """
 [STOIQO] Nodes Package
+Fault-tolerant custom node registry for ComfyUI.
 """
 
+import importlib
+import logging
+
+logger = logging.getLogger("STOIQO")
+
+# 1. Safely register HTTP routes
 try:
     from ..core.routes import register_stoiqo_routes
 except (ImportError, ValueError):
-    from core.routes import register_stoiqo_routes
+    try:
+        from core.routes import register_stoiqo_routes
+    except Exception:
+        register_stoiqo_routes = lambda: None
 
-register_stoiqo_routes()
+try:
+    register_stoiqo_routes()
+except Exception as e:
+    logger.warning(f"[STOIQO] Route registration warning: {e}")
 
-from .show_prompt_node import StoiqoShowPromptNode
-from .model_loader_node import StoiqoVLMModelLoaderNode
-from .visual_diff_node import StoiqoVisualDiffNode
-from .image_compare_node import StoiqoImageCompareNode
-from .text_concat_node import StoiqoTextConcatenateNode
-from .resolution_node import StoiqoResolutionNode
-from .dataset_node import StoiqoDatasetWriterNode
-from .image_loader_node import StoiqoSmartFolderImageIterator
-from .spatial_cropper_node import StoiqoSpatialCropperNode
-from .trio_loader_node import StoiqoTripleImageLoaderNode
-from .pro_saver_node import StoiqoProImageSaverNode
-from .music_prompt_node import StoiqoMusicPromptEngineNode
-from .seed_node import StoiqoSeedControllerNode
-from .audio_saver_node import StoiqoAudioSaverNode
-from .video_saver_node import StoiqoVideoSaverNode
-from .inpaint_stitcher_node import StoiqoInpaintStitcherNode
-from .watermark_node import StoiqoWatermarkNode
-from .tri_loader_hub_node import StoiqoTriLoaderHubNode
-from .turbo_sampler_node import StoiqoTurboSamplerNode
-from .style_directives_node import StoiqoStyleDirectivesNode
-from .sampling_options_node import StoiqoSamplingOptionsNode
-from .multi_image_context_node import StoiqoMultiImageContextNode
-from .prompt_synthesizer_node import StoiqoPromptSynthesizerNode
-from .lora_stack_node import StoiqoLoraStackNode
-from .character_memory_node import StoiqoCharacterMemoryNode
-from .universal_pipe_node import StoiqoUniversalPipeInNode, StoiqoUniversalPipeOutNode
-from .webhook_notifier_node import StoiqoWebhookNotifierNode
-from .frequency_separation_nodes import StoiqoFrequencySplitNode, StoiqoFrequencyMergeNode
-from .depth_parallax_node import StoiqoDepthParallaxExtractor
-from .spatial_reroll_node import StoiqoSpatialRerollNode
-from .face_restore_hub_node import StoiqoFaceRestoreHub
-from .video_enhancement_nodes import StoiqoTemporalDeflickerNode, StoiqoFrameInterpolateNode
-
-NODE_CLASS_MAPPINGS = {
-    "StoiqoUniversalPipeInNode": StoiqoUniversalPipeInNode,
-    "StoiqoUniversalPipeOutNode": StoiqoUniversalPipeOutNode,
-    "StoiqoWebhookNotifierNode": StoiqoWebhookNotifierNode,
-    "StoiqoShowPromptNode": StoiqoShowPromptNode,
-    "StoiqoVLMModelLoaderNode": StoiqoVLMModelLoaderNode,
-    "StoiqoVisualDiffNode": StoiqoVisualDiffNode,
-    "StoiqoImageCompareNode": StoiqoImageCompareNode,
-    "StoiqoTextConcatenateNode": StoiqoTextConcatenateNode,
-    "StoiqoResolutionNode": StoiqoResolutionNode,
-    "StoiqoDatasetWriterNode": StoiqoDatasetWriterNode,
-    "StoiqoSmartFolderImageIterator": StoiqoSmartFolderImageIterator,
-    "StoiqoSpatialCropperNode": StoiqoSpatialCropperNode,
-    "StoiqoTripleImageLoaderNode": StoiqoTripleImageLoaderNode,
-    "StoiqoProImageSaverNode": StoiqoProImageSaverNode,
-    "StoiqoMusicPromptEngineNode": StoiqoMusicPromptEngineNode,
-    "StoiqoSeedControllerNode": StoiqoSeedControllerNode,
-    "StoiqoAudioSaverNode": StoiqoAudioSaverNode,
-    "StoiqoVideoSaverNode": StoiqoVideoSaverNode,
-    "StoiqoInpaintStitcherNode": StoiqoInpaintStitcherNode,
-    "StoiqoWatermarkNode": StoiqoWatermarkNode,
-    "StoiqoTriLoaderHubNode": StoiqoTriLoaderHubNode,
-    "StoiqoTurboSamplerNode": StoiqoTurboSamplerNode,
-    "StoiqoStyleDirectivesNode": StoiqoStyleDirectivesNode,
-    "StoiqoSamplingOptionsNode": StoiqoSamplingOptionsNode,
-    "StoiqoMultiImageContextNode": StoiqoMultiImageContextNode,
-    "StoiqoPromptSynthesizerNode": StoiqoPromptSynthesizerNode,
-    "StoiqoLoraStackNode": StoiqoLoraStackNode,
-    "StoiqoCharacterMemoryNode": StoiqoCharacterMemoryNode,
-    "StoiqoFrequencySplitNode": StoiqoFrequencySplitNode,
-    "StoiqoFrequencyMergeNode": StoiqoFrequencyMergeNode,
-    "StoiqoDepthParallaxExtractor": StoiqoDepthParallaxExtractor,
-    "StoiqoSpatialRerollNode": StoiqoSpatialRerollNode,
-    "StoiqoFaceRestoreHub": StoiqoFaceRestoreHub,
-    "StoiqoTemporalDeflickerNode": StoiqoTemporalDeflickerNode,
-    "StoiqoFrameInterpolateNode": StoiqoFrameInterpolateNode,
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "StoiqoUniversalPipeInNode": "[STOIQO] Universal Context Pipe (In / Bus)",
-    "StoiqoUniversalPipeOutNode": "[STOIQO] Universal Context Pipe (Out / Unpack)",
-    "StoiqoWebhookNotifierNode": "[STOIQO] Webhook Notifier & Pipeline Exporter",
-    "StoiqoShowPromptNode": "[STOIQO] Show Prompt",
-    "StoiqoVLMModelLoaderNode": "[STOIQO] VLM Model Loader",
-    "StoiqoVisualDiffNode": "[STOIQO] Visual Diff & Forensic Inspector",
-    "StoiqoImageCompareNode": "[STOIQO] Visual Compare Slider & Zoom",
-    "StoiqoTextConcatenateNode": "[STOIQO] Text Concatenate & Clean",
-    "StoiqoResolutionNode": "[STOIQO] Image Resolution & Aspect Ratio",
-    "StoiqoDatasetWriterNode": "[STOIQO] Dataset & LoRA Toolkit",
-    "StoiqoSmartFolderImageIterator": "[STOIQO] Smart Folder Image Iterator",
-    "StoiqoSpatialCropperNode": "[STOIQO] Spatial Cropper & Mask Generator",
-    "StoiqoTripleImageLoaderNode": "[STOIQO] Trio Image Loader (Hero & Thumbs)",
-    "StoiqoProImageSaverNode": "[STOIQO] Pro Image Saver & Metadata Hub",
-    "StoiqoMusicPromptEngineNode": "[STOIQO] Music Prompt & Lyrics Engine (YuE2)",
-    "StoiqoSeedControllerNode": "[STOIQO] Smart Seed & Variance Controller",
-    "StoiqoAudioSaverNode": "[STOIQO] Pro Audio Saver & Metadata Hub",
-    "StoiqoVideoSaverNode": "[STOIQO] Pro Video Saver & Frame Exporter",
-    "StoiqoInpaintStitcherNode": "[STOIQO] Inpaint Stitcher & Composite",
-    "StoiqoWatermarkNode": "[STOIQO] Smart Watermark & Logo Stamp",
-    "StoiqoTriLoaderHubNode": "[STOIQO] Tri-Model Loader Hub",
-    "StoiqoTurboSamplerNode": "[STOIQO] Turbo Sampler & Direct Decoder",
-    "StoiqoStyleDirectivesNode": "[STOIQO] AI Persona & Style Directives",
-    "StoiqoSamplingOptionsNode": "[STOIQO] LLM Sampling & Precision",
-    "StoiqoMultiImageContextNode": "[STOIQO] Multi-Image Context Hub",
-    "StoiqoPromptSynthesizerNode": "[STOIQO] Prompt Synthesizer Engine",
-    "StoiqoLoraStackNode": "[STOIQO] LoRA Stack",
-    "StoiqoCharacterMemoryNode": "[STOIQO] Character Memory Bank (Lorebook & DNA)",
-    "StoiqoFrequencySplitNode": "[STOIQO] Frequency Split (Texture & Color)",
-    "StoiqoFrequencyMergeNode": "[STOIQO] Frequency Merge & Recomposite",
-    "StoiqoDepthParallaxExtractor": "[STOIQO] Depth Map & 3D Parallax Extractor",
-    "StoiqoSpatialRerollNode": "[STOIQO] Spatial Re-Roll & Contextual Fill",
-    "StoiqoFaceRestoreHub": "[STOIQO] Face Restoration & Portrait Hub",
-    "StoiqoTemporalDeflickerNode": "[STOIQO] Temporal Video Deflicker",
-    "StoiqoFrameInterpolateNode": "[STOIQO] Video Frame Rate Multiplier (2x / 4x)",
-}
-
-__all__ = [
-    "StoiqoUniversalPipeInNode",
-    "StoiqoUniversalPipeOutNode",
-    "StoiqoWebhookNotifierNode",
-    "StoiqoShowPromptNode",
-    "StoiqoVLMModelLoaderNode",
-    "StoiqoVisualDiffNode",
-    "StoiqoImageCompareNode",
-    "StoiqoTextConcatenateNode",
-    "StoiqoResolutionNode",
-    "StoiqoDatasetWriterNode",
-    "StoiqoSmartFolderImageIterator",
-    "StoiqoSpatialCropperNode",
-    "StoiqoTripleImageLoaderNode",
-    "StoiqoProImageSaverNode",
-    "StoiqoMusicPromptEngineNode",
-    "StoiqoSeedControllerNode",
-    "StoiqoAudioSaverNode",
-    "StoiqoVideoSaverNode",
-    "StoiqoInpaintStitcherNode",
-    "StoiqoWatermarkNode",
-    "StoiqoTriLoaderHubNode",
-    "StoiqoTurboSamplerNode",
-    "StoiqoStyleDirectivesNode",
-    "StoiqoSamplingOptionsNode",
-    "StoiqoMultiImageContextNode",
-    "StoiqoPromptSynthesizerNode",
-    "StoiqoLoraStackNode",
-    "StoiqoCharacterMemoryNode",
-    "StoiqoFrequencySplitNode",
-    "StoiqoFrequencyMergeNode",
-    "StoiqoDepthParallaxExtractor",
-    "StoiqoSpatialRerollNode",
-    "StoiqoFaceRestoreHub",
-    "StoiqoTemporalDeflickerNode",
-    "StoiqoFrameInterpolateNode",
-    "NODE_CLASS_MAPPINGS",
-    "NODE_DISPLAY_NAME_MAPPINGS",
+# 2. Dynamic Node Registry Table
+# Format: (module_name, [(class_name, display_name), ...])
+_NODE_DEFINITIONS = [
+    # Core Loaders & Pipeline Infrastructure
+    ("seed_node", [
+        ("StoiqoSeedControllerNode", "[STOIQO] Seed & Resolution Controller")
+    ]),
+    ("universal_model_loader_node", [
+        ("StoiqoUniversalModelLoaderNode", "[STOIQO] Universal Model Loader (All-in-One)")
+    ]),
+    ("show_prompt_node", [
+        ("StoiqoShowPromptNode", "[STOIQO] Show Prompt")
+    ]),
+    ("image_compare_node", [
+        ("StoiqoImageCompareNode", "[STOIQO] Visual Compare Slider & Zoom")
+    ]),
+    ("text_concat_node", [
+        ("StoiqoTextConcatenateNode", "[STOIQO] Text Concatenate & Clean")
+    ]),
+    ("dataset_node", [
+        ("StoiqoDatasetWriterNode", "[STOIQO] Dataset & LoRA Toolkit")
+    ]),
+    ("image_loader_node", [
+        ("StoiqoImageLoaderNode", "[STOIQO] Image Loader")
+    ]),
+    ("folder_iterator_node", [
+        ("StoiqoSmartFolderImageIterator", "[STOIQO] Smart Folder Image Iterator")
+    ]),
+    ("spatial_cropper_node", [
+        ("StoiqoSpatialCropperNode", "[STOIQO] Spatial Cropper & Mask Generator")
+    ]),
+    ("pro_saver_node", [
+        ("StoiqoProImageSaverNode", "[STOIQO] Pro Image Saver & Metadata Hub")
+    ]),
+    ("music_prompt_node", [
+        ("StoiqoMusicPromptEngineNode", "[STOIQO] Music Prompt & Lyrics Engine (YuE2)")
+    ]),
+    ("audio_saver_node", [
+        ("StoiqoAudioSaverNode", "[STOIQO] Pro Audio Saver & Metadata Hub")
+    ]),
+    ("video_saver_node", [
+        ("StoiqoVideoSaverNode", "[STOIQO] Pro Video Saver & Frame Exporter")
+    ]),
+    ("inpaint_stitcher_node", [
+        ("StoiqoInpaintStitcherNode", "[STOIQO] Inpaint Stitcher & Spatial Re-Roll")
+    ]),
+    ("watermark_node", [
+        ("StoiqoWatermarkNode", "[STOIQO] Smart Watermark & Logo Stamp")
+    ]),
+    ("turbo_sampler_node", [
+        ("StoiqoTurboSamplerNode", "[STOIQO] Turbo Sampler & Direct Decoder")
+    ]),
+    ("prompt_generator_node", [
+        ("StoiqoPromptGeneratorNode", "[STOIQO] Prompt Generator")
+    ]),
+    ("lora_stack_node", [
+        ("StoiqoLoraStackNode", "[STOIQO] LoRA Stack")
+    ]),
+    ("character_memory_node", [
+        ("StoiqoCharacterMemoryNode", "[STOIQO] Character Memory Bank (Lorebook & DNA)")
+    ]),
+    ("frequency_separation_nodes", [
+        ("StoiqoFrequencySeparationNode", "[STOIQO] Frequency Separation & Texture Hub"),
+    ]),
+    ("video_enhancement_nodes", [
+        ("StoiqoVideoEnhancerNode", "[STOIQO] Video Deflicker & Frame Interpolator"),
+    ]),
 ]
 
+NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
 
+for module_name, classes in _NODE_DEFINITIONS:
+    mod = None
+    try:
+        mod = importlib.import_module(f".{module_name}", package=__name__)
+    except (ImportError, ValueError):
+        try:
+            mod = importlib.import_module(f"nodes.{module_name}")
+        except Exception as err:
+            logger.warning(f"[STOIQO] Notice: Could not load node module '{module_name}': {err}")
+            continue
+    except Exception as err:
+        logger.error(f"[STOIQO] Error initializing node module '{module_name}': {err}", exc_info=True)
+        continue
+
+    for cls_name, display_name in classes:
+        cls_obj = getattr(mod, cls_name, None)
+        if cls_obj is not None:
+            NODE_CLASS_MAPPINGS[cls_name] = cls_obj
+            NODE_DISPLAY_NAME_MAPPINGS[cls_name] = display_name
+            globals()[cls_name] = cls_obj
+        else:
+            logger.warning(f"[STOIQO] Notice: Class '{cls_name}' not found in '{module_name}'")
+
+__all__ = [
+    "NODE_CLASS_MAPPINGS",
+    "NODE_DISPLAY_NAME_MAPPINGS",
+] + list(NODE_CLASS_MAPPINGS.keys())

@@ -4,27 +4,74 @@
   "nodes": [
     {
       "id": 1,
-      "type": "StoiqoTriLoaderHubNode",
+      "type": "StoiqoUniversalModelLoaderNode",
       "pos": [40, 100],
-      "size": [380, 260],
+      "size": [380, 180],
       "flags": {},
       "order": 0,
       "mode": 0,
       "inputs": [],
       "outputs": [
-        { "name": "model", "type": "MODEL", "links": [1], "slot_index": 0 },
-        { "name": "clip", "type": "CLIP", "links": [2], "slot_index": 1 },
-        { "name": "vae", "type": "VAE", "links": [3], "slot_index": 2 },
-        { "name": "stoiqo_pipe", "type": "STOIQO_PIPE", "links": null, "slot_index": 3 }
+        { "name": "model", "type": "*", "links": [1], "slot_index": 0 }
       ],
-      "properties": { "Node name for S&R": "StoiqoTriLoaderHubNode" },
+      "properties": { "Node name for S&R": "StoiqoUniversalModelLoaderNode" },
       "widgets_values": [
-        "krea2_turbo.safetensors",
+        "[DiT/UNET] krea2_turbo.safetensors",
+        "auto",
         "fp8_e4m3fn_fast",
-        "qwen2_5_vl_clip.safetensors",
+        "sdpa",
+        "Z-Image Turbo (Shift: 3.0)",
+        3.0,
+        "",
+        true
+      ]
+    },
+    {
+      "id": 11,
+      "type": "StoiqoUniversalModelLoaderNode",
+      "pos": [40, 310],
+      "size": [380, 180],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        { "name": "model", "type": "*", "links": [2], "slot_index": 0 }
+      ],
+      "properties": { "Node name for S&R": "StoiqoUniversalModelLoaderNode" },
+      "widgets_values": [
+        "[CLIP] qwen2_5_vl_clip.safetensors",
         "krea2",
-        "ae.safetensors",
-        "default"
+        "default",
+        "sdpa",
+        "None (Standard / SD1.5 / SDXL / Krea 2)",
+        3.0,
+        "",
+        true
+      ]
+    },
+    {
+      "id": 12,
+      "type": "StoiqoUniversalModelLoaderNode",
+      "pos": [40, 520],
+      "size": [380, 180],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        { "name": "model", "type": "*", "links": [3], "slot_index": 0 }
+      ],
+      "properties": { "Node name for S&R": "StoiqoUniversalModelLoaderNode" },
+      "widgets_values": [
+        "[VAE] ae.safetensors",
+        "auto",
+        "default",
+        "sdpa",
+        "None (Standard / SD1.5 / SDXL / Krea 2)",
+        3.0,
+        "",
+        true
       ]
     },
     {

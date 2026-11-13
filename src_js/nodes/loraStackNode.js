@@ -99,11 +99,17 @@ class StoiqoLoraStackWidget {
         }
         this.loras = parsed
             .filter(it => it && typeof it.name === "string" && it.name)
-            .map(it => ({
-                name: it.name,
-                strength: Number.isFinite(Number(it.strength)) ? Number(it.strength) : 1.0,
-                enabled: it.enabled !== false,
-            }));
+            .map(it => {
+                const sm = Number.isFinite(Number(it.strength)) ? Number(it.strength) : 1.0;
+                const sc = Number.isFinite(Number(it.strength_clip)) ? Number(it.strength_clip) : sm;
+                return {
+                    name: it.name,
+                    strength: sm,
+                    strength_clip: sc,
+                    enabled: it.enabled !== false,
+                    block_filter: it.block_filter || "All Blocks (Standard)",
+                };
+            });
     }
 
     sync() {
@@ -112,8 +118,9 @@ class StoiqoLoraStackWidget {
                 this.loras.map(l => ({
                     name: l.name,
                     strength: l.strength,
-                    strength_clip: l.strength,
+                    strength_clip: l.strength_clip !== undefined ? l.strength_clip : l.strength,
                     enabled: l.enabled,
+                    block_filter: l.block_filter || "All Blocks (Standard)",
                 }))
             );
         }
@@ -189,7 +196,7 @@ class StoiqoLoraStackWidget {
 
                 // Toggle pill
                 const tW = 28, tH = 14;
-                const tX = x0 + 8, tY = rY + (rH - tH) / 2;
+                const tX = x0 + 6, tY = rY + (rH - tH) / 2;
                 ctx.fillStyle = on ? "#2dd4bf" : "#475569";
                 roundRect(ctx, tX, tY, tW, tH, 7);
                 ctx.fill();
@@ -202,82 +209,162 @@ class StoiqoLoraStackWidget {
                     action: () => { lora.enabled = !lora.enabled; this.sync(); },
                 });
 
-                // Right controls: [−] value [+] [✕]
-                const btnW = 18, valW = 46, xW = 18, gap = 3;
-                const ctrlW = btnW + valW + btnW + gap + xW;
-                const cX = x0 + w - ctrlW - 6;
+                // Right controls: [▲] [▼] [−] value [+] [⚙] [✕]
+                const upW = 15, dnW = 15, btnW = 16, valW = 52, gearW = 18, xW = 16, gap = 2;
+                const ctrlW = upW + gap + dnW + gap + btnW + valW + btnW + gap + gearW + gap + xW;
+                const cX = x0 + w - ctrlW - 4;
                 const cY = rY + 3;
                 const cH = rH - 6;
 
-                const drawBtn = (bx, bw, label, color) => {
-                    ctx.fillStyle = "rgba(255,255,255,0.08)";
+                const drawBtn = (bx, bw, label, color, bg = "rgba(255,255,255,0.08)", font = "bold 11px sans-serif") => {
+                    ctx.fillStyle = bg;
                     roundRect(ctx, bx, cY, bw, cH, 3);
                     ctx.fill();
                     ctx.fillStyle = color;
-                    ctx.font = "bold 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+                    ctx.font = font;
                     ctx.textAlign = "center";
                     ctx.fillText(label, bx + bw / 2, cY + cH / 2 + 0.5);
                 };
 
-                drawBtn(cX, btnW, "−", "#e2e8f0");
+                // Move Up [▲]
+                drawBtn(cX, upW, "▲", idx > 0 ? "#cbd5e1" : "#475569", "rgba(255,255,255,0.05)", "9px sans-serif");
                 this.hits.push({
-                    x: cX, y: cY, w: btnW, h: cH,
+                    x: cX, y: cY, w: upW, h: cH,
                     action: () => {
-                        lora.strength = Math.round((lora.strength - STEP) * 100) / 100;
+                        if (idx > 0) {
+                            const tmp = this.loras[idx - 1];
+                            this.loras[idx - 1] = this.loras[idx];
+                            this.loras[idx] = tmp;
+                            this.sync();
+                        }
+                    },
+                });
+
+                // Move Down [▼]
+                const dnX = cX + upW + gap;
+                drawBtn(dnX, dnW, "▼", idx < this.loras.length - 1 ? "#cbd5e1" : "#475569", "rgba(255,255,255,0.05)", "9px sans-serif");
+                this.hits.push({
+                    x: dnX, y: cY, w: dnW, h: cH,
+                    action: () => {
+                        if (idx < this.loras.length - 1) {
+                            const tmp = this.loras[idx + 1];
+                            this.loras[idx + 1] = this.loras[idx];
+                            this.loras[idx] = tmp;
+                            this.sync();
+                        }
+                    },
+                });
+
+                // Decrement [−]
+                const minusX = dnX + dnW + gap;
+                drawBtn(minusX, btnW, "−", "#e2e8f0");
+                this.hits.push({
+                    x: minusX, y: cY, w: btnW, h: cH,
+                    action: (ev) => {
+                        if (ev && ev.shiftKey) {
+                            lora.strength_clip = Math.round(((lora.strength_clip ?? lora.strength) - STEP) * 100) / 100;
+                        } else {
+                            lora.strength = Math.round((lora.strength - STEP) * 100) / 100;
+                            if (lora.strength_clip === undefined) lora.strength_clip = lora.strength;
+                        }
                         this.sync();
                     },
                 });
 
                 // Value box
-                const vX = cX + btnW;
-                ctx.fillStyle = "rgba(0,0,0,0.25)";
+                const vX = minusX + btnW;
+                ctx.fillStyle = "rgba(0,0,0,0.3)";
                 ctx.fillRect(vX, cY, valW, cH);
                 ctx.fillStyle = on ? "#f1f5f9" : "#64748b";
-                ctx.font = "11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+                ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
                 ctx.textAlign = "center";
-                ctx.fillText(lora.strength.toFixed(2), vX + valW / 2, cY + cH / 2 + 0.5);
+                const isDecoupled = lora.strength_clip !== undefined && Math.abs(lora.strength_clip - lora.strength) > 0.001;
+                const valLabel = isDecoupled ? `${lora.strength.toFixed(1)}|${lora.strength_clip.toFixed(1)}` : lora.strength.toFixed(2);
+                ctx.fillText(valLabel, vX + valW / 2, cY + cH / 2 + 0.5);
                 this.hits.push({
                     x: vX, y: cY, w: valW, h: cH,
                     action: (ev) => {
-                        app.canvas.prompt("Strength", lora.strength, (v) => {
+                        const isShift = ev && ev.shiftKey;
+                        const promptTitle = isShift ? "CLIP Strength" : "Model Strength (Shift+click for CLIP)";
+                        const curVal = isShift ? (lora.strength_clip ?? lora.strength) : lora.strength;
+                        app.canvas.prompt(promptTitle, curVal, (v) => {
                             const num = parseFloat(v);
                             if (Number.isFinite(num)) {
-                                lora.strength = Math.round(Math.max(-10, Math.min(10, num)) * 100) / 100;
+                                const rounded = Math.round(Math.max(-10, Math.min(10, num)) * 100) / 100;
+                                if (isShift) {
+                                    lora.strength_clip = rounded;
+                                } else {
+                                    lora.strength = rounded;
+                                }
                                 this.sync();
                             }
                         }, ev);
                     },
                 });
 
-                drawBtn(vX + valW, btnW, "+", "#e2e8f0");
+                // Increment [+]
+                const plusX = vX + valW;
+                drawBtn(plusX, btnW, "+", "#e2e8f0");
                 this.hits.push({
-                    x: vX + valW, y: cY, w: btnW, h: cH,
-                    action: () => {
-                        lora.strength = Math.round((lora.strength + STEP) * 100) / 100;
+                    x: plusX, y: cY, w: btnW, h: cH,
+                    action: (ev) => {
+                        if (ev && ev.shiftKey) {
+                            lora.strength_clip = Math.round(((lora.strength_clip ?? lora.strength) + STEP) * 100) / 100;
+                        } else {
+                            lora.strength = Math.round((lora.strength + STEP) * 100) / 100;
+                            if (lora.strength_clip === undefined) lora.strength_clip = lora.strength;
+                        }
                         this.sync();
                     },
                 });
 
-                const xX = vX + valW + btnW + gap;
+                // Row Settings [⚙]
+                const hasCustomBlock = Boolean(lora.block_filter && !lora.block_filter.startsWith("All Blocks"));
+                const hasCustomRowCfg = isDecoupled || hasCustomBlock;
+                const gearX = plusX + btnW + gap;
+                drawBtn(
+                    gearX,
+                    gearW,
+                    "⚙",
+                    hasCustomRowCfg ? "#58b0ff" : "#cbd5e1",
+                    hasCustomRowCfg ? "rgba(41,151,255,0.18)" : "rgba(255,255,255,0.06)",
+                    "11px sans-serif"
+                );
+                this.hits.push({
+                    x: gearX, y: cY, w: gearW, h: cH,
+                    action: (ev) => this.showRowMenu(ev, lora, idx),
+                });
+
+                // Delete [✕]
+                const xX = gearX + gearW + gap;
                 drawBtn(xX, xW, "✕", "#f87171");
                 this.hits.push({
                     x: xX, y: cY, w: xW, h: cH,
                     action: () => { this.loras.splice(idx, 1); this.sync(); },
                 });
 
-                // LoRA name (click to change) — clipped to the space left of the controls
-                const nX = tX + tW + 10;
-                const nW = cX - nX - 8;
+                // LoRA name (click to pick LoRA directly; [⚙] opens advanced row menu)
+                const nX = tX + tW + 8;
+                const nW = cX - nX - 6;
                 ctx.font = "12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
                 ctx.textAlign = "left";
                 ctx.fillStyle = on ? "#e2e8f0" : "#64748b";
-                ctx.fillText(fitText(ctx, baseName(lora.name), nW), nX, rY + rH / 2 + 0.5);
+                const blockTag = hasCustomBlock
+                    ? (lora.block_filter.includes("OUT") ? " [OUT]" : (lora.block_filter.includes("IN/MID") ? " [IN/MID]" : " [MID]"))
+                    : "";
+                ctx.fillText(fitText(ctx, baseName(lora.name) + blockTag, nW), nX, rY + rH / 2 + 0.5);
                 this.hits.push({
                     x: nX, y: rY, w: nW, h: rH,
-                    action: (ev) => this.pickLora(ev, (picked) => {
-                        lora.name = picked;
-                        this.sync();
-                    }),
+                    action: (ev) => {
+                        if (ev && ev.button === 2) {
+                            this.showRowMenu(ev, lora, idx);
+                        } else {
+                            this.pickLora(ev, (picked) => {
+                                lora.name = picked;
+                                this.sync();
+                            });
+                        }
+                    },
                 });
 
                 y += ROW_H;
@@ -305,6 +392,100 @@ class StoiqoLoraStackWidget {
         });
 
         ctx.restore();
+    }
+
+    async showRowMenu(event, lora, idx) {
+        const LG = window.LiteGraph;
+        if (!LG || !LG.ContextMenu) {
+            this.pickLora(event, (picked) => {
+                lora.name = picked;
+                this.sync();
+            });
+            return;
+        }
+
+        const items = [
+            {
+                content: `🔍 Cambia LoRA...`,
+                callback: (v, opts, e) => {
+                    this.pickLora(e, (picked) => {
+                        lora.name = picked;
+                        this.sync();
+                    });
+                },
+            },
+            {
+                content: `⚖️ Modifica CLIP Strength (${(lora.strength_clip ?? lora.strength).toFixed(2)})`,
+                callback: (_v, _opts, e) => {
+                    app.canvas.prompt("CLIP Strength", lora.strength_clip ?? lora.strength, (val) => {
+                        const num = parseFloat(val);
+                        if (Number.isFinite(num)) {
+                            lora.strength_clip = Math.round(Math.max(-10, Math.min(10, num)) * 100) / 100;
+                            this.sync();
+                        }
+                    }, e);
+                },
+            },
+            {
+                content: `🧱 Filtro Blocchi (${lora.block_filter || "All Blocks"})`,
+                has_submenu: true,
+                callback: (_v, _opts, e, menu) => {
+                    const filters = [
+                        "All Blocks (Standard)",
+                        "Style / Texture Only (OUT Blocks)",
+                        "Character / Structure Only (IN/MID Blocks)",
+                        "Face & Pose Focused (MID Block)",
+                    ];
+                    new LG.ContextMenu(
+                        filters.map(f => ({
+                            content: (lora.block_filter === f || (!lora.block_filter && f.startsWith("All"))) ? `✓ ${f}` : f,
+                            value: f,
+                        })),
+                        {
+                            event: e,
+                            parentMenu: menu,
+                            callback: (chosen) => {
+                                if (chosen && chosen.value) {
+                                    lora.block_filter = chosen.value;
+                                    this.sync();
+                                }
+                            },
+                        }
+                    );
+                    return true;
+                },
+            },
+            {
+                content: `🏷️ Mostra / Copia Trigger Words`,
+                callback: async (_v, _opts, e) => {
+                    try {
+                        const resp = await api.fetchApi(`/stoiqo/lora_info?name=${encodeURIComponent(lora.name)}`);
+                        const data = await resp.json();
+                        const triggers = Array.isArray(data.triggers) ? data.triggers : [];
+                        if (triggers.length > 0) {
+                            const trigStr = triggers.join(", ");
+                            if (navigator.clipboard) {
+                                navigator.clipboard.writeText(trigStr).catch(() => {});
+                            }
+                            alert(`Trigger words per '${baseName(lora.name)}':\n\n${trigStr}\n\n(Copiate negli appunti!)`);
+                        } else {
+                            alert(`Nessuna trigger word trovata nei metadati o sidecar per '${baseName(lora.name)}'.`);
+                        }
+                    } catch (err) {
+                        alert(`Errore lettura metadati per '${baseName(lora.name)}'.`);
+                    }
+                },
+            },
+            {
+                content: `✕ Rimuovi`,
+                callback: () => {
+                    this.loras.splice(idx, 1);
+                    this.sync();
+                },
+            },
+        ];
+
+        new LG.ContextMenu(items, { event, title: baseName(lora.name) });
     }
 
     async pickLora(event, onPick) {
@@ -384,17 +565,25 @@ function setupLoraStackNodeUI(node) {
     if (!node) return;
     if (node.size && node.size[0] < MIN_WIDTH) node.size[0] = MIN_WIDTH;
 
-    let loraWidget = node.widgets ? node.widgets.find(w => w instanceof StoiqoLoraStackWidget) : null;
+    if (node.widgets) {
+        const dups = node.widgets.filter(w => w.name === "_stoiqo_lora_stack");
+        for (const extra of dups.slice(1)) {
+            node.widgets.splice(node.widgets.indexOf(extra), 1);
+        }
+    }
+    let loraWidget = node.widgets ? node.widgets.find(w => w.name === "_stoiqo_lora_stack") : null;
     if (!loraWidget) {
         const store = node.widgets ? node.widgets.find(w => w.name === "lora_stack") : null;
-        if (store) {
-            // Hide the raw JSON widget; the canvas widget manages it.
-            store.hidden = true;
-            store.computeSize = () => [0, -4];
-            store.draw = () => {};
-            if (store.inputEl) {
-                store.inputEl.hidden = true;
-                store.inputEl.style.display = "none";
+        for (const wName of ["lora_stack", "block_filter"]) {
+            const hw = node.widgets ? node.widgets.find(w => w.name === wName) : null;
+            if (hw) {
+                hw.hidden = true;
+                hw.computeSize = () => [0, -4];
+                hw.draw = () => {};
+                if (hw.inputEl) {
+                    hw.inputEl.hidden = true;
+                    hw.inputEl.style.display = "none";
+                }
             }
         }
         loraWidget = new StoiqoLoraStackWidget(node, store);

@@ -2,17 +2,864 @@
 import { app as app10 } from "../../scripts/app.js";
 
 // src_js/nodes/showPromptNode.js
+import { app } from "../../../scripts/app.js";
+import { api } from "../../../scripts/api.js";
+import { ComfyWidgets } from "../../../scripts/widgets.js";
+var _streamListenersRegistered = false;
+function ensureStreamListeners() {
+  if (_streamListenersRegistered || typeof api === "undefined" || !api.addEventListener) return;
+  _streamListenersRegistered = true;
+  api.addEventListener("stoiqo_stream_start", (evt) => {
+    const detail = evt.detail || {};
+    const nodeId = detail.node_id;
+    if (!nodeId || !app.graph) return;
+    const node = app.graph.getNodeById(nodeId);
+    if (!node) return;
+    let tw = node.widgets?.find((w) => w.name === "display_text" || w.name === "text" || w.name === "synthesized_prompt");
+    if (tw) {
+      tw.value = "";
+      if (tw.inputEl) tw.inputEl.value = "";
+      if (node._batchTexts) {
+        node._batchTexts = [""];
+        node._batchIndex = 0;
+      }
+      node.setDirtyCanvas(true);
+    }
+  });
+  api.addEventListener("stoiqo_stream_token", (evt) => {
+    const detail = evt.detail || {};
+    const nodeId = detail.node_id;
+    const token = detail.token;
+    if (!nodeId || token === void 0 || !app.graph) return;
+    const node = app.graph.getNodeById(nodeId);
+    if (!node) return;
+    let tw = node.widgets?.find((w) => w.name === "display_text" || w.name === "text" || w.name === "synthesized_prompt");
+    if (tw) {
+      tw.value = (tw.value || "") + token;
+      if (tw.inputEl) {
+        tw.inputEl.value = tw.value;
+        tw.inputEl.scrollTop = tw.inputEl.scrollHeight;
+      }
+      if (node._batchTexts && node._batchTexts.length > 0) {
+        node._batchTexts[node._batchIndex || 0] = tw.value;
+      }
+      node.setDirtyCanvas(true);
+    }
+  });
+  api.addEventListener("stoiqo_stream_complete", (evt) => {
+    const detail = evt.detail || {};
+    const nodeId = detail.node_id;
+    if (!nodeId || !app.graph) return;
+    const node = app.graph.getNodeById(nodeId);
+    if (node) {
+      node.setDirtyCanvas(true, true);
+    }
+  });
+}
+function syncDisplayWidgetText(node) {
+  const tw = node.widgets?.find((w) => w.name === "display_text");
+  if (!tw) return;
+  let targetText = "";
+  if (node._viewAll && node._batchTexts && node._batchTexts.length > 0) {
+    targetText = node._batchTexts.map((t, idx) => `=== PROMPT #${idx + 1} ===
+${t}`).join("\n\n");
+  } else if (node._batchTexts && node._batchTexts.length > 0) {
+    targetText = node._batchTexts[node._batchIndex || 0] || "";
+  } else {
+    targetText = tw.value || "";
+  }
+  tw.value = targetText;
+  if (tw.inputEl) {
+    tw.inputEl.value = targetText;
+  }
+  node.setDirtyCanvas(true, true);
+}
+function drawChipButton(ctx, rect, label, bg, border, textColor, icon) {
+  ctx.save();
+  ctx.fillStyle = bg;
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 4);
+  } else {
+    ctx.rect(rect.x, rect.y, rect.w, rect.h);
+  }
+  ctx.fill();
+  ctx.stroke();
+  ctx.font = "bold 10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+  ctx.fillStyle = textColor;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const text = (icon ? icon + " " : "") + label;
+  ctx.fillText(text, rect.x + rect.w / 2, rect.y + rect.h / 2);
+  ctx.restore();
+}
+function createPromptViewerWidget(node) {
+  const widget = {
+    type: "STOIQO_PROMPT_VIEWER",
+    name: "prompt_viewer_hud",
+    options: { serialize: false },
+    _feedbackText: null,
+    _feedbackAllText: null,
+    _rects: {},
+    computeSize(width) {
+      const isBatch = node._batchTexts && node._batchTexts.length > 1;
+      return [width, isBatch ? 66 : 40];
+    },
+    draw(ctx, node2, width, y, height) {
+      const padX = 10;
+      const cardW = width - padX * 2;
+      const isBatch = node2._batchTexts && node2._batchTexts.length > 1;
+      const cardH = isBatch ? 64 : 38;
+      this._rects = {};
+      ctx.save();
+      ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.22)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(padX, y, cardW, cardH, 6);
+      } else {
+        ctx.rect(padX, y, cardW, cardH);
+      }
+      ctx.fill();
+      ctx.stroke();
+      const currentText = node2._batchTexts && node2._batchTexts.length > 0 && !node2._viewAll ? node2._batchTexts[node2._batchIndex || 0] || "" : node2.widgets?.find((w) => w.name === "display_text")?.value || "";
+      const words = currentText.trim() ? currentText.trim().split(/\s+/).length : 0;
+      const chars = currentText.length;
+      const estTokens = words > 0 ? Math.max(1, Math.round(words * 1.33)) : 0;
+      let rowY = y + 6;
+      if (isBatch) {
+        const total = node2._batchTexts.length;
+        const idx = (node2._batchIndex || 0) + 1;
+        const prevRect = { x: padX + 8, y: rowY, w: 26, h: 22 };
+        this._rects.prev = prevRect;
+        drawChipButton(ctx, prevRect, "\u25C0", "rgba(30, 41, 59, 0.85)", "rgba(148, 163, 184, 0.35)", "#e2e8f0");
+        const badgeLabel = node2._viewAll ? `\u{1F4D1} Vista Batch (${total})` : `Item ${idx} di ${total}`;
+        const badgeRect = { x: padX + 38, y: rowY, w: 104, h: 22 };
+        drawChipButton(
+          ctx,
+          badgeRect,
+          badgeLabel,
+          node2._viewAll ? "rgba(124, 58, 237, 0.25)" : "rgba(30, 41, 59, 0.6)",
+          node2._viewAll ? "rgba(167, 139, 250, 0.45)" : "rgba(148, 163, 184, 0.25)",
+          node2._viewAll ? "#c084fc" : "#94a3b8"
+        );
+        const nextRect = { x: padX + 146, y: rowY, w: 26, h: 22 };
+        this._rects.next = nextRect;
+        drawChipButton(ctx, nextRect, "\u25B6", "rgba(30, 41, 59, 0.85)", "rgba(148, 163, 184, 0.35)", "#e2e8f0");
+        const toggleRect = { x: padX + 178, y: rowY, w: 78, h: 22 };
+        this._rects.toggle = toggleRect;
+        drawChipButton(
+          ctx,
+          toggleRect,
+          node2._viewAll ? "\u{1F4C4} Singolo" : "\u{1F4D1} Tutti",
+          "rgba(30, 41, 59, 0.85)",
+          "rgba(148, 163, 184, 0.35)",
+          "#cbd5e1"
+        );
+        rowY += 28;
+      }
+      ctx.font = "11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+      ctx.fillStyle = "#94a3b8";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      const statsText = node2._viewAll ? `Totale: ${chars} car. \u2022 ${words} par.` : `${chars} car. \u2022 ${words} par. \u2022 ~${estTokens} tok`;
+      ctx.fillText(statsText, padX + 10, rowY + 12);
+      const copyLabel = this._feedbackText || (isBatch && node2._viewAll ? "Copia Tutti" : "Copia Prompt");
+      const copyW = this._feedbackText ? 110 : isBatch && node2._viewAll ? 85 : 95;
+      const copyRect = { x: padX + cardW - copyW - 8, y: rowY + 1, w: copyW, h: 22 };
+      this._rects.copy = copyRect;
+      const isCopied = !!this._feedbackText;
+      drawChipButton(
+        ctx,
+        copyRect,
+        copyLabel,
+        isCopied ? "rgba(16, 185, 129, 0.3)" : "rgba(30, 41, 59, 0.9)",
+        isCopied ? "rgba(52, 211, 153, 0.6)" : "rgba(148, 163, 184, 0.4)",
+        isCopied ? "#34d399" : "#f1f5f9",
+        isCopied ? "\u2713" : "\u{1F4CB}"
+      );
+      if (isBatch && !node2._viewAll) {
+        const copyAllLabel = this._feedbackAllText || `Tutti (${node2._batchTexts.length})`;
+        const copyAllW = this._feedbackAllText ? 95 : 68;
+        const copyAllRect = { x: copyRect.x - copyAllW - 6, y: rowY + 1, w: copyAllW, h: 22 };
+        this._rects.copyAll = copyAllRect;
+        const isAllCopied = !!this._feedbackAllText;
+        drawChipButton(
+          ctx,
+          copyAllRect,
+          copyAllLabel,
+          isAllCopied ? "rgba(16, 185, 129, 0.3)" : "rgba(30, 41, 59, 0.75)",
+          isAllCopied ? "rgba(52, 211, 153, 0.6)" : "rgba(148, 163, 184, 0.3)",
+          isAllCopied ? "#34d399" : "#cbd5e1",
+          isAllCopied ? "\u2713" : "\u{1F4D1}"
+        );
+      }
+      ctx.restore();
+    },
+    mouse(event, pos, node2) {
+      if (event.type !== "pointerdown" && event.type !== "mousedown") return false;
+      const [clickX, clickY] = pos;
+      const isInside = (r) => r && clickX >= r.x && clickX <= r.x + r.w && clickY >= r.y && clickY <= r.y + r.h;
+      if (isInside(this._rects.prev)) {
+        const total = node2._batchTexts?.length || 1;
+        node2._batchIndex = ((node2._batchIndex || 0) - 1 + total) % total;
+        node2._viewAll = false;
+        syncDisplayWidgetText(node2);
+        return true;
+      }
+      if (isInside(this._rects.next)) {
+        const total = node2._batchTexts?.length || 1;
+        node2._batchIndex = ((node2._batchIndex || 0) + 1) % total;
+        node2._viewAll = false;
+        syncDisplayWidgetText(node2);
+        return true;
+      }
+      if (isInside(this._rects.toggle)) {
+        node2._viewAll = !node2._viewAll;
+        syncDisplayWidgetText(node2);
+        return true;
+      }
+      if (isInside(this._rects.copy)) {
+        const tw = node2.widgets?.find((w) => w.name === "display_text");
+        const textToCopy = tw?.value || "";
+        if (navigator.clipboard && textToCopy) {
+          navigator.clipboard.writeText(textToCopy);
+          this._feedbackText = "Copiato!";
+          node2.setDirtyCanvas(true);
+          setTimeout(() => {
+            this._feedbackText = null;
+            node2.setDirtyCanvas(true);
+          }, 1800);
+        }
+        return true;
+      }
+      if (isInside(this._rects.copyAll)) {
+        if (node2._batchTexts && node2._batchTexts.length > 0 && navigator.clipboard) {
+          const allText = node2._batchTexts.map((t, idx) => `=== PROMPT #${idx + 1} ===
+${t}`).join("\n\n");
+          navigator.clipboard.writeText(allText);
+          this._feedbackAllText = "Copiati!";
+          node2.setDirtyCanvas(true);
+          setTimeout(() => {
+            this._feedbackAllText = null;
+            node2.setDirtyCanvas(true);
+          }, 1800);
+        }
+        return true;
+      }
+      return false;
+    }
+  };
+  return widget;
+}
+function setupShowPromptNode(nodeType, nodeData, app11) {
+  ensureStreamListeners();
+  const showPromptTargetNames = [
+    "StoiqoShowPromptNode",
+    "[STOIQO] Show Prompt"
+  ];
+  if (showPromptTargetNames.includes(nodeData.name)) {
+    let configureShowPromptNode = function(node) {
+      if (!node) return;
+      if (node.bgcolor === "#0e1218" || node.bgcolor === "#0b1411") delete node.bgcolor;
+      if (node.color === "#18202c" || node.color === "#14251f") delete node.color;
+      if (node.size) {
+        if (node.size[0] < SHOW_MIN_WIDTH) node.size[0] = SHOW_MIN_WIDTH;
+        if (node.size[1] < SHOW_MIN_HEIGHT) node.size[1] = SHOW_MIN_HEIGHT;
+      }
+      node.widgets = node.widgets || [];
+      let textWidget = node.widgets.find((w) => w.name === "display_text");
+      if (!textWidget) {
+        if (typeof ComfyWidgets !== "undefined" && ComfyWidgets["STRING"]) {
+          textWidget = ComfyWidgets["STRING"](
+            node,
+            "display_text",
+            ["STRING", { multiline: true }],
+            app11
+          ).widget;
+        } else {
+          textWidget = node.addWidget(
+            "customtext",
+            "display_text",
+            "",
+            function() {
+            },
+            { multiline: true }
+          );
+        }
+      }
+      if (textWidget) {
+        textWidget.name = "display_text";
+        textWidget.options = textWidget.options || {};
+        textWidget.options.serialize = false;
+        const styleInput = (el) => {
+          if (!el) return;
+          el.readOnly = false;
+          el.placeholder = "In attesa del prompt generato o testo in input...";
+          el.style.boxSizing = "border-box";
+          el.style.opacity = "0.95";
+          el.style.fontSize = "12px";
+          el.style.lineHeight = "1.5";
+          el.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+          el.style.resize = "vertical";
+          el.oninput = (e) => {
+            if (node._batchTexts && node._batchTexts.length > 0 && !node._viewAll) {
+              node._batchTexts[node._batchIndex || 0] = e.target.value;
+            }
+            node.setDirtyCanvas(true);
+          };
+        };
+        if (textWidget.inputEl) {
+          styleInput(textWidget.inputEl);
+        } else {
+          let rawInputEl = null;
+          Object.defineProperty(textWidget, "inputEl", {
+            configurable: true,
+            enumerable: true,
+            get() {
+              return rawInputEl;
+            },
+            set(val) {
+              rawInputEl = val;
+              styleInput(val);
+            }
+          });
+        }
+      }
+      const legacyBtnIdx = node.widgets.findIndex((w) => w._isCopyButton || w.name === "\u{1F4CB} Copy Prompt to Clipboard");
+      if (legacyBtnIdx !== -1) {
+        node.widgets.splice(legacyBtnIdx, 1);
+      }
+      const existingViewers = node.widgets.filter((w) => w.name === "prompt_viewer_hud");
+      for (const extra of existingViewers.slice(1)) {
+        node.widgets.splice(node.widgets.indexOf(extra), 1);
+      }
+      let viewerWidget = existingViewers[0];
+      if (!viewerWidget) {
+        viewerWidget = createPromptViewerWidget(node);
+        node.widgets.push(viewerWidget);
+      }
+      node.setDirtyCanvas(true, true);
+    };
+    const SHOW_MIN_WIDTH = 460;
+    const SHOW_MIN_HEIGHT = 230;
+    const origShowCreated = nodeType.prototype.onNodeCreated;
+    nodeType.prototype.onNodeCreated = function() {
+      if (origShowCreated) origShowCreated.apply(this, arguments);
+      this._batchTexts = [];
+      this._batchIndex = 0;
+      this._viewAll = false;
+      configureShowPromptNode(this);
+    };
+    const origShowConfigure = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function() {
+      if (origShowConfigure) origShowConfigure.apply(this, arguments);
+      const tw = this.widgets?.find((w) => w.name === "display_text");
+      if (tw && tw.value && (!this._batchTexts || this._batchTexts.length === 0)) {
+        this._batchTexts = [tw.value];
+        this._batchIndex = 0;
+        this._viewAll = false;
+      }
+      configureShowPromptNode(this);
+    };
+    const origShowExecuted = nodeType.prototype.onExecuted;
+    nodeType.prototype.onExecuted = function(message) {
+      if (origShowExecuted) origShowExecuted.apply(this, arguments);
+      if (message && message.text) {
+        let texts = [];
+        if (Array.isArray(message.text)) {
+          texts = message.text.map((t) => String(t || ""));
+        } else {
+          texts = [String(message.text || "")];
+        }
+        this._batchTexts = texts;
+        this._batchIndex = 0;
+        this._viewAll = false;
+        syncDisplayWidgetText(this);
+      }
+    };
+  }
+}
+
+// src_js/nodes/modelLoaderNode.js
 import { app as app2 } from "../../../scripts/app.js";
 import { api as api2 } from "../../../scripts/api.js";
-import { ComfyWidgets as ComfyWidgets2 } from "../../../scripts/widgets.js";
+var MODEL_NODE_NAMES = [
+  "StoiqoUniversalModelLoaderNode",
+  "[STOIQO] Universal Model Loader (All-in-One)"
+];
+var LEGACY_WIDGET_NAMES = [
+  "model_name",
+  "clip_type",
+  "precision",
+  "attention",
+  "flow_shift_preset",
+  "custom_shift",
+  "custom_path"
+];
+var MIN_WIDTH = 440;
+var PAD = 6;
+var HEAD_H = 24;
+var ROW_H = 28;
+var BTN_H = 30;
+var PRECISIONS = ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2", "4bit - NF4", "8bit", "fp16", "bf16"];
+var ATTENTIONS = ["sdpa", "flash_attention_2", "eager"];
+var CLIP_TYPES = ["auto", "krea2", "flux", "wan", "sd3", "ace", "qwen_image", "lumina2", "mochi", "ltxv", "minimax", "stable_diffusion"];
+var DEFAULT_PRESET = "None (Standard / SD1.5 / SDXL / Krea 2)";
+var _presets = [DEFAULT_PRESET];
+var _modelListCache = null;
+async function fetchModelList(force = false) {
+  if (_modelListCache && !force) return _modelListCache;
+  try {
+    const resp = await api2.fetchApi("/stoiqo/models");
+    const data = await resp.json();
+    if (Array.isArray(data.presets) && data.presets.length) _presets = data.presets;
+    _modelListCache = Array.isArray(data.models) ? data.models : [];
+  } catch (err) {
+    console.warn("[STOIQO Model Stack] Impossibile leggere la lista modelli:", err);
+    _modelListCache = [];
+  }
+  return _modelListCache;
+}
+function roundRect(ctx, x, y, w, h, r) {
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+  }
+}
+function baseName(path) {
+  const parts = String(path).split(/[\\\/]/);
+  const file = parts[parts.length - 1] || "";
+  return file.replace(/\.(safetensors|ckpt|pt|pth|bin|gguf)$/i, "");
+}
+function fitText(ctx, text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + "\u2026").width > maxW) {
+    t = t.slice(0, -1);
+  }
+  return t + "\u2026";
+}
+function newModel(name, src = {}) {
+  const sh = Number(src.custom_shift);
+  return {
+    name,
+    enabled: src.enabled !== false,
+    precision: String(src.precision || "default"),
+    attention: String(src.attention || "sdpa"),
+    clip_type: String(src.clip_type || "auto"),
+    flow_shift_preset: String(src.flow_shift_preset || DEFAULT_PRESET),
+    custom_shift: Number.isFinite(sh) ? sh : 3,
+    custom_path: String(src.custom_path || "")
+  };
+}
+var ModelStackWidget = class {
+  constructor(node, storeWidget) {
+    this.type = "custom";
+    this.name = "_stoiqo_model_stack";
+    this.node = node;
+    this.store = storeWidget;
+    this.options = { serialize: false };
+    this.models = [];
+    this.hits = [];
+    this.lastClick = 0;
+  }
+  // Nessun valore proprio; tutto vive nel widget storage JSON.
+  get value() {
+    return "";
+  }
+  set value(_v) {
+  }
+  // ── Persistence ───────────────────────────────────────────────────────────
+  loadFromStore() {
+    let parsed = [];
+    try {
+      const raw = this.store ? this.store.value : "[]";
+      const data = JSON.parse(raw || "[]");
+      if (Array.isArray(data)) parsed = data;
+    } catch (e) {
+      parsed = [];
+    }
+    this.models = parsed.filter((m) => m && typeof m.name === "string" && m.name).map((m) => newModel(m.name, m));
+    this.enforceSingleActive();
+  }
+  // Una sola uscita: un solo modello attivo alla volta.
+  enforceSingleActive(prefer = null) {
+    let keep = prefer && prefer.enabled ? prefer : this.models.find((m) => m.enabled);
+    this.models.forEach((m) => {
+      m.enabled = m === keep;
+    });
+  }
+  sync() {
+    if (this.store) {
+      this.store.value = JSON.stringify(this.models.map((m) => ({ ...m })));
+    }
+    this.resizeNode();
+    if (this.node) this.node.setDirtyCanvas(true, true);
+  }
+  resizeNode() {
+    const node = this.node;
+    if (!node) return;
+    const sz = node.computeSize();
+    node.setSize([Math.max(node.size[0], MIN_WIDTH), sz[1]]);
+  }
+  // ── Size ──────────────────────────────────────────────────────────────────
+  totalHeight() {
+    return PAD + HEAD_H + this.models.length * ROW_H + 6 + BTN_H + PAD;
+  }
+  computeSize(width) {
+    return [width, this.totalHeight()];
+  }
+  computeLayoutSize() {
+    const h = this.totalHeight();
+    return { minHeight: h, maxHeight: h, minWidth: MIN_WIDTH };
+  }
+  // ── Draw ──────────────────────────────────────────────────────────────────
+  draw(ctx, node, width, posY) {
+    this.hits = [];
+    const x0 = 10;
+    const w = width - 20;
+    let y = posY + PAD;
+    ctx.save();
+    ctx.textBaseline = "middle";
+    const active = this.models.find((m) => m.enabled);
+    ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#2997ff";
+    ctx.fillText(`Model Stack \xB7 ${this.models.length} modelli \xB7 attivo: ${active ? baseName(active.name) : "nessuno"}`.slice(0, 70), x0 + 2, y + HEAD_H / 2);
+    y += HEAD_H;
+    if (this.models.length === 0) {
+      ctx.font = "italic 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+      ctx.fillStyle = "#64748b";
+      ctx.textAlign = "center";
+      ctx.fillText('Nessun modello \u2014 premi "+ Add Model to Stack"', x0 + w / 2, y + ROW_H / 2);
+      y += ROW_H;
+    } else {
+      this.models.forEach((model, idx) => {
+        const rY = y + 2;
+        const rH = ROW_H - 4;
+        const on = model.enabled;
+        ctx.fillStyle = on ? "rgba(41, 151, 255, 0.08)" : "rgba(255,255,255,0.03)";
+        ctx.strokeStyle = on ? "rgba(41, 151, 255, 0.35)" : "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 1;
+        roundRect(ctx, x0, rY, w, rH, 5);
+        ctx.fill();
+        ctx.stroke();
+        const tW = 28, tH = 14;
+        const tX = x0 + 6, tY = rY + (rH - tH) / 2;
+        ctx.fillStyle = on ? "#2997ff" : "#475569";
+        roundRect(ctx, tX, tY, tW, tH, 7);
+        ctx.fill();
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.arc(on ? tX + tW - 7 : tX + 7, tY + tH / 2, 5, 0, Math.PI * 2);
+        ctx.fill();
+        this.hits.push({
+          x: tX - 2,
+          y: rY,
+          w: tW + 4,
+          h: rH,
+          action: () => {
+            model.enabled = !model.enabled;
+            this.enforceSingleActive(model);
+            this.sync();
+          }
+        });
+        const xW = 18;
+        const xX = x0 + w - xW - 4;
+        const xY = rY + (rH - xW) / 2;
+        const gX = xX - xW - 3;
+        ctx.fillStyle = "rgba(255,255,255,0.08)";
+        roundRect(ctx, gX, xY, xW, xW, 3);
+        ctx.fill();
+        ctx.fillStyle = "#cbd5e1";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("\u2699", gX + xW / 2, xY + xW / 2 + 0.5);
+        this.hits.push({ x: gX, y: xY, w: xW, h: xW, action: (ev) => this.showAdvancedMenu(ev, model) });
+        ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+        const pLabel = model.precision;
+        const pW = 84;
+        const pX = gX - pW - 3;
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
+        roundRect(ctx, pX, xY, pW, xW, 3);
+        ctx.fill();
+        ctx.fillStyle = on ? "#f1f5f9" : "#64748b";
+        ctx.textAlign = "center";
+        ctx.fillText(fitText(ctx, pLabel, pW - 6), pX + pW / 2, xY + xW / 2 + 0.5);
+        this.hits.push({
+          x: pX,
+          y: xY,
+          w: pW,
+          h: xW,
+          action: (ev) => this.pickFrom(ev, "Precisione", PRECISIONS, model.precision, (v) => {
+            model.precision = v;
+            this.sync();
+          })
+        });
+        ctx.fillStyle = "rgba(239, 68, 68, 0.12)";
+        ctx.strokeStyle = "rgba(239, 68, 68, 0.35)";
+        ctx.lineWidth = 1;
+        roundRect(ctx, xX, xY, xW, xW, 3);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#f87171";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("\u2715", xX + xW / 2, xY + xW / 2);
+        this.hits.push({
+          x: xX,
+          y: xY,
+          w: xW,
+          h: xW,
+          action: () => {
+            this.models.splice(idx, 1);
+            this.sync();
+          }
+        });
+        const nX = tX + tW + 8;
+        const nW = pX - nX - 8;
+        ctx.font = "12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillStyle = on ? "#e2e8f0" : "#64748b";
+        const disp = baseName(model.name || "(seleziona modello)");
+        ctx.fillText(fitText(ctx, disp, nW), nX, rY + rH / 2 + 0.5);
+        this.hits.push({
+          x: nX,
+          y: rY,
+          w: nW,
+          h: rH,
+          action: (ev) => this.pickModel(ev, model)
+        });
+        y += ROW_H;
+      });
+    }
+    y += 6;
+    ctx.fillStyle = "rgba(41, 151, 255, 0.12)";
+    ctx.strokeStyle = "rgba(41, 151, 255, 0.5)";
+    ctx.lineWidth = 1;
+    roundRect(ctx, x0, y, w, BTN_H - 4, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#2997ff";
+    ctx.font = "bold 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("+ Add Model to Stack", x0 + w / 2, y + (BTN_H - 4) / 2 + 0.5);
+    this.hits.push({
+      x: x0,
+      y,
+      w,
+      h: BTN_H - 4,
+      action: (ev) => this.addModel(ev)
+    });
+    ctx.restore();
+  }
+  // ── Azioni ────────────────────────────────────────────────────────────────
+  async addModel(ev) {
+    await this.pickModel(ev, null);
+  }
+  async pickModel(ev, targetModel) {
+    const list = await fetchModelList(true);
+    const LG = window.LiteGraph;
+    if (!LG || !LG.ContextMenu) return;
+    if (!list.length) {
+      new LG.ContextMenu(
+        [{ content: "Nessun modello trovato nelle directory di ComfyUI", disabled: true }],
+        { event: ev }
+      );
+      return;
+    }
+    const onPick = (chosen) => {
+      if (!chosen || typeof chosen.value !== "string") return;
+      if (targetModel) {
+        targetModel.name = chosen.value;
+      } else {
+        const nm = newModel(chosen.value);
+        this.models.push(nm);
+        this.enforceSingleActive(nm);
+      }
+      this.sync();
+    };
+    const hasFolders = list.some((n) => /[\\\/]/.test(n));
+    if (!hasFolders) {
+      new LG.ContextMenu(
+        list.map((n) => ({ content: baseName(n), value: n })),
+        { event: ev, title: "Modello", callback: onPick }
+      );
+      return;
+    }
+    const groups = /* @__PURE__ */ new Map();
+    const rootFiles = [];
+    for (const n of list) {
+      const parts = n.split(/[\\\/]/);
+      if (parts.length === 1) {
+        rootFiles.push(n);
+      } else {
+        const folder = parts.slice(0, -1).join("/");
+        if (!groups.has(folder)) groups.set(folder, []);
+        groups.get(folder).push(n);
+      }
+    }
+    const items = [];
+    for (const [folder, files] of [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      items.push({
+        content: `\u{1F4C1} ${folder}`,
+        has_submenu: true,
+        callback: (_value, _options, e, menu) => {
+          new LG.ContextMenu(
+            files.map((n) => ({ content: baseName(n), value: n })),
+            { event: e, parentMenu: menu, callback: onPick }
+          );
+          return true;
+        }
+      });
+    }
+    rootFiles.forEach((n) => items.push({ content: baseName(n), value: n }));
+    new LG.ContextMenu(items, { event: ev, title: "Modello", callback: onPick });
+  }
+  pickFrom(ev, title, options, current, onChoose) {
+    const LG = window.LiteGraph;
+    if (!LG || !LG.ContextMenu) return;
+    new LG.ContextMenu(
+      options.map((o) => ({ content: o === current ? `\u2713 ${o}` : o, value: o })),
+      { event: ev, title, callback: (c) => {
+        if (c && c.value !== void 0) onChoose(c.value);
+      } }
+    );
+  }
+  showAdvancedMenu(ev, model) {
+    const LG = window.LiteGraph;
+    if (!LG || !LG.ContextMenu) return;
+    const sub = (title, options, key) => ({
+      content: `${title}: ${model[key]}`,
+      has_submenu: true,
+      callback: (_v, _o, e, menu) => {
+        new LG.ContextMenu(
+          options.map((o) => ({ content: o === model[key] ? `\u2713 ${o}` : o, value: o })),
+          { event: e, parentMenu: menu, callback: (c) => {
+            if (c && c.value !== void 0) {
+              model[key] = c.value;
+              this.sync();
+            }
+          } }
+        );
+        return true;
+      }
+    });
+    const items = [
+      sub("Attention", ATTENTIONS, "attention"),
+      sub("Clip type", CLIP_TYPES, "clip_type"),
+      sub("Flow shift", _presets, "flow_shift_preset"),
+      {
+        content: `Custom shift: ${model.custom_shift.toFixed(2)}`,
+        callback: (_v, _o, e) => app2.canvas.prompt("Custom shift", model.custom_shift, (val) => {
+          const n = parseFloat(val);
+          if (Number.isFinite(n)) {
+            model.custom_shift = Math.max(0, Math.min(100, n));
+            this.sync();
+          }
+        }, e)
+      },
+      {
+        content: `Percorso / API: ${model.custom_path || "\u2014"}`,
+        callback: (_v, _o, e) => app2.canvas.prompt("Percorso cartella o endpoint API", model.custom_path, (val) => {
+          model.custom_path = String(val || "").trim();
+          this.sync();
+        }, e)
+      }
+    ];
+    new LG.ContextMenu(items, { event: ev, title: baseName(model.name) });
+  }
+  // ── Mouse handler (API LiteGraph corretta) ────────────────────────────────
+  mouse(event, pos, node) {
+    if (!event || event.type !== "pointerdown" && event.type !== "mousedown") return false;
+    if (!pos) return false;
+    const now = performance.now();
+    if (now - this.lastClick < 150) return true;
+    const [mx, my] = pos;
+    for (const h of this.hits) {
+      if (mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h) {
+        this.lastClick = now;
+        h.action(event);
+        return true;
+      }
+    }
+    return false;
+  }
+};
+function hideWidget(w) {
+  if (!w) return;
+  w.hidden = true;
+  w.computeSize = () => [0, -4];
+  w.draw = () => {
+  };
+  if (w.inputEl) {
+    w.inputEl.hidden = true;
+    w.inputEl.style.display = "none";
+  }
+}
+function setupModelLoaderNodeUI(node) {
+  if (!node) return;
+  if (node.size && node.size[0] < MIN_WIDTH) node.size[0] = MIN_WIDTH;
+  const STACK_NAME = "_stoiqo_model_stack";
+  if (node.widgets) {
+    const dups = node.widgets.filter((w) => w.name === STACK_NAME);
+    for (const extra of dups.slice(1)) {
+      node.widgets.splice(node.widgets.indexOf(extra), 1);
+    }
+  }
+  let stackWidget = node.widgets ? node.widgets.find((w) => w.name === STACK_NAME) : null;
+  if (stackWidget && !stackWidget.loadFromStore) stackWidget = null;
+  if (!stackWidget) {
+    const store = node.widgets ? node.widgets.find((w) => w.name === "model_stack") : null;
+    if (store) {
+      hideWidget(store);
+    }
+    if (node.widgets) {
+      for (const w of node.widgets) {
+        if (LEGACY_WIDGET_NAMES.includes(w.name)) hideWidget(w);
+      }
+    }
+    stackWidget = new ModelStackWidget(node, store);
+    node.addCustomWidget(stackWidget);
+    node.stoiqoModelWidget = stackWidget;
+  }
+  stackWidget.loadFromStore();
+  stackWidget.resizeNode();
+  node.setDirtyCanvas(true, true);
+}
+function setupModelLoaderNode(nodeType, nodeData, appInstance) {
+  if (!MODEL_NODE_NAMES.includes(nodeData.name)) return;
+  const origCreated = nodeType.prototype.onNodeCreated;
+  nodeType.prototype.onNodeCreated = function() {
+    if (origCreated) origCreated.apply(this, arguments);
+    setupModelLoaderNodeUI(this);
+  };
+  const origConfigure = nodeType.prototype.onConfigure;
+  nodeType.prototype.onConfigure = function() {
+    if (origConfigure) origConfigure.apply(this, arguments);
+    setupModelLoaderNodeUI(this);
+  };
+}
+
+// src_js/nodes/imageCompareNode.js
+import { app as app4 } from "../../../scripts/app.js";
+import { api as api4 } from "../../../scripts/api.js";
+import { ComfyWidgets as ComfyWidgets3 } from "../../../scripts/widgets.js";
 
 // src_js/utils/core.js
-import { app } from "../../scripts/app.js";
-import { api } from "../../scripts/api.js";
-import { ComfyWidgets } from "../../scripts/widgets.js";
+import { app as app3 } from "../../scripts/app.js";
+import { api as api3 } from "../../scripts/api.js";
+import { ComfyWidgets as ComfyWidgets2 } from "../../scripts/widgets.js";
 var currentDownloadProgress = null;
 var downloadClearTimer = null;
-var comfyApi = api || typeof app !== "undefined" && app.api;
+var comfyApi = api3 || typeof app3 !== "undefined" && app3.api;
 if (comfyApi && comfyApi.addEventListener) {
   comfyApi.addEventListener("stoiqo_download_progress", (event) => {
     const data = event.detail;
@@ -22,10 +869,10 @@ if (comfyApi && comfyApi.addEventListener) {
       if (downloadClearTimer) clearTimeout(downloadClearTimer);
       downloadClearTimer = setTimeout(() => {
         currentDownloadProgress = null;
-        if (app && app.graph) app.graph.setDirtyCanvas(true, true);
+        if (app3 && app3.graph) app3.graph.setDirtyCanvas(true, true);
       }, 6e3);
     }
-    if (app && app.graph) app.graph.setDirtyCanvas(true, true);
+    if (app3 && app3.graph) app3.graph.setDirtyCanvas(true, true);
   });
 }
 var StoiqoSectionDividerWidget = class {
@@ -142,479 +989,7 @@ var StoiqoSectionDividerWidget = class {
   }
 };
 
-// src_js/nodes/showPromptNode.js
-var _streamListenersRegistered = false;
-function ensureStreamListeners() {
-  if (_streamListenersRegistered || typeof api2 === "undefined" || !api2.addEventListener) return;
-  _streamListenersRegistered = true;
-  api2.addEventListener("stoiqo_stream_start", (evt) => {
-    const detail = evt.detail || {};
-    const nodeId = detail.node_id;
-    if (!nodeId || !app2.graph) return;
-    const node = app2.graph.getNodeById(nodeId);
-    if (!node) return;
-    let tw = node.widgets?.find((w) => w.name === "display_text" || w.name === "text" || w.name === "synthesized_prompt");
-    if (tw) {
-      tw.value = "";
-      if (tw.inputEl) tw.inputEl.value = "";
-      node.setDirtyCanvas(true);
-    }
-  });
-  api2.addEventListener("stoiqo_stream_token", (evt) => {
-    const detail = evt.detail || {};
-    const nodeId = detail.node_id;
-    const token = detail.token;
-    if (!nodeId || token === void 0 || !app2.graph) return;
-    const node = app2.graph.getNodeById(nodeId);
-    if (!node) return;
-    let tw = node.widgets?.find((w) => w.name === "display_text" || w.name === "text" || w.name === "synthesized_prompt");
-    if (tw) {
-      tw.value = (tw.value || "") + token;
-      if (tw.inputEl) {
-        tw.inputEl.value = tw.value;
-        tw.inputEl.scrollTop = tw.inputEl.scrollHeight;
-      }
-      node.setDirtyCanvas(true);
-    }
-  });
-  api2.addEventListener("stoiqo_stream_complete", (evt) => {
-    const detail = evt.detail || {};
-    const nodeId = detail.node_id;
-    if (!nodeId || !app2.graph) return;
-    const node = app2.graph.getNodeById(nodeId);
-    if (node) {
-      node.setDirtyCanvas(true, true);
-    }
-  });
-}
-function setupShowPromptNode(nodeType, nodeData, app11) {
-  ensureStreamListeners();
-  const showPromptTargetNames = [
-    "StoiqoShowPromptNode",
-    "[STOIQO] Show Prompt"
-  ];
-  if (showPromptTargetNames.includes(nodeData.name)) {
-    let setupShowPromptNode2 = function(node) {
-      if (!node) return;
-      if (node.bgcolor === "#0e1218" || node.bgcolor === "#0b1411") {
-        delete node.bgcolor;
-      }
-      if (node.color === "#18202c" || node.color === "#14251f") {
-        delete node.color;
-      }
-      if (node.size) {
-        if (node.size[0] < SHOW_MIN_WIDTH) node.size[0] = SHOW_MIN_WIDTH;
-        if (node.size[1] < SHOW_MIN_HEIGHT) node.size[1] = SHOW_MIN_HEIGHT;
-      }
-      node.widgets = node.widgets || [];
-      let textWidget = node.widgets.find((w) => w.name === "display_text");
-      if (!textWidget) {
-        if (typeof ComfyWidgets2 !== "undefined" && ComfyWidgets2["STRING"]) {
-          textWidget = ComfyWidgets2["STRING"](
-            node,
-            "display_text",
-            ["STRING", { multiline: true }],
-            app11
-          ).widget;
-        } else {
-          textWidget = node.addWidget(
-            "customtext",
-            "display_text",
-            "",
-            function() {
-            },
-            { multiline: true }
-          );
-        }
-      }
-      if (textWidget) {
-        textWidget.name = "display_text";
-        textWidget.options = textWidget.options || {};
-        textWidget.options.serialize = false;
-        const styleInput = (el) => {
-          if (!el) return;
-          el.readOnly = true;
-          el.placeholder = "Generated prompt will be displayed here...";
-          el.style.boxSizing = "border-box";
-          el.style.opacity = "0.92";
-          el.style.fontSize = "11.5px";
-          el.style.lineHeight = "1.45";
-          el.style.fontFamily = "monospace, -apple-system, sans-serif";
-          el.style.resize = "vertical";
-        };
-        if (textWidget.inputEl) {
-          styleInput(textWidget.inputEl);
-        } else {
-          let rawInputEl = null;
-          Object.defineProperty(textWidget, "inputEl", {
-            configurable: true,
-            enumerable: true,
-            get() {
-              return rawInputEl;
-            },
-            set(val) {
-              rawInputEl = val;
-              styleInput(val);
-            }
-          });
-        }
-      }
-      let copyBtn = node.widgets.find((w) => w._isCopyButton);
-      if (!copyBtn) {
-        copyBtn = node.addWidget(
-          "button",
-          "\u{1F4CB} Copy Prompt to Clipboard",
-          null,
-          function() {
-            const tw = node.widgets?.find((w) => w.name === "display_text" || w.name === "text");
-            const textVal = tw ? tw.value || tw.inputEl && tw.inputEl.value || "" : "";
-            if (textVal && navigator.clipboard) {
-              navigator.clipboard.writeText(String(textVal));
-              const origLabel = this.name;
-              this.name = "\u2713 Copied to Clipboard!";
-              node.setDirtyCanvas(true);
-              setTimeout(() => {
-                this.name = origLabel;
-                node.setDirtyCanvas(true);
-              }, 1800);
-            }
-          },
-          { serialize: false }
-        );
-        copyBtn._isCopyButton = true;
-        copyBtn.options = { serialize: false };
-      }
-      const textIdx = node.widgets.findIndex((w) => w.name === "display_text");
-      if (textIdx !== -1 && copyBtn) {
-        const curBtnIdx = node.widgets.indexOf(copyBtn);
-        if (curBtnIdx !== -1 && curBtnIdx < textIdx) {
-          node.widgets.splice(curBtnIdx, 1);
-          node.widgets.splice(textIdx, 0, copyBtn);
-        }
-      }
-      node.setDirtyCanvas(true, true);
-    };
-    const SHOW_MIN_WIDTH = 460;
-    const SHOW_MIN_HEIGHT = 220;
-    const origShowCreated = nodeType.prototype.onNodeCreated;
-    nodeType.prototype.onNodeCreated = function() {
-      if (origShowCreated) origShowCreated.apply(this, arguments);
-      setupShowPromptNode2(this);
-    };
-    const origShowConfigure = nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure = function() {
-      if (origShowConfigure) origShowConfigure.apply(this, arguments);
-      setupShowPromptNode2(this);
-    };
-    const origShowExecuted = nodeType.prototype.onExecuted;
-    nodeType.prototype.onExecuted = function(message) {
-      if (origShowExecuted) origShowExecuted.apply(this, arguments);
-      if (message && message.text) {
-        let tw = this.widgets?.find((w) => w.name === "display_text");
-        if (!tw) {
-          setupShowPromptNode2(this);
-          tw = this.widgets?.find((w) => w.name === "display_text");
-        }
-        if (tw) {
-          let textStr = "";
-          if (Array.isArray(message.text)) {
-            textStr = message.text.join("\n\n---\n\n");
-          } else {
-            textStr = String(message.text || "");
-          }
-          tw.value = textStr;
-          if (tw.inputEl) {
-            tw.inputEl.value = textStr;
-          }
-        }
-        this.setDirtyCanvas(true, true);
-      }
-    };
-  }
-}
-
-// src_js/nodes/modelLoaderNode.js
-import { app as app3 } from "../../../scripts/app.js";
-import { api as api3 } from "../../../scripts/api.js";
-import { ComfyWidgets as ComfyWidgets3 } from "../../../scripts/widgets.js";
-function setupModelLoaderNode(nodeType, nodeData, app11) {
-  const loaderTargetNames = [
-    "StoiqoVLMModelLoaderNode",
-    "[STOIQO] VLM Model Loader"
-  ];
-  if (loaderTargetNames.includes(nodeData.name)) {
-    let setupModelLoader = function(node) {
-      if (!node || !node.widgets) return;
-      if (node.size && node.size[0] < MIN_NODE_WIDTH) node.size[0] = MIN_NODE_WIDTH;
-      node.widgets = node.widgets.filter((w) => !w.isStoiqoDivider);
-      SECTIONS.forEach((sec) => {
-        const idx = node.widgets.findIndex((w) => w.name === sec.targetWidget);
-        if (idx !== -1) {
-          const div = new StoiqoSectionDividerWidget(sec.num, sec.title, sec.color);
-          node.widgets.splice(idx, 0, div);
-        }
-      });
-      let browseBtn = node.widgets.find((w) => w._isStoiqoBrowse);
-      if (!browseBtn) {
-        browseBtn = node.addWidget(
-          "button",
-          "\u{1F4C1} Browse Model Folder on Disk",
-          null,
-          async function() {
-            const pathWidget = node.widgets.find((w) => w.name === "local_model_path");
-            const currentPath = pathWidget ? pathWidget.value || "" : "";
-            const origLabel = this.name;
-            this.name = "\u23F3 Selecting folder in Windows...";
-            node.setDirtyCanvas(true);
-            try {
-              const resp = await api3.fetchApi("/stoiqo/browse_folder", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initial_dir: currentPath })
-              });
-              if (resp.ok) {
-                const res = await resp.json();
-                if (res && res.path) {
-                  if (pathWidget) {
-                    pathWidget.value = res.path;
-                    if (pathWidget.inputEl) pathWidget.inputEl.value = res.path;
-                  }
-                  this.name = "\u2713 Folder Selected!";
-                  setTimeout(() => {
-                    this.name = origLabel;
-                    node.setDirtyCanvas(true);
-                  }, 1800);
-                } else {
-                  this.name = origLabel;
-                }
-              } else {
-                this.name = origLabel;
-              }
-            } catch (err) {
-              console.warn("[Stoiqo] Browse folder error:", err);
-              this.name = origLabel;
-            }
-            node.setDirtyCanvas(true);
-          },
-          { serialize: false }
-        );
-        browseBtn._isStoiqoBrowse = true;
-        browseBtn.options = { serialize: false };
-        const pathIdx = node.widgets.findIndex((w) => w.name === "local_model_path");
-        if (pathIdx !== -1) {
-          const curIdx = node.widgets.indexOf(browseBtn);
-          if (curIdx !== -1) {
-            node.widgets.splice(curIdx, 1);
-            node.widgets.splice(pathIdx + 1, 0, browseBtn);
-          }
-        }
-      }
-      function updateVisibility() {
-        const presetW = node.widgets.find((w) => w.name === "model_preset");
-        const pathW = node.widgets.find((w) => w.name === "local_model_path");
-        const btnW = node.widgets.find((w) => w._isStoiqoBrowse);
-        const isCustom = presetW && String(presetW.value).includes("Custom Model");
-        if (pathW) {
-          pathW.hidden = !isCustom;
-          if (!isCustom) {
-            pathW.computeSize = () => [0, -4];
-            if (!pathW._origDraw) pathW._origDraw = pathW.draw;
-            pathW.draw = () => {
-            };
-          } else {
-            delete pathW.computeSize;
-            if (pathW._origDraw) pathW.draw = pathW._origDraw;
-          }
-        }
-        if (btnW) {
-          btnW.hidden = !isCustom;
-          if (!isCustom) {
-            btnW.computeSize = () => [0, -4];
-            if (!btnW._origDraw) btnW._origDraw = btnW.draw;
-            btnW.draw = () => {
-            };
-          } else {
-            delete btnW.computeSize;
-            if (btnW._origDraw) btnW.draw = btnW._origDraw;
-          }
-        }
-        node.setDirtyCanvas(true, true);
-      }
-      const presetWidget = node.widgets.find((w) => w.name === "model_preset");
-      if (presetWidget) {
-        const origCallback = presetWidget.callback;
-        presetWidget.callback = function() {
-          if (origCallback) origCallback.apply(this, arguments);
-          updateVisibility();
-        };
-      }
-      updateVisibility();
-      node.setDirtyCanvas(true, true);
-    };
-    const MIN_NODE_WIDTH = 440;
-    const SECTIONS = [
-      { targetWidget: "model_preset", num: "1", title: "ENGINE & HARDWARE", color: "#38bdf8" }
-    ];
-    const origCreated = nodeType.prototype.onNodeCreated;
-    nodeType.prototype.onNodeCreated = function() {
-      if (origCreated) origCreated.apply(this, arguments);
-      setupModelLoader(this);
-    };
-    const origConfigure = nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure = function() {
-      if (origConfigure) origConfigure.apply(this, arguments);
-      setupModelLoader(this);
-    };
-  }
-}
-
-// src_js/nodes/visualDiffNode.js
-import { app as app4 } from "../../../scripts/app.js";
-import { api as api4 } from "../../../scripts/api.js";
-import { ComfyWidgets as ComfyWidgets4 } from "../../../scripts/widgets.js";
-function setupVisualDiffNode(nodeType, nodeData, app11) {
-  const diffTargetNames = [
-    "StoiqoVisualDiffNode",
-    "[STOIQO] Visual Diff & Forensic Inspector"
-  ];
-  if (diffTargetNames.includes(nodeData.name)) {
-    let setupVisualDiff = function(node) {
-      if (!node || !node.widgets) return;
-      if (node.size && node.size[0] < MIN_NODE_WIDTH) node.size[0] = MIN_NODE_WIDTH;
-      const dirW = node.widgets.find((w) => w.name === "custom_directives");
-      if (dirW) {
-        dirW.computeSize = function(width) {
-          return [width, 76];
-        };
-      }
-      node.widgets = node.widgets.filter((w) => !w.isStoiqoDivider);
-      SECTIONS.forEach((sec) => {
-        const idx = node.widgets.findIndex((w) => w.name === sec.targetWidget);
-        if (idx !== -1) {
-          const div = new StoiqoSectionDividerWidget(sec.num, sec.title, sec.color);
-          node.widgets.splice(idx, 0, div);
-        }
-      });
-      let browseBtn = node.widgets.find((w) => w._isStoiqoBrowse);
-      if (!browseBtn) {
-        browseBtn = node.addWidget(
-          "button",
-          "\u{1F4C1} Browse Model Folder on Disk",
-          null,
-          async function() {
-            const pathWidget = node.widgets.find((w) => w.name === "local_model_path");
-            const currentPath = pathWidget ? pathWidget.value || "" : "";
-            const origLabel = this.name;
-            this.name = "\u23F3 Selecting folder in Windows...";
-            node.setDirtyCanvas(true);
-            try {
-              const resp = await api4.fetchApi("/stoiqo/browse_folder", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initial_dir: currentPath })
-              });
-              if (resp.ok) {
-                const res = await resp.json();
-                if (res && res.path) {
-                  if (pathWidget) {
-                    pathWidget.value = res.path;
-                    if (pathWidget.inputEl) pathWidget.inputEl.value = res.path;
-                  }
-                  this.name = "\u2713 Folder Selected!";
-                  setTimeout(() => {
-                    this.name = origLabel;
-                    node.setDirtyCanvas(true);
-                  }, 1800);
-                } else {
-                  this.name = origLabel;
-                }
-              } else {
-                this.name = origLabel;
-              }
-            } catch (err) {
-              console.warn("[Stoiqo] Browse folder error:", err);
-              this.name = origLabel;
-            }
-            node.setDirtyCanvas(true);
-          },
-          { serialize: false }
-        );
-        browseBtn._isStoiqoBrowse = true;
-        browseBtn.options = { serialize: false };
-        const pathIdx = node.widgets.findIndex((w) => w.name === "local_model_path");
-        if (pathIdx !== -1) {
-          const curIdx = node.widgets.indexOf(browseBtn);
-          if (curIdx !== -1) {
-            node.widgets.splice(curIdx, 1);
-            node.widgets.splice(pathIdx + 1, 0, browseBtn);
-          }
-        }
-      }
-      function updateDiffVisibility() {
-        const presetW = node.widgets.find((w) => w.name === "model_preset");
-        const pathW = node.widgets.find((w) => w.name === "local_model_path");
-        const btnW = node.widgets.find((w) => w._isStoiqoBrowse);
-        const isCustom = presetW && String(presetW.value).includes("Custom Model");
-        if (pathW) {
-          pathW.hidden = !isCustom;
-          if (!isCustom) {
-            pathW.computeSize = () => [0, -4];
-            if (!pathW._origDraw) pathW._origDraw = pathW.draw;
-            pathW.draw = () => {
-            };
-          } else {
-            delete pathW.computeSize;
-            if (pathW._origDraw) pathW.draw = pathW._origDraw;
-          }
-        }
-        if (btnW) {
-          btnW.hidden = !isCustom;
-          if (!isCustom) {
-            btnW.computeSize = () => [0, -4];
-            if (!btnW._origDraw) btnW._origDraw = btnW.draw;
-            btnW.draw = () => {
-            };
-          } else {
-            delete btnW.computeSize;
-            if (btnW._origDraw) btnW.draw = btnW._origDraw;
-          }
-        }
-        node.setDirtyCanvas(true, true);
-      }
-      const presetWidget = node.widgets.find((w) => w.name === "model_preset");
-      if (presetWidget) {
-        const origCallback = presetWidget.callback;
-        presetWidget.callback = function() {
-          if (origCallback) origCallback.apply(this, arguments);
-          updateDiffVisibility();
-        };
-      }
-      updateDiffVisibility();
-      node.setDirtyCanvas(true, true);
-    };
-    const MIN_NODE_WIDTH = 460;
-    const SECTIONS = [
-      { targetWidget: "analysis_focus", num: "1", title: "FORENSIC DIRECTIVES", color: "#c084fc" },
-      { targetWidget: "seed", num: "2", title: "SAMPLING & RESOLUTION", color: "#facc15" },
-      { targetWidget: "model_preset", num: "3", title: "STANDALONE ENGINE FALLBACK", color: "#38bdf8" }
-    ];
-    const origDiffCreated = nodeType.prototype.onNodeCreated;
-    nodeType.prototype.onNodeCreated = function() {
-      if (origDiffCreated) origDiffCreated.apply(this, arguments);
-      setupVisualDiff(this);
-    };
-    const origDiffConfigure = nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure = function() {
-      if (origDiffConfigure) origDiffConfigure.apply(this, arguments);
-      setupVisualDiff(this);
-    };
-  }
-}
-
 // src_js/nodes/imageCompareNode.js
-import { app as app5 } from "../../../scripts/app.js";
-import { api as api5 } from "../../../scripts/api.js";
-import { ComfyWidgets as ComfyWidgets5 } from "../../../scripts/widgets.js";
 function setupImageCompareNode(nodeType, nodeData, app11) {
   const compareTargetNames = [
     "StoiqoImageCompareNode",
@@ -636,13 +1011,13 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         if (parts.length === 2) params.set(parts[0], parts[1]);
       }
       params.set("t", Date.now().toString());
-      return api5.apiURL(`/view?${params.toString()}`);
+      return api4.apiURL(`/view?${params.toString()}`);
     }, setupImageCompareNodeUI = function(node) {
       if (!node) return;
       node.hideOutputImages = true;
       node.imgs = null;
       node.images = null;
-      if (!node.size || node.size[0] < MIN_WIDTH2) node.size = [MIN_WIDTH2, MIN_HEIGHT];
+      if (!node.size || node.size[0] < MIN_WIDTH3) node.size = [MIN_WIDTH3, MIN_HEIGHT];
       let cmpWidget = node.widgets ? node.widgets.find((w) => w instanceof StoiqoCompareCanvasWidget) : null;
       if (!cmpWidget) {
         cmpWidget = new StoiqoCompareCanvasWidget(node);
@@ -657,7 +1032,9 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           if (origCallback) origCallback.apply(this, arguments);
           if (cmpWidget) {
             const vStr = String(val || "").toLowerCase();
-            if (vStr.includes("toggle") || vStr.includes("flicker")) {
+            if (vStr.includes("hover")) {
+              cmpWidget.mode = "hover_slide";
+            } else if (vStr.includes("toggle") || vStr.includes("flicker")) {
               cmpWidget.mode = "toggle";
             } else if (vStr.includes("side")) {
               cmpWidget.mode = "side";
@@ -683,10 +1060,8 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
       };
       const origMouseMove = node.onMouseMove;
       node.onMouseMove = function(e, localPos, graphCanvas) {
-        if (cmpWidget && (cmpWidget.isDraggingSplit || cmpWidget.isPanning)) {
-          if (cmpWidget.handleMouseMove(e, localPos)) {
-            return true;
-          }
+        if (cmpWidget) {
+          cmpWidget.handleMouseMove(e, localPos);
         }
         if (origMouseMove) return origMouseMove.apply(this, arguments);
       };
@@ -726,9 +1101,21 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           }
         }, { capture: true, passive: false });
       }
+      if (!node._stoiqoSpaceAttached) {
+        node._stoiqoSpaceAttached = true;
+        window.addEventListener("keydown", (e) => {
+          if (e.code === "Space" && !e.repeat && !e.target.matches("input, textarea, select")) {
+            if (!node.cmpWidget || !node.cmpWidget.isHoveringViewport) return;
+            node.cmpWidget.toggleShowB = !node.cmpWidget.toggleShowB;
+            node.setDirtyCanvas(true, true);
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }, { capture: true });
+      }
       node.setDirtyCanvas(true, true);
     };
-    const MIN_WIDTH2 = 520;
+    const MIN_WIDTH3 = 520;
     const MIN_HEIGHT = 560;
     class StoiqoCompareCanvasWidget {
       constructor(node) {
@@ -739,19 +1126,29 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         this.node = node;
         this.imgA = null;
         this.imgB = null;
+        this.imgDiff = null;
         this.imagesData = null;
-        this.labelA = "Original";
-        this.labelB = "Upscaled";
+        this.availableA = [];
+        this.availableB = [];
+        this.selectedA = null;
+        this.selectedB = null;
+        this.diffData = null;
+        this.metricsData = null;
+        this.labelA = "Image A";
+        this.labelB = "Image B";
         this.splitX = 0.5;
         this.zoom = 1;
         this.panX = 0;
         this.panY = 0;
-        this.mode = "split";
+        this.mode = "hover_slide";
         this.toggleShowB = false;
+        this.isHoldingPointer = false;
         this.isDraggingSplit = false;
         this.isPanning = false;
+        this.isHoveringViewport = false;
         this.lastMouse = [0, 0];
         this.btnHitAreas = [];
+        this.chipHitAreas = [];
         this.viewportRect = { x: 0, y: 0, w: 0, h: 0 };
         this.loadError = null;
         this._activePointerCleanup = null;
@@ -760,20 +1157,35 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         return void 0;
       }
       computeSize(width) {
-        return [width, 440];
+        return [width, 460];
       }
       computeLayoutSize() {
-        return { minHeight: 340, minWidth: 420 };
+        return { minHeight: 360, minWidth: 440 };
       }
       setImages(dataList) {
-        if (!dataList || dataList.length < 2) return;
-        const latestData = dataList.slice(-2);
-        this.imagesData = latestData;
-        this.value = latestData;
+        if (!dataList || dataList.length === 0) return;
+        this.imagesData = dataList;
+        this.value = dataList;
         if (this.node) {
           this.node.properties = this.node.properties || {};
-          this.node.properties.stoiqo_images = latestData;
+          this.node.properties.stoiqo_images = dataList;
         }
+        const listA = dataList.filter((d) => d.side === "A" || d.name && d.name.startsWith("A"));
+        const listB = dataList.filter((d) => d.side === "B" || d.name && d.name.startsWith("B"));
+        const diffItem = dataList.find((d) => d.side === "DIFF" || d.name === "HEATMAP");
+        this.diffData = diffItem || null;
+        this.availableA = listA.length > 0 ? listA : [dataList[0]];
+        this.availableB = listB.length > 0 ? listB : dataList.length > 1 ? [dataList[1]] : [dataList[0]];
+        if (!this.selectedA || !this.availableA.some((x) => x.filename === this.selectedA.filename)) {
+          this.selectedA = this.availableA[0];
+        }
+        if (!this.selectedB || !this.availableB.some((x) => x.filename === this.selectedB.filename)) {
+          this.selectedB = this.availableB[0];
+        }
+        this.loadSelectedImages();
+        this.resetView();
+      }
+      loadSelectedImages() {
         if (this.imgA) {
           this.imgA.onload = null;
           this.imgA.onerror = null;
@@ -786,9 +1198,16 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           this.imgB.src = "";
           this.imgB = null;
         }
+        if (this.imgDiff) {
+          this.imgDiff.onload = null;
+          this.imgDiff.onerror = null;
+          this.imgDiff.src = "";
+          this.imgDiff = null;
+        }
         this.loadError = null;
-        const urlA = imageDataToUrl(latestData[0]);
-        const urlB = imageDataToUrl(latestData[1]);
+        if (!this.selectedA || !this.selectedB) return;
+        const urlA = imageDataToUrl(this.selectedA);
+        const urlB = imageDataToUrl(this.selectedB);
         this.imgA = new Image();
         this.imgB = new Image();
         this.imgA.onload = () => {
@@ -807,9 +1226,15 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         };
         this.imgA.src = urlA;
         this.imgB.src = urlB;
-        this.labelA = latestData[0].label || "Original";
-        this.labelB = latestData[1].label || "Upscaled";
-        this.resetView();
+        this.labelA = this.selectedA.label || this.selectedA.name || "Image A";
+        this.labelB = this.selectedB.label || this.selectedB.name || "Image B";
+        if (this.diffData) {
+          this.imgDiff = new Image();
+          this.imgDiff.onload = () => {
+            if (this.node) this.node.setDirtyCanvas(true, true);
+          };
+          this.imgDiff.src = imageDataToUrl(this.diffData);
+        }
       }
       resetView() {
         this.zoom = 1;
@@ -817,6 +1242,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         this.panY = 0;
         this.splitX = 0.5;
         this.toggleShowB = false;
+        this.isHoldingPointer = false;
         if (this.node) this.node.setDirtyCanvas(true, true);
       }
       attachWindowDragListeners() {
@@ -826,6 +1252,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         const cleanup = () => {
           this.isDraggingSplit = false;
           this.isPanning = false;
+          this.isHoldingPointer = false;
           window.removeEventListener("pointermove", onPointerMove, true);
           window.removeEventListener("pointerup", onPointerUp, true);
           window.removeEventListener("pointercancel", onPointerUp, true);
@@ -878,18 +1305,17 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         window.addEventListener("pointercancel", onPointerUp, { capture: true, passive: false });
       }
       draw(ctx, node, width, posY, height) {
-        const nodeW = width || (node.size ? node.size[0] : MIN_WIDTH2);
-        const slotH = typeof height === "number" && height > 0 ? height : 440;
+        const nodeW = width || (node.size ? node.size[0] : MIN_WIDTH3);
+        const slotH = typeof height === "number" && height > 0 ? height : 460;
         const vY = posY + 6;
-        const vH = Math.max(260, Math.min(slotH - 12, 1600));
         const vW = nodeW - 24;
         const vX = 12;
-        this.viewportRect = { x: vX, y: vY + 32, w: vW, h: vH - 32 };
         this.btnHitAreas = [];
+        this.chipHitAreas = [];
         ctx.save();
         const barY = vY;
         const barH = 26;
-        ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
+        ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
         if (ctx.roundRect) {
           ctx.beginPath();
           ctx.roundRect(vX, barY, vW, barH, 4);
@@ -898,11 +1324,13 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.fillRect(vX, barY, vW, barH);
         }
         const modes = [
-          { key: "only_a", label: "Solo A", activeColor: "#38bdf8" },
-          { key: "only_b", label: "Solo B", activeColor: "#c084fc" },
-          { key: "split", label: "\u2194 Slider A-B", activeColor: "#2dd4bf" },
-          { key: "toggle", label: this.mode === "toggle" ? this.toggleShowB ? "\u{1F441} B (Click A)" : "\u{1F441} A (Click B)" : "\u{1F441} Toggle A/B", activeColor: "#f59e0b" },
-          { key: "side", label: "\u25EB Side-by-Side", activeColor: "#10b981" }
+          { key: "hover_slide", label: "\u26A1 Hover (rgthree)", activeColor: "#38bdf8" },
+          { key: "split", label: "\u2194 Drag Split", activeColor: "#2dd4bf" },
+          { key: "toggle", label: this.mode === "toggle" ? this.toggleShowB ? "\u{1F441} B (Click A)" : "\u{1F441} A (Click B)" : "\u{1F441} Toggle (Space)", activeColor: "#f59e0b" },
+          { key: "side", label: "\u25EB Side-by-Side", activeColor: "#10b981" },
+          { key: "diff_heat", label: "\u{1F525} Diff Heatmap", activeColor: "#ff453a" },
+          { key: "only_a", label: "Solo A", activeColor: "#93c5fd" },
+          { key: "only_b", label: "Solo B", activeColor: "#c084fc" }
         ];
         let btnX = vX + 6;
         ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
@@ -910,11 +1338,11 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         modes.forEach((m) => {
           const active = this.mode === m.key;
           const textW = ctx.measureText(m.label).width;
-          const bW = textW + 14;
+          const bW = textW + 12;
           const bH = 18;
           const bY = barY + 4;
           const col = m.activeColor || "#2dd4bf";
-          ctx.fillStyle = active ? m.key === "only_a" ? "rgba(56, 189, 248, 0.22)" : m.key === "only_b" ? "rgba(192, 132, 252, 0.22)" : m.key === "toggle" ? "rgba(245, 158, 11, 0.25)" : m.key === "side" ? "rgba(16, 185, 129, 0.22)" : "rgba(45, 212, 191, 0.22)" : "rgba(255, 255, 255, 0.06)";
+          ctx.fillStyle = active ? m.key === "hover_slide" ? "rgba(56, 189, 248, 0.25)" : m.key === "only_a" ? "rgba(147, 197, 253, 0.22)" : m.key === "only_b" ? "rgba(192, 132, 252, 0.22)" : m.key === "toggle" ? "rgba(245, 158, 11, 0.25)" : m.key === "side" ? "rgba(16, 185, 129, 0.22)" : "rgba(45, 212, 191, 0.25)" : "rgba(255, 255, 255, 0.06)";
           ctx.strokeStyle = active ? col : "rgba(255, 255, 255, 0.12)";
           ctx.lineWidth = 1;
           if (ctx.roundRect) {
@@ -927,7 +1355,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             ctx.strokeRect(btnX, bY, bW, bH);
           }
           ctx.fillStyle = active ? col : "#94a3b8";
-          ctx.fillText(m.label, btnX + 7, bY + bH / 2);
+          ctx.fillText(m.label, btnX + 6, bY + bH / 2);
           this.btnHitAreas.push({
             x: btnX,
             y: bY,
@@ -942,11 +1370,11 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
               node.setDirtyCanvas(true, true);
             }
           });
-          btnX += bW + 6;
+          btnX += bW + 4;
         });
-        const resetLabel = "\u27F2 Reset Zoom";
+        const resetLabel = "\u27F2 Reset";
         const rTextW = ctx.measureText(resetLabel).width;
-        const rW = rTextW + 14;
+        const rW = rTextW + 12;
         const rX = vX + vW - rW - 6;
         const rY = barY + 4;
         ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
@@ -961,7 +1389,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.strokeRect(rX, rY, rW, 18);
         }
         ctx.fillStyle = "#cbd5e1";
-        ctx.fillText(resetLabel, rX + 7, rY + 9);
+        ctx.fillText(resetLabel, rX + 6, rY + 9);
         this.btnHitAreas.push({
           x: rX,
           y: rY,
@@ -974,9 +1402,99 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         const zoomPct = Math.round(this.zoom * 100);
         const zoomLabel = `\u{1F50D} ${zoomPct}%`;
         const zTextW = ctx.measureText(zoomLabel).width;
-        const zX = rX - zTextW - 14;
+        const zX = rX - zTextW - 12;
         ctx.fillStyle = this.zoom > 1.01 ? "#38bdf8" : "#64748b";
         ctx.fillText(zoomLabel, zX, rY + 9);
+        let currentTopY = barY + barH + 4;
+        const hasMultiFrames = this.availableA && this.availableA.length > 1 || this.availableB && this.availableB.length > 1;
+        if (hasMultiFrames) {
+          const chipBarH = 22;
+          ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(vX, currentTopY, vW, chipBarH, 3);
+            ctx.fill();
+          } else {
+            ctx.fillRect(vX, currentTopY, vW, chipBarH);
+          }
+          let chipX = vX + 8;
+          ctx.font = "bold 9px monospace";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#38bdf8";
+          ctx.fillText("Side A:", chipX, currentTopY + chipBarH / 2);
+          chipX += ctx.measureText("Side A:").width + 6;
+          this.availableA.forEach((item, idx) => {
+            const name = item.name || `A${idx + 1}`;
+            const isSel = this.selectedA && this.selectedA.filename === item.filename;
+            const cW = ctx.measureText(name).width + 8;
+            const cH = 16;
+            const cY = currentTopY + 3;
+            ctx.fillStyle = isSel ? "#0284c7" : "rgba(255, 255, 255, 0.08)";
+            ctx.strokeStyle = isSel ? "#38bdf8" : "rgba(255, 255, 255, 0.15)";
+            if (ctx.roundRect) {
+              ctx.beginPath();
+              ctx.roundRect(chipX, cY, cW, cH, 3);
+              ctx.fill();
+              ctx.stroke();
+            } else {
+              ctx.fillRect(chipX, cY, cW, cH);
+              ctx.strokeRect(chipX, cY, cW, cH);
+            }
+            ctx.fillStyle = isSel ? "#ffffff" : "#94a3b8";
+            ctx.fillText(name, chipX + 4, cY + cH / 2);
+            this.chipHitAreas.push({
+              x: chipX,
+              y: cY,
+              w: cW,
+              h: cH,
+              action: () => {
+                this.selectedA = item;
+                this.loadSelectedImages();
+                node.setDirtyCanvas(true, true);
+              }
+            });
+            chipX += cW + 4;
+          });
+          chipX += 10;
+          ctx.fillStyle = "#c084fc";
+          ctx.fillText("Side B:", chipX, currentTopY + chipBarH / 2);
+          chipX += ctx.measureText("Side B:").width + 6;
+          this.availableB.forEach((item, idx) => {
+            const name = item.name || `B${idx + 1}`;
+            const isSel = this.selectedB && this.selectedB.filename === item.filename;
+            const cW = ctx.measureText(name).width + 8;
+            const cH = 16;
+            const cY = currentTopY + 3;
+            ctx.fillStyle = isSel ? "#9333ea" : "rgba(255, 255, 255, 0.08)";
+            ctx.strokeStyle = isSel ? "#c084fc" : "rgba(255, 255, 255, 0.15)";
+            if (ctx.roundRect) {
+              ctx.beginPath();
+              ctx.roundRect(chipX, cY, cW, cH, 3);
+              ctx.fill();
+              ctx.stroke();
+            } else {
+              ctx.fillRect(chipX, cY, cW, cH);
+              ctx.strokeRect(chipX, cY, cW, cH);
+            }
+            ctx.fillStyle = isSel ? "#ffffff" : "#94a3b8";
+            ctx.fillText(name, chipX + 4, cY + cH / 2);
+            this.chipHitAreas.push({
+              x: chipX,
+              y: cY,
+              w: cW,
+              h: cH,
+              action: () => {
+                this.selectedB = item;
+                this.loadSelectedImages();
+                node.setDirtyCanvas(true, true);
+              }
+            });
+            chipX += cW + 4;
+          });
+          currentTopY += chipBarH + 4;
+        }
+        const vH = Math.max(260, Math.min(slotH - (currentTopY - vY) - 12, 1600));
+        this.viewportRect = { x: vX, y: currentTopY, w: vW, h: vH };
         const vp = this.viewportRect;
         ctx.fillStyle = "#090d14";
         ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
@@ -1005,57 +1523,45 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             ctx.fillText("Collega image_a e image_b, poi clicca Queue Prompt per visualizzare", vp.x + vp.w / 2, vp.y + vp.h / 2 - 10);
             ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
             ctx.fillStyle = "#64748b";
-            ctx.fillText("Slider A-B \u2022 Synchronized Pan & Zoom \u2022 Toggle A/B \u2022 Side-by-Side", vp.x + vp.w / 2, vp.y + vp.h / 2 + 12);
+            ctx.fillText("Hover Slider \u2022 Zero Stretch \u2022 Zero Crop \u2022 Centratura Perfetta", vp.x + vp.w / 2, vp.y + vp.h / 2 + 12);
           }
           ctx.restore();
           return;
         }
-        const computeFit = (natW, natH, boxW, boxH) => {
-          if (!natW || !natH || !boxW || !boxH) return { w: boxW, h: boxH };
-          const aspect = natW / natH;
-          const boxAspect = boxW / boxH;
-          let w, h;
-          if (aspect > boxAspect) {
-            w = boxW;
-            h = boxW / aspect;
-          } else {
-            h = boxH;
-            w = boxH * aspect;
-          }
-          return { w, h };
-        };
+        const centerX = vp.x + vp.w / 2;
+        const centerY = vp.y + vp.h / 2;
         const natWA = this.imgA.naturalWidth;
         const natHA = this.imgA.naturalHeight;
         const natWB = this.imgB.naturalWidth;
         const natHB = this.imgB.naturalHeight;
-        const centerX = vp.x + vp.w / 2;
-        const centerY = vp.y + vp.h / 2;
-        const fitA = computeFit(natWA, natHA, vp.w, vp.h);
-        const fitB = computeFit(natWB, natHB, vp.w, vp.h);
-        const halfWA = fitA.w / 2;
-        const halfHA = fitA.h / 2;
-        const halfWB = fitB.w / 2;
-        const halfHB = fitB.h / 2;
-        const renderImageA = (targetCtx = ctx) => {
-          try {
-            targetCtx.save();
-            targetCtx.translate(centerX + this.panX * this.zoom, centerY + this.panY * this.zoom);
-            targetCtx.scale(this.zoom, this.zoom);
-            targetCtx.drawImage(this.imgA, -halfWA, -halfHA, fitA.w, fitA.h);
-            targetCtx.restore();
-          } catch (err) {
-            console.warn("[STOIQO Compare] Errore renderImageA:", err);
-          }
+        const scaleA = Math.min(vp.w / natWA, vp.h / natHA);
+        const fitWA = natWA * scaleA;
+        const fitHA = natHA * scaleA;
+        const scaleB = Math.min(vp.w / natWB, vp.h / natHB);
+        const fitWB = natWB * scaleB;
+        const fitHB = natHB * scaleB;
+        const curZoom = this.zoom;
+        const curCX = centerX + this.panX * curZoom;
+        const curCY = centerY + this.panY * curZoom;
+        const drawWA = fitWA * curZoom;
+        const drawHA = fitHA * curZoom;
+        const drawXA = curCX - drawWA / 2;
+        const drawYA = curCY - drawHA / 2;
+        const drawWB = fitWB * curZoom;
+        const drawHB = fitHB * curZoom;
+        const drawXB = curCX - drawWB / 2;
+        const drawYB = curCY - drawHB / 2;
+        const renderImageA = () => {
+          ctx.drawImage(this.imgA, drawXA, drawYA, drawWA, drawHA);
         };
-        const renderImageB = (targetCtx = ctx) => {
-          try {
-            targetCtx.save();
-            targetCtx.translate(centerX + this.panX * this.zoom, centerY + this.panY * this.zoom);
-            targetCtx.scale(this.zoom, this.zoom);
-            targetCtx.drawImage(this.imgB, -halfWB, -halfHB, fitB.w, fitB.h);
-            targetCtx.restore();
-          } catch (err) {
-            console.warn("[STOIQO Compare] Errore renderImageB:", err);
+        const renderImageB = () => {
+          ctx.drawImage(this.imgB, drawXB, drawYB, drawWB, drawHB);
+        };
+        const renderImageDiff = () => {
+          if (this.imgDiff && this.imgDiff.complete && this.imgDiff.naturalWidth > 0) {
+            ctx.drawImage(this.imgDiff, drawXA, drawYA, drawWA, drawHA);
+          } else {
+            renderImageB();
           }
         };
         if (this.mode === "only_a") {
@@ -1072,17 +1578,24 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.clip();
           renderImageB();
           ctx.restore();
-        } else if (this.mode === "split") {
-          const splitScreenX = vp.x + this.splitX * vp.w;
+        } else if (this.mode === "diff_heat") {
           ctx.save();
           ctx.beginPath();
-          ctx.rect(vp.x, vp.y, this.splitX * vp.w, vp.h);
+          ctx.rect(vp.x, vp.y, vp.w, vp.h);
+          ctx.clip();
+          renderImageDiff();
+          ctx.restore();
+        } else if (this.mode === "split" || this.mode === "hover_slide") {
+          const splitScreenX = Math.round(vp.x + this.splitX * vp.w);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(vp.x, vp.y, splitScreenX - vp.x, vp.h);
           ctx.clip();
           renderImageA();
           ctx.restore();
           ctx.save();
           ctx.beginPath();
-          ctx.rect(splitScreenX, vp.y, (1 - this.splitX) * vp.w, vp.h);
+          ctx.rect(splitScreenX, vp.y, vp.x + vp.w - splitScreenX, vp.h);
           ctx.clip();
           renderImageB();
           ctx.restore();
@@ -1093,9 +1606,9 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.moveTo(splitScreenX, vp.y);
           ctx.lineTo(splitScreenX, vp.y + vp.h);
           ctx.stroke();
-          const pillW = 32;
+          const pillW = 34;
           const pillH = 22;
-          const pillY = vp.y + vp.h / 2 - pillH / 2;
+          const pillY = centerY - pillH / 2;
           ctx.fillStyle = "#0f172a";
           ctx.strokeStyle = "#2dd4bf";
           ctx.lineWidth = 1.5;
@@ -1115,55 +1628,60 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.fillText("\u25C4\u25BA", splitScreenX, pillY + pillH / 2 + 1);
           ctx.restore();
         } else if (this.mode === "toggle") {
+          const showB = this.isHoldingPointer ? !this.toggleShowB : this.toggleShowB;
           ctx.save();
           ctx.beginPath();
           ctx.rect(vp.x, vp.y, vp.w, vp.h);
           ctx.clip();
-          if (this.toggleShowB) {
+          if (showB) {
             renderImageB();
           } else {
             renderImageA();
           }
           ctx.restore();
         } else if (this.mode === "side") {
-          const midX = vp.x + vp.w / 2;
-          const halfW = vp.w / 2 - 1;
-          const centerSideA_X = vp.x + halfW / 2;
-          const fitSideA = computeFit(natWA, natHA, halfW, vp.h);
+          const halfW = (vp.w - 2) / 2;
+          const midX = vp.x + halfW;
+          const scaleSideA = Math.min(halfW / natWA, vp.h / natHA);
+          const fitSideWA = natWA * scaleSideA;
+          const fitSideHA = natHA * scaleSideA;
+          const centerSideAX = vp.x + halfW / 2 + this.panX * curZoom;
+          const drawSideWA = fitSideWA * curZoom;
+          const drawSideHA = fitSideHA * curZoom;
           ctx.save();
           ctx.beginPath();
           ctx.rect(vp.x, vp.y, halfW, vp.h);
           ctx.clip();
-          ctx.translate(centerSideA_X + this.panX * this.zoom, centerY + this.panY * this.zoom);
-          ctx.scale(this.zoom, this.zoom);
-          ctx.drawImage(this.imgA, -fitSideA.w / 2, -fitSideA.h / 2, fitSideA.w, fitSideA.h);
+          ctx.drawImage(this.imgA, centerSideAX - drawSideWA / 2, curCY - drawSideHA / 2, drawSideWA, drawSideHA);
           ctx.restore();
-          const centerSideB_X = midX + 1 + halfW / 2;
-          const fitSideB = computeFit(natWB, natHB, halfW, vp.h);
+          const scaleSideB = Math.min(halfW / natWB, vp.h / natHB);
+          const fitSideWB = natWB * scaleSideB;
+          const fitSideHB = natHB * scaleSideB;
+          const centerSideBX = midX + 2 + halfW / 2 + this.panX * curZoom;
+          const drawSideWB = fitSideWB * curZoom;
+          const drawSideHB = fitSideHB * curZoom;
           ctx.save();
           ctx.beginPath();
-          ctx.rect(midX + 1, vp.y, halfW, vp.h);
+          ctx.rect(midX + 2, vp.y, halfW, vp.h);
           ctx.clip();
-          ctx.translate(centerSideB_X + this.panX * this.zoom, centerY + this.panY * this.zoom);
-          ctx.scale(this.zoom, this.zoom);
-          ctx.drawImage(this.imgB, -fitSideB.w / 2, -fitSideB.h / 2, fitSideB.w, fitSideB.h);
+          ctx.drawImage(this.imgB, centerSideBX - drawSideWB / 2, curCY - drawSideHB / 2, drawSideWB, drawSideHB);
           ctx.restore();
           ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(midX, vp.y);
-          ctx.lineTo(midX, vp.y + vp.h);
+          ctx.moveTo(midX + 1, vp.y);
+          ctx.lineTo(midX + 1, vp.y + vp.h);
           ctx.stroke();
         }
         ctx.font = "bold 9px sans-serif";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         if (this.mode === "toggle") {
-          const showingB = this.toggleShowB;
-          const tText = showingB ? `\u{1F441} B: ${this.labelB} (${natWB}\xD7${natHB}) \u2022 Clicca per A` : `\u{1F441} A: ${this.labelA} (${natWA}\xD7${natHA}) \u2022 Clicca per B`;
+          const showB = this.isHoldingPointer ? !this.toggleShowB : this.toggleShowB;
+          const tText = showB ? `\u{1F441} B: ${this.labelB} (${natWB}\xD7${natHB}) \u2022 Clicca / Spazio per A` : `\u{1F441} A: ${this.labelA} (${natWA}\xD7${natHA}) \u2022 Clicca / Spazio per B`;
           const tW = ctx.measureText(tText).width + 16;
           ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
-          ctx.strokeStyle = showingB ? "#c084fc" : "#38bdf8";
+          ctx.strokeStyle = showB ? "#c084fc" : "#38bdf8";
           ctx.lineWidth = 1;
           if (ctx.roundRect) {
             ctx.beginPath();
@@ -1174,20 +1692,41 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             ctx.fillRect(vp.x + 8, vp.y + 8, tW, 20);
             ctx.strokeRect(vp.x + 8, vp.y + 8, tW, 20);
           }
-          ctx.fillStyle = showingB ? "#c084fc" : "#38bdf8";
+          ctx.fillStyle = showB ? "#c084fc" : "#38bdf8";
           ctx.fillText(tText, vp.x + 16, vp.y + 18);
         } else {
-          if (this.mode === "only_a" || this.mode === "split" || this.mode === "side") {
-            const labelAText = `\u25C4 A: ${this.labelA.slice(0, 10)} (${natWA}\xD7${natHA})`;
-            const lAW = ctx.measureText(labelAText).width + 12;
+          if (this.mode !== "only_b" && this.mode !== "diff_heat") {
+            const labelAText = `\u25C4 A: ${this.labelA} (${natWA}\xD7${natHA})`;
+            const lAW = ctx.measureText(labelAText).width + 14;
             ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
             ctx.fillRect(vp.x + 8, vp.y + 8, lAW, 18);
             ctx.fillStyle = "#38bdf8";
             ctx.fillText(labelAText, vp.x + 14, vp.y + 17);
+          } else if (this.mode === "diff_heat") {
+            const m = this.metricsData || {};
+            const ssimStr = m.ssim !== void 0 ? `SSIM: ${m.ssim}` : "";
+            const psnrStr = m.psnr_db !== void 0 ? `PSNR: ${m.psnr_db}dB` : "";
+            const deltaStr = m.changed_pixels_pct !== void 0 ? `\u0394: ${m.changed_pixels_pct}%` : "";
+            const diffTxt = `\u{1F525} Thermal Diff \u2022 ${[ssimStr, psnrStr, deltaStr].filter(Boolean).join(" \u2022 ") || "Delta Map"}`;
+            const lDW = ctx.measureText(diffTxt).width + 16;
+            ctx.fillStyle = "rgba(15, 23, 42, 0.90)";
+            ctx.strokeStyle = "#ff453a";
+            ctx.lineWidth = 1;
+            if (ctx.roundRect) {
+              ctx.beginPath();
+              ctx.roundRect(vp.x + 8, vp.y + 8, lDW, 20, 3);
+              ctx.fill();
+              ctx.stroke();
+            } else {
+              ctx.fillRect(vp.x + 8, vp.y + 8, lDW, 20);
+              ctx.strokeRect(vp.x + 8, vp.y + 8, lDW, 20);
+            }
+            ctx.fillStyle = "#ff6961";
+            ctx.fillText(diffTxt, vp.x + 16, vp.y + 18);
           }
-          if (this.mode === "only_b" || this.mode === "split" || this.mode === "side") {
-            const labelBText = `B: ${this.labelB.slice(0, 10)} (${natWB}\xD7${natHB}) \u25BA`;
-            const lBW = ctx.measureText(labelBText).width + 12;
+          if (this.mode !== "only_a") {
+            const labelBText = `B: ${this.labelB} (${natWB}\xD7${natHB}) \u25BA`;
+            const lBW = ctx.measureText(labelBText).width + 14;
             ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
             ctx.fillRect(vp.x + vp.w - lBW - 8, vp.y + 8, lBW, 18);
             ctx.fillStyle = "#c084fc";
@@ -1195,7 +1734,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           }
         }
         if (this.zoom > 1.05) {
-          const hint = "\u{1F50D} Trascina per Pan \u2022 Rotella per Zoom";
+          const hint = "\u{1F50D} Trascina per Pan \u2022 Rotella per Zoom \u2022 Spazio per Toggle A/B";
           const hintW = ctx.measureText(hint).width + 16;
           const hintX = vp.x + (vp.w - hintW) / 2;
           const hintY = vp.y + vp.h - 22;
@@ -1224,17 +1763,26 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             return true;
           }
         }
-        const vp = this.viewportRect;
-        if (mx >= vp.x && mx <= vp.x + vp.w && my >= vp.y && my <= vp.y + vp.h) {
-          if (this.mode === "toggle") {
-            this.toggleShowB = !this.toggleShowB;
+        for (const chip of this.chipHitAreas) {
+          if (mx >= chip.x && mx <= chip.x + chip.w && my >= chip.y && my <= chip.y + chip.h) {
+            chip.action();
             if (this.node) this.node.setDirtyCanvas(true, true);
             if (e && e.stopPropagation) e.stopPropagation();
             return true;
           }
-          if (this.mode === "split") {
+        }
+        const vp = this.viewportRect;
+        if (mx >= vp.x && mx <= vp.x + vp.w && my >= vp.y && my <= vp.y + vp.h) {
+          if (this.mode === "toggle") {
+            this.isHoldingPointer = true;
+            this.attachWindowDragListeners();
+            if (this.node) this.node.setDirtyCanvas(true, true);
+            if (e && e.stopPropagation) e.stopPropagation();
+            return true;
+          }
+          if (this.mode === "split" || this.mode === "hover_slide") {
             const splitPixelX = vp.x + this.splitX * vp.w;
-            if (this.zoom <= 1.05 || Math.abs(mx - splitPixelX) < 40) {
+            if (this.zoom <= 1.05 || Math.abs(mx - splitPixelX) < 35) {
               const relX = (mx - vp.x) / vp.w;
               this.splitX = Math.max(0.01, Math.min(0.99, relX));
               this.isDraggingSplit = true;
@@ -1257,6 +1805,16 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         if (!localPos) return false;
         const [mx, my] = localPos;
         const vp = this.viewportRect;
+        const insideViewport = mx >= vp.x && mx <= vp.x + vp.w && my >= vp.y && my <= vp.y + vp.h;
+        this.isHoveringViewport = insideViewport;
+        if (this.mode === "hover_slide" && insideViewport && !this.isPanning && !this.isDraggingSplit) {
+          if (this.zoom <= 1.05) {
+            const relX = (mx - vp.x) / vp.w;
+            this.splitX = Math.max(0.01, Math.min(0.99, relX));
+            if (this.node) this.node.setDirtyCanvas(true, true);
+            return true;
+          }
+        }
         if (this.isDraggingSplit) {
           const relX = (mx - vp.x) / vp.w;
           this.splitX = Math.max(0.01, Math.min(0.99, relX));
@@ -1275,9 +1833,15 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         return false;
       }
       handleMouseUp(e, localPos) {
-        const wasActive = this.isDraggingSplit || this.isPanning;
+        const wasHolding = this.isHoldingPointer;
+        const wasActive = this.isDraggingSplit || this.isPanning || wasHolding;
+        if (this.mode === "toggle" && wasHolding) {
+          this.isHoldingPointer = false;
+          this.toggleShowB = !this.toggleShowB;
+        }
         this.isDraggingSplit = false;
         this.isPanning = false;
+        this.isHoldingPointer = false;
         if (this._activePointerCleanup) {
           this._activePointerCleanup();
         }
@@ -1346,8 +1910,8 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
       this.images = null;
       setupImageCompareNodeUI(this);
       const cachedImages = this.properties?.stoiqo_images || info?.properties?.stoiqo_images || this.cmpWidget?.imagesData || this.cmpWidget?.value;
-      if (cachedImages && Array.isArray(cachedImages) && cachedImages.length >= 2 && this.cmpWidget) {
-        this.cmpWidget.setImages(cachedImages.slice(-2));
+      if (cachedImages && Array.isArray(cachedImages) && cachedImages.length > 0 && this.cmpWidget) {
+        this.cmpWidget.setImages(cachedImages);
       }
     };
     const origCmpDrawBg = nodeType.prototype.onDrawBackground;
@@ -1375,7 +1939,9 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         if (w) {
           if (message.mode && message.mode[0]) {
             const mStr = String(message.mode[0]).toLowerCase();
-            if (mStr.includes("toggle") || mStr.includes("flicker")) {
+            if (mStr.includes("hover")) {
+              w.mode = "hover_slide";
+            } else if (mStr.includes("toggle") || mStr.includes("flicker")) {
               w.mode = "toggle";
             } else if (mStr.includes("side")) {
               w.mode = "side";
@@ -1386,6 +1952,9 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           const cmpImages = message.stoiqo_images || message.images;
           if (cmpImages) {
             w.setImages(cmpImages);
+          }
+          if (message.metrics && message.metrics[0]) {
+            w.metricsData = message.metrics[0];
           }
         }
         if (this.widgets) {
@@ -1409,12 +1978,17 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
       if (!node.size || node.size[0] < MIN_RES_WIDTH) {
         node.size = [MIN_RES_WIDTH, node.size ? node.size[1] : 240];
       }
+      function ensureResHUD() {
+        if (!node.widgets.some((w) => w.name === "_stoiqo_res_hud")) {
+          node.widgets.push(new StoiqoResolutionHUDWidget(node));
+        }
+      }
       function updateCustomDimsVisibility() {
-        const aspectWidget2 = node.widgets.find((w) => w.name === "aspect_ratio");
+        const aspectWidget = node.widgets.find((w) => w.name === "aspect_ratio");
         const wWidget = node.widgets.find((w) => w.name === "custom_width");
         const hWidget = node.widgets.find((w) => w.name === "custom_height");
         if (!wWidget || !hWidget) return;
-        const isCustom = aspectWidget2 && String(aspectWidget2.value || "").includes("Custom");
+        const isCustom = aspectWidget && String(aspectWidget.value || "").includes("Custom");
         [wWidget, hWidget].forEach((widget) => {
           if (!widget._stoiqoOrigComputeSize) {
             widget._stoiqoOrigComputeSize = widget.computeSize;
@@ -1441,6 +2015,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             }
           }
         });
+        ensureResHUD();
         if (typeof node.computeSize === "function") {
           const computed = node.computeSize();
           node.size[0] = Math.max(node.size[0] || 0, MIN_RES_WIDTH);
@@ -1448,18 +2023,165 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         }
         node.setDirtyCanvas(true, true);
       }
-      const aspectWidget = node.widgets.find((w) => w.name === "aspect_ratio");
-      if (aspectWidget && !aspectWidget._stoiqoHooked) {
-        aspectWidget._stoiqoHooked = true;
-        const origCallback = aspectWidget.callback;
-        aspectWidget.callback = function(val) {
-          if (origCallback) origCallback.apply(this, arguments);
-          updateCustomDimsVisibility();
-        };
-      }
+      node.widgets.forEach((w) => {
+        if (w.name !== "_stoiqo_res_hud" && !w._stoiqoResHooked) {
+          w._stoiqoResHooked = true;
+          const origCallback = w.callback;
+          w.callback = function() {
+            if (origCallback) origCallback.apply(this, arguments);
+            updateCustomDimsVisibility();
+            node.setDirtyCanvas(true, true);
+          };
+        }
+      });
+      const origConnChange = node.onConnectionsChange;
+      node.onConnectionsChange = function(type, index, isConnected, link_info) {
+        if (origConnChange) origConnChange.apply(this, arguments);
+        node.setDirtyCanvas(true, true);
+      };
       updateCustomDimsVisibility();
     };
     const MIN_RES_WIDTH = 380;
+    class StoiqoResolutionHUDWidget {
+      constructor(node) {
+        this.node = node;
+        this.type = "custom";
+        this.name = "_stoiqo_res_hud";
+        this.value = {};
+        this.options = { serialize: false };
+        this.isStoiqoHUD = true;
+        this.height = 44;
+      }
+      serializeValue() {
+        return void 0;
+      }
+      computeSize(width) {
+        return [width, this.height];
+      }
+      draw(ctx, node, width, y, height) {
+        if (node.flags && node.flags.collapsed) return;
+        const aspectW = node.widgets.find((w2) => w2.name === "aspect_ratio");
+        const scaleW = node.widgets.find((w2) => w2.name === "scale_target");
+        const swapW = node.widgets.find((w2) => w2.name === "swap_dimensions");
+        const multW = node.widgets.find((w2) => w2.name === "multiple_of");
+        const customW = node.widgets.find((w2) => w2.name === "custom_width");
+        const customH = node.widgets.find((w2) => w2.name === "custom_height");
+        const aspect = aspectW ? String(aspectW.value || "") : "1:1 Square (1024 x 1024)";
+        const scale = scaleW ? String(scaleW.value || "") : "1.0 MP";
+        const swap = swapW ? Boolean(swapW.value) : false;
+        const step = multW ? Math.max(8, Number(multW.value) || 16) : 16;
+        const cW = customW ? Number(customW.value) || 1024 : 1024;
+        const cH = customH ? Number(customH.value) || 1024 : 1024;
+        const isMatchImage = aspect.includes("Match Input Image") || aspect.toLowerCase() === "image";
+        const isCustom = aspect.includes("Custom");
+        let w = 1024, h = 1024;
+        const PRESET_DIMS = {
+          "1:1 Square (1024 x 1024)": [1024, 1024],
+          "16:9 Landscape Widescreen (1344 x 768)": [1344, 768],
+          "9:16 Portrait / Story (768 x 1344)": [768, 1344],
+          "4:3 Standard Photo (1152 x 896)": [1152, 896],
+          "3:4 Classic Portrait (896 x 1152)": [896, 1152],
+          "3:2 Classic 35mm (1216 x 832)": [1216, 832],
+          "2:3 Portrait 35mm (832 x 1216)": [832, 1216],
+          "21:9 Ultrawide Cinema (1536 x 640)": [1536, 640],
+          "9:21 Ultrawide Vertical (640 x 1536)": [640, 1536],
+          "4:5 Social Media Portrait (960 x 1200)": [960, 1200],
+          "5:4 Social Media Landscape (1200 x 960)": [1200, 960]
+        };
+        const RATIO_VALS = {
+          "1:1 Square (1024 x 1024)": 1,
+          "16:9 Landscape Widescreen (1344 x 768)": 16 / 9,
+          "9:16 Portrait / Story (768 x 1344)": 9 / 16,
+          "4:3 Standard Photo (1152 x 896)": 4 / 3,
+          "3:4 Classic Portrait (896 x 1152)": 3 / 4,
+          "3:2 Classic 35mm (1216 x 832)": 3 / 2,
+          "2:3 Portrait 35mm (832 x 1216)": 2 / 3,
+          "21:9 Ultrawide Cinema (1536 x 640)": 21 / 9,
+          "9:21 Ultrawide Vertical (640 x 1536)": 9 / 21,
+          "4:5 Social Media Portrait (960 x 1200)": 4 / 5,
+          "5:4 Social Media Landscape (1200 x 960)": 5 / 4
+        };
+        let targetPixels = 1024 * 1024;
+        if (scale.includes("0.26 MP")) targetPixels = 512 * 512;
+        else if (scale.includes("0.9 MP")) targetPixels = 1280 * 720;
+        else if (scale.includes("1.5 MP")) targetPixels = 1280 * 1280;
+        else if (scale.includes("2.0 MP")) targetPixels = 1440 * 1440;
+        else if (scale.includes("2.1 MP")) targetPixels = 1920 * 1080;
+        else if (scale.includes("4.0 MP")) targetPixels = 2160 * 2160;
+        let note = "";
+        if (isMatchImage) {
+          const imgSlot = node.inputs ? node.inputs.find((i) => i.name === "image") : null;
+          if (!imgSlot || imgSlot.link === null) {
+            note = "\u26A0\uFE0F Nessuna Immagine (fallback 1024\xD71024)";
+            w = 1024;
+            h = 1024;
+          } else {
+            note = "\u{1F4F7} Auto-match proporzioni immagine";
+            w = 1024;
+            h = 1024;
+          }
+        } else if (isCustom) {
+          w = Math.round(cW / step) * step;
+          h = Math.round(cH / step) * step;
+        } else if (scale.includes("Exact Preset") && PRESET_DIMS[aspect]) {
+          [w, h] = PRESET_DIMS[aspect];
+          w = Math.round(w / step) * step;
+          h = Math.round(h / step) * step;
+        } else {
+          const ratio = RATIO_VALS[aspect] || 1;
+          const rawH = Math.sqrt(targetPixels / ratio);
+          const rawW = rawH * ratio;
+          w = Math.max(step, Math.round(rawW / step) * step);
+          h = Math.max(step, Math.round(rawH / step) * step);
+        }
+        if (swap) {
+          const temp = w;
+          w = h;
+          h = temp;
+        }
+        const calcRatio = h > 0 ? (w / h).toFixed(2) : "1.00";
+        const mpx = (w * h / 1e6).toFixed(2);
+        const tensorMb = (w * h * 12 / (1024 * 1024)).toFixed(1);
+        const latentMb = (w * h * 0.5 / (1024 * 1024)).toFixed(1);
+        const margin = 12;
+        const cardW = width - margin * 2;
+        const cardH = this.height;
+        ctx.save();
+        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.40)";
+        ctx.lineWidth = 1;
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(margin, y, cardW, cardH, 6);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillRect(margin, y, cardW, cardH);
+          ctx.strokeRect(margin, y, cardW, cardH);
+        }
+        ctx.fillStyle = "#38bdf8";
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(margin, y, 4, cardH, [6, 0, 0, 6]);
+          ctx.fill();
+        } else {
+          ctx.fillRect(margin, y, 4, cardH);
+        }
+        ctx.font = "bold 11px Inter, sans-serif";
+        ctx.fillStyle = "#f8fafc";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`\u{1F4D0} ${w} \xD7 ${h}  \u2022  ${calcRatio}:1  \u2022  ${mpx} MP`, margin + 12, y + 14);
+        ctx.font = "10px Inter, monospace, sans-serif";
+        ctx.fillStyle = "#94a3b8";
+        let line2 = `\u{1F4BE} ~${tensorMb} MB VRAM (Flux Latent: ~${latentMb} MB)`;
+        if (note) {
+          line2 += ` \u2022 ${note}`;
+        }
+        ctx.fillText(line2, margin + 12, y + 30);
+        ctx.restore();
+      }
+    }
     const origResCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function() {
       if (origResCreated) origResCreated.apply(this, arguments);
@@ -1474,16 +2196,47 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
 }
 
 // src_js/nodes/datasetNode.js
+import { api as api5 } from "../../../scripts/api.js";
 function setupDatasetNode(nodeType, nodeData, app11) {
   const targetNames = [
     "StoiqoDatasetWriterNode",
     "[STOIQO] Dataset & LoRA Toolkit"
   ];
   if (targetNames.includes(nodeData.name)) {
-    let setupDatasetNode2 = function(node) {
+    let configureDatasetNode = function(node) {
       if (!node || !node.widgets) return;
       if (node.size && node.size[0] < MIN_NODE_WIDTH) {
         node.size[0] = MIN_NODE_WIDTH;
+      }
+      const outputDirWidget = node.widgets.find((w) => w.name === "output_dir");
+      const hasBrowseBtn = node.widgets.some((w) => w._isStoiqoBrowse);
+      if (outputDirWidget && !hasBrowseBtn) {
+        const browseBtn = node.addWidget("button", "\u{1F4C1} Sfoglia Cartella Output", null, async () => {
+          try {
+            const resp = await api5.fetchApi("/stoiqo/browse_folder", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" }
+            });
+            const data = await resp.json();
+            if (data && data.status === "ok" && data.folder_path) {
+              outputDirWidget.value = data.folder_path;
+              if (outputDirWidget.callback) {
+                outputDirWidget.callback(data.folder_path);
+              }
+              node.setDirtyCanvas(true, true);
+            }
+          } catch (err) {
+            console.error("[STOIQO Dataset Toolkit] Errore selezione cartella:", err);
+          }
+        });
+        browseBtn.serialize = false;
+        browseBtn._isStoiqoBrowse = true;
+        const btnIdx = node.widgets.indexOf(browseBtn);
+        const dirIdx = node.widgets.indexOf(outputDirWidget);
+        if (btnIdx > -1 && dirIdx > -1 && btnIdx !== dirIdx + 1) {
+          node.widgets.splice(btnIdx, 1);
+          node.widgets.splice(dirIdx + 1, 0, browseBtn);
+        }
       }
       const blacklistWidget = node.widgets.find((w) => w.name === "blacklist_tags");
       if (blacklistWidget) {
@@ -1524,7 +2277,14 @@ function setupDatasetNode(nodeType, nodeData, app11) {
       if (onNodeCreated) {
         onNodeCreated.apply(this, arguments);
       }
-      setupDatasetNode2(this);
+      configureDatasetNode(this);
+    };
+    const onConfigure = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function() {
+      if (onConfigure) {
+        onConfigure.apply(this, arguments);
+      }
+      configureDatasetNode(this);
     };
   }
 }
@@ -1599,6 +2359,38 @@ function setupIteratorNode(nodeType, nodeData, app11) {
           }
         }
       }
+      let refreshBtn = node.widgets.find((w) => w._isStoiqoRefresh);
+      if (!refreshBtn) {
+        refreshBtn = node.addWidget(
+          "button",
+          "\u27F2 Rescan / Invalidate Cache",
+          null,
+          function() {
+            const origLabel = this.name;
+            this.name = "\u2713 Cache Re-indexed!";
+            if (node.properties) {
+              delete node.properties._stoiqo_progress;
+              delete node.properties._stoiqo_filename;
+            }
+            node.setDirtyCanvas(true, true);
+            setTimeout(() => {
+              this.name = origLabel;
+              node.setDirtyCanvas(true);
+            }, 1500);
+          },
+          { serialize: false }
+        );
+        refreshBtn._isStoiqoRefresh = true;
+        refreshBtn.options = { serialize: false };
+        const browseIdx = node.widgets.indexOf(browseBtn);
+        if (browseIdx !== -1) {
+          const curIdx = node.widgets.indexOf(refreshBtn);
+          if (curIdx !== -1) {
+            node.widgets.splice(curIdx, 1);
+            node.widgets.splice(browseIdx + 1, 0, refreshBtn);
+          }
+        }
+      }
     };
     const MIN_NODE_WIDTH = 460;
     const onNodeCreated = nodeType.prototype.onNodeCreated;
@@ -1608,19 +2400,82 @@ function setupIteratorNode(nodeType, nodeData, app11) {
       }
       setupIteratorNodeUI(this);
     };
+    const onConfigure = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function() {
+      if (onConfigure) {
+        onConfigure.apply(this, arguments);
+      }
+      setupIteratorNodeUI(this);
+    };
+    const onExecuted = nodeType.prototype.onExecuted;
+    nodeType.prototype.onExecuted = function(message) {
+      if (onExecuted) {
+        onExecuted.apply(this, arguments);
+      }
+      if (message) {
+        this.properties = this.properties || {};
+        if (message.progress && message.progress[0]) {
+          this.properties._stoiqo_progress = String(message.progress[0]);
+        }
+        if (message.filename && message.filename[0]) {
+          this.properties._stoiqo_filename = String(message.filename[0]);
+        }
+        this.setDirtyCanvas(true, true);
+      }
+    };
+    const origDrawFg = nodeType.prototype.onDrawForeground;
+    nodeType.prototype.onDrawForeground = function(ctx) {
+      if (origDrawFg) origDrawFg.apply(this, arguments);
+      const prog = this.properties?._stoiqo_progress;
+      const fname = this.properties?._stoiqo_filename;
+      if (prog && !this.flags?.collapsed) {
+        ctx.save();
+        const badgeH = 20;
+        const badgeY = this.size[1] - badgeH - 6;
+        const badgeX = 10;
+        const badgeW = this.size[0] - 20;
+        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        ctx.strokeStyle = "#2dd4bf";
+        ctx.lineWidth = 1;
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+          ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+        }
+        ctx.font = "bold 9.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, monospace";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#2dd4bf";
+        const pText = `\u{1F4C1} ${prog}`;
+        ctx.fillText(pText, badgeX + 8, badgeY + badgeH / 2);
+        const pW = ctx.measureText(pText).width;
+        if (fname) {
+          ctx.fillStyle = "#94a3b8";
+          const maxChars = Math.max(15, Math.floor((badgeW - pW - 30) / 6.5));
+          const truncFname = fname.length > maxChars ? "\u2026" + fname.slice(-maxChars) : fname;
+          ctx.fillText(`\u2022 ${truncFname}`, badgeX + pW + 16, badgeY + badgeH / 2);
+        }
+        ctx.restore();
+      }
+    };
   }
 }
 
 // src_js/nodes/trioLoaderNode.js
-import { app as app6 } from "../../../scripts/app.js";
+import { app as app5 } from "../../../scripts/app.js";
 import { api as api7 } from "../../../scripts/api.js";
 function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
   const targetNames = [
+    "StoiqoImageLoaderNode",
     "StoiqoTripleImageLoaderNode",
+    "[STOIQO] Image Loader",
     "[STOIQO] Trio Image Loader (Hero & Thumbs)"
   ];
   if (!targetNames.includes(nodeData.name)) return;
-  const MIN_WIDTH2 = 460;
+  const MIN_WIDTH3 = 460;
   const MIN_HEIGHT = 740;
   function parseImageDescriptor(val) {
     if (!val || typeof val !== "string" || val === "none") return null;
@@ -1870,12 +2725,26 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
     this.hideOutputImages = true;
     this.imgs = null;
     this.images = null;
-    this.size = this.size || [MIN_WIDTH2, MIN_HEIGHT];
-    if (this.size[0] < MIN_WIDTH2) this.size[0] = MIN_WIDTH2;
+    this.size = this.size || [MIN_WIDTH3, MIN_HEIGHT];
+    if (this.size[0] < MIN_WIDTH3) this.size[0] = MIN_WIDTH3;
     if (this.size[1] < MIN_HEIGHT) this.size[1] = MIN_HEIGHT;
-    this.addCustomWidget(new StoiqoSectionDividerWidget(1, "MULTI-IMAGE TRIO LOADER", "#a855f7"));
-    const galleryWidget = new StoiqoTrioGalleryWidget(this);
-    this.addCustomWidget(galleryWidget);
+    this.widgets = this.widgets || [];
+    const existingDivs = this.widgets.filter((w) => w.name === "divider_1");
+    for (const extra of existingDivs.slice(1)) {
+      this.widgets.splice(this.widgets.indexOf(extra), 1);
+    }
+    if (existingDivs.length === 0) {
+      this.addCustomWidget(new StoiqoSectionDividerWidget(1, "MULTI-IMAGE TRIO LOADER", "#a855f7"));
+    }
+    const existingGals = this.widgets.filter((w) => w.name === "_stoiqo_trio_gallery");
+    for (const extra of existingGals.slice(1)) {
+      this.widgets.splice(this.widgets.indexOf(extra), 1);
+    }
+    let galleryWidget = existingGals[0];
+    if (!galleryWidget) {
+      galleryWidget = new StoiqoTrioGalleryWidget(this);
+      this.addCustomWidget(galleryWidget);
+    }
     this._trio_gallery = galleryWidget;
     const origOnExecuted = this.onExecuted;
     this.onExecuted = function(message) {
@@ -1916,14 +2785,14 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
 }
 
 // src_js/nodes/textConcatNode.js
-import { app as app7 } from "../../../scripts/app.js";
+import { app as app6 } from "../../../scripts/app.js";
 function setupConcatNode(nodeType, nodeData, appInstance) {
   const concatTargetNames = [
     "StoiqoTextConcatenateNode",
     "[STOIQO] Text Concatenate & Clean"
   ];
   if (!concatTargetNames.includes(nodeData.name)) return;
-  const MIN_WIDTH2 = 420;
+  const MIN_WIDTH3 = 420;
   const MAX_SLOTS = 8;
   const TEXT_BOX_HEIGHT = 56;
   class StoiqoTokenHudWidget {
@@ -2015,8 +2884,8 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
   }
   function initConcatNode(node) {
     if (!node || !node.widgets) return;
-    node.size = node.size || [MIN_WIDTH2, 360];
-    if (node.size[0] < MIN_WIDTH2) node.size[0] = MIN_WIDTH2;
+    node.size = node.size || [MIN_WIDTH3, 360];
+    if (node.size[0] < MIN_WIDTH3) node.size[0] = MIN_WIDTH3;
     let initialVisible = 2;
     for (let i = 3; i <= MAX_SLOTS; i++) {
       const wName = `text_${i}`;
@@ -2080,11 +2949,11 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       }
       if (typeof node.computeSize === "function") {
         const sz = node.computeSize();
-        node.setSize([Math.max(node.size[0] || 0, MIN_WIDTH2), Math.max(Math.ceil(sz[1]), 220)]);
+        node.setSize([Math.max(node.size[0] || 0, MIN_WIDTH3), Math.max(Math.ceil(sz[1]), 220)]);
       }
       node.setDirtyCanvas(true, true);
-      if (app7.graph && app7.graph.setDirtyCanvas) {
-        app7.graph.setDirtyCanvas(true, true);
+      if (app6.graph && app6.graph.setDirtyCanvas) {
+        app6.graph.setDirtyCanvas(true, true);
       }
     }
     if (!node._stoiqoAddBtn) {
@@ -2181,27 +3050,33 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       "_stoiqo_rem_btn": 10,
       "separator": 11,
       "custom_separator": 12,
-      "prefix": 13,
-      "suffix": 14,
-      "deduplicate_tags": 15,
-      "clean_whitespace": 16,
-      "convert_underscores": 17,
-      "skip_empty": 18,
-      "_stoiqo_token_hud": 19
+      "_stoiqo_settings_drawer": 13,
+      "template": 14,
+      "prefix": 15,
+      "suffix": 16,
+      "deduplicate_tags": 17,
+      "clean_whitespace": 18,
+      "convert_underscores": 19,
+      "skip_empty": 20,
+      "_stoiqo_token_hud": 25
     };
     node._stoiqoAddBtn.name_key = "_stoiqo_add_btn";
     node._stoiqoRemBtn.name_key = "_stoiqo_rem_btn";
-    node.widgets.sort((a, b) => {
-      const pa = orderPriority[a.name_key || a.name] || 99;
-      const pb = orderPriority[b.name_key || b.name] || 99;
-      return pa - pb;
-    });
-    let tokenHud = node.widgets.find((w) => w instanceof StoiqoTokenHudWidget);
+    const hudDups = node.widgets.filter((w) => w.name === "_stoiqo_token_hud");
+    for (const extra of hudDups.slice(1)) {
+      node.widgets.splice(node.widgets.indexOf(extra), 1);
+    }
+    let tokenHud = node.widgets.find((w) => w.name === "_stoiqo_token_hud");
     if (!tokenHud) {
       tokenHud = new StoiqoTokenHudWidget(node);
       node.addCustomWidget(tokenHud);
       node._stoiqo_hud = tokenHud;
     }
+    node.widgets.sort((a, b) => {
+      const pa = orderPriority[a.name_key || a.name] || 99;
+      const pb = orderPriority[b.name_key || b.name] || 99;
+      return pa - pb;
+    });
     const sepW = node.widgets.find((w) => w.name === "separator");
     if (sepW && !sepW._stoiqoHooked) {
       sepW._stoiqoHooked = true;
@@ -2258,6 +3133,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
 }
 
 // src_js/nodes/proSaverNode.js
+import { api as api8 } from "../../../scripts/api.js";
 function setupProSaverNode(nodeType, nodeData, appInstance) {
   const targetNames = [
     "StoiqoProImageSaverNode",
@@ -2350,10 +3226,17 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
       const info = this.lastSaveInfo[0];
       const batchCount = this.lastSaveInfo.length;
       const badgeY = cardY + 16;
-      ctx.fillStyle = "#10b981";
-      ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillText("\u2713 SALVATO", cardX + 12, badgeY);
+      if (info.privacy_mode) {
+        ctx.fillStyle = "#f59e0b";
+        ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("\u2713 SALVATO \u2022 \u{1F6E1}\uFE0F PRIVACY (ZERO EXIF)", cardX + 12, badgeY);
+      } else {
+        ctx.fillStyle = "#10b981";
+        ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("\u2713 SALVATO", cardX + 12, badgeY);
+      }
       const tagText = `${info.format || "IMG"} \u2022 ${info.width}x${info.height} \u2022 ${info.size_str || ""}${batchCount > 1 ? ` (+${batchCount - 1} altri)` : ""}`;
       ctx.fillStyle = "#00e5ff";
       ctx.font = "bold 10px monospace";
@@ -2379,35 +3262,42 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
       ctx.fillText(displaySub, cardX + 12, subfolderY);
       const btnY = cardY + 76;
       const btnH = 26;
-      const btnGap = 8;
-      const btnCount = 3;
+      const btnGap = 6;
+      const btnCount = 4;
       const totalGap = btnGap * (btnCount - 1);
       const btnW = Math.floor((cardW - 24 - totalGap) / btnCount);
+      const folderDir = info.filepath ? info.filepath.substring(0, info.filepath.lastIndexOf(info.filename || "") - 1) || info.subfolder : info.subfolder || "output";
       const buttons = [
         {
           id: "copy_path",
-          text: this.copiedButton === "copy_path" ? "\u2713 COPIATO" : "\u{1F4CB} COPIA PATH",
+          text: this.copiedButton === "copy_path" ? "\u2713 COPIATO" : "\u{1F4CB} PATH",
           active: this.copiedButton === "copy_path",
           actionText: info.filepath
         },
         {
           id: "copy_name",
-          text: this.copiedButton === "copy_name" ? "\u2713 COPIATO" : "\u{1F4C4} COPIA NOME",
+          text: this.copiedButton === "copy_name" ? "\u2713 COPIATO" : "\u{1F4C4} NOME",
           active: this.copiedButton === "copy_name",
           actionText: info.filename
         },
         {
           id: "copy_folder",
-          text: this.copiedButton === "copy_folder" ? "\u2713 COPIATO" : "\u{1F4C1} COPIA DIR",
+          text: this.copiedButton === "copy_folder" ? "\u2713 COPIATO" : "\u{1F4C1} DIR",
           active: this.copiedButton === "copy_folder",
-          actionText: info.filepath ? info.filepath.substring(0, info.filepath.lastIndexOf(info.filename || "") - 1) : info.subfolder
+          actionText: folderDir
+        },
+        {
+          id: "open_folder",
+          text: this.copiedButton === "open_folder" ? "\u2713 APERTA" : "\u{1F4C2} APRI",
+          active: this.copiedButton === "open_folder",
+          actionText: folderDir
         }
       ];
       buttons.forEach((btn, idx) => {
         const bX = cardX + 12 + idx * (btnW + btnGap);
         this.buttonRects[btn.id] = { x: bX, y: btnY, w: btnW, h: btnH, data: btn.actionText };
-        ctx.fillStyle = btn.active ? "#065f46" : "#1a202c";
-        ctx.strokeStyle = btn.active ? "#10b981" : "#2d3748";
+        ctx.fillStyle = btn.active ? "#065f46" : btn.id === "open_folder" ? "#1e293b" : "#1a202c";
+        ctx.strokeStyle = btn.active ? "#10b981" : btn.id === "open_folder" ? "#3b82f6" : "#2d3748";
         ctx.lineWidth = 1;
         if (ctx.roundRect) {
           ctx.beginPath();
@@ -2418,7 +3308,7 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
           ctx.fillRect(bX, btnY, btnW, btnH);
           ctx.strokeRect(bX, btnY, btnW, btnH);
         }
-        ctx.fillStyle = btn.active ? "#6ee7b7" : "#cbd5e1";
+        ctx.fillStyle = btn.active ? "#6ee7b7" : btn.id === "open_folder" ? "#93c5fd" : "#cbd5e1";
         ctx.font = "bold 9px system-ui, -apple-system, sans-serif";
         ctx.textAlign = "center";
         ctx.fillText(btn.text, bX + btnW / 2, btnY + 16);
@@ -2430,12 +3320,43 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
       const y = localPos[1];
       for (const [btnId, rect] of Object.entries(this.buttonRects)) {
         if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
-          this.copyToClipboard(rect.data, btnId);
-          return true;
+          if (btnId === "open_folder") {
+            if (api8 && api8.fetchApi) {
+              api8.fetchApi("/stoiqo/open_folder", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ folder_path: rect.data })
+              }).catch((err) => console.warn("[STOIQO Pro Saver] Open folder error:", err));
+            }
+            this.copiedButton = "open_folder";
+            if (this.copyTimeout) clearTimeout(this.copyTimeout);
+            this.copyTimeout = setTimeout(() => {
+              this.copiedButton = null;
+              if (this.node) this.node.setDirtyCanvas(true, false);
+            }, 1800);
+            this.node.setDirtyCanvas(true, false);
+            return true;
+          } else {
+            this.copyToClipboard(rect.data, btnId);
+            return true;
+          }
         }
       }
       return false;
     }
+  }
+  function ensureSaverHUD(node) {
+    if (!node || !node.widgets) return;
+    const existing = node.widgets.filter((w) => w.name === "_stoiqo_saver_hud");
+    for (const extra of existing.slice(1)) {
+      node.widgets.splice(node.widgets.indexOf(extra), 1);
+    }
+    let hud = existing[0];
+    if (!hud) {
+      hud = new StoiqoSaverStatusWidget(node);
+      node.addCustomWidget(hud);
+    }
+    node._stoiqo_saver_hud = hud;
   }
   const onNodeCreated = nodeType.prototype.onNodeCreated;
   nodeType.prototype.onNodeCreated = function() {
@@ -2443,9 +3364,7 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
     this.hideOutputImages = true;
     this.imgs = null;
     this.images = null;
-    const hudWidget = new StoiqoSaverStatusWidget(this);
-    this.addCustomWidget(hudWidget);
-    this._stoiqo_saver_hud = hudWidget;
+    ensureSaverHUD(this);
     if (!this.size || this.size[0] < 380) {
       this.size = [380, Math.max(this.size ? this.size[1] : 300, 360)];
     }
@@ -2465,6 +3384,11 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
       this.setDirtyCanvas(true, true);
     };
   };
+  const onConfigure = nodeType.prototype.onConfigure;
+  nodeType.prototype.onConfigure = function() {
+    if (onConfigure) onConfigure.apply(this, arguments);
+    ensureSaverHUD(this);
+  };
   const origDrawBackground = nodeType.prototype.onDrawBackground;
   nodeType.prototype.onDrawBackground = function(ctx) {
     this.hideOutputImages = true;
@@ -2476,8 +3400,8 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
 }
 
 // src_js/nodes/musicPromptNode.js
-import { app as app8 } from "../../../scripts/app.js";
-import { ComfyWidgets as ComfyWidgets6 } from "../../../scripts/widgets.js";
+import { app as app7 } from "../../../scripts/app.js";
+import { ComfyWidgets as ComfyWidgets4 } from "../../../scripts/widgets.js";
 function setupMusicPromptNode(nodeType, nodeData, app11) {
   const musicTargetNames = [
     "StoiqoMusicPromptEngineNode",
@@ -2612,13 +3536,6 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     }
     updateSystemPromptVisibility();
     node.widgets = node.widgets.filter((w) => !w.isStoiqoDivider);
-    for (const sec of SECTIONS) {
-      const targetIdx = node.widgets.findIndex((w) => w.name === sec.targetWidget);
-      if (targetIdx !== -1) {
-        const divider = new StoiqoSectionDividerWidget(sec.num, sec.title, sec.color);
-        node.widgets.splice(targetIdx, 0, divider);
-      }
-    }
     let trackInfoDisplay = node.widgets.find((w) => w.name === "preview_track_info");
     if (!trackInfoDisplay) {
       const trackDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: TRACK TELEMETRY & STYLE", "#06b6d4");
@@ -2642,8 +3559,8 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     }
     let styleDisplay = node.widgets.find((w) => w.name === "preview_style");
     if (!styleDisplay) {
-      if (typeof ComfyWidgets6 !== "undefined" && ComfyWidgets6["STRING"]) {
-        styleDisplay = ComfyWidgets6["STRING"](
+      if (typeof ComfyWidgets4 !== "undefined" && ComfyWidgets4["STRING"]) {
+        styleDisplay = ComfyWidgets4["STRING"](
           node,
           "preview_style",
           ["STRING", { multiline: true }],
@@ -2700,8 +3617,8 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     if (!lyricsDisplay) {
       const lyricsDivider = new StoiqoSectionDividerWidget("9", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ec4899");
       node.widgets.push(lyricsDivider);
-      if (typeof ComfyWidgets6 !== "undefined" && ComfyWidgets6["STRING"]) {
-        lyricsDisplay = ComfyWidgets6["STRING"](
+      if (typeof ComfyWidgets4 !== "undefined" && ComfyWidgets4["STRING"]) {
+        lyricsDisplay = ComfyWidgets4["STRING"](
           node,
           "preview_lyrics",
           ["STRING", { multiline: true }],
@@ -2804,6 +3721,53 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
       copyLyricsBtn._isMusicCopyLyrics = true;
       copyLyricsBtn.options = { serialize: false };
     }
+    let copyMetricsBtn = node.widgets.find((w) => w._isMusicCopyMetrics);
+    if (!copyMetricsBtn) {
+      copyMetricsBtn = node.addWidget(
+        "button",
+        "\u{1F4D0} Copia Analisi Metrica Sillabica",
+        null,
+        function() {
+          const lastInfo = node._lastMusicInfo;
+          let report = "";
+          if (lastInfo && lastInfo.metric_summary) {
+            report = `\u{1F3B5} ${lastInfo.title || "Song"} \u2014 Lyrical Metric Analysis
+Dominant Meter: ${lastInfo.dominant_meter || "N/A"}
+Rhythmic Cadence Score: ${lastInfo.rhythmic_score || 85}%
+Summary: ${lastInfo.metric_summary}
+
+`;
+            if (lastInfo.metrics && lastInfo.metrics.sections) {
+              report += "Section Breakdown:\n";
+              for (const sec of lastInfo.metrics.sections) {
+                report += `  ${sec.section_name} (${sec.line_count} lines, avg ${sec.avg_syllables} syl/line \u2014 ${sec.dominant_meter})
+`;
+                for (const ln of sec.lines) {
+                  report += `    \u2022 [${ln.syllables} syl] ${ln.text}
+`;
+                }
+              }
+            }
+          } else {
+            const tw = node.widgets?.find((w) => w.name === "preview_track_info");
+            report = tw ? tw.value || "" : "No metrics available.";
+          }
+          if (report && navigator.clipboard) {
+            navigator.clipboard.writeText(report);
+            const orig = this.name;
+            this.name = "\u2713 Metrica Copiata!";
+            node.setDirtyCanvas(true);
+            setTimeout(() => {
+              this.name = orig;
+              node.setDirtyCanvas(true);
+            }, 1800);
+          }
+        },
+        { serialize: false }
+      );
+      copyMetricsBtn._isMusicCopyMetrics = true;
+      copyMetricsBtn.options = { serialize: false };
+    }
     if (typeof node.computeSize === "function") {
       const computed = node.computeSize();
       node.size[0] = Math.max(node.size[0] || 0, MIN_NODE_WIDTH);
@@ -2826,6 +3790,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     if (origOnExecuted) origOnExecuted.apply(this, arguments);
     if (message && message.music_info && message.music_info.length > 0) {
       const info = message.music_info[0];
+      this._lastMusicInfo = info;
       const tw = this.widgets?.find((w) => w.name === "preview_track_info");
       const sw = this.widgets?.find((w) => w.name === "preview_style");
       const lw = this.widgets?.find((w) => w.name === "preview_lyrics");
@@ -2835,7 +3800,9 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
         const durRemSec = String(durSec % 60).padStart(2, "0");
         const durStr = durSec > 0 ? `${durSec}s (~${durMin}:${durRemSec}m)` : "Dynamic";
         const modeStr = info.mode === "full" ? "Full Song" : info.mode === "melody" ? "Melody Lead" : "Vocal";
-        const summaryText = `\u{1F3B5} ${info.title || "Untitled"} | \u23F1\uFE0F ${durStr} | \u{1F941} ${info.bpm || 120} BPM | \u{1F3B9} ${info.musical_key || "N/A"} | \u{1F39A}\uFE0F ${modeStr}`;
+        const meterTag = info.dominant_meter ? ` | \u{1F4D0} ${info.dominant_meter}` : "";
+        const cadenceTag = info.rhythmic_score ? ` (${info.rhythmic_score}%)` : "";
+        const summaryText = `\u{1F3B5} ${info.title || "Untitled"} | \u23F1\uFE0F ${durStr} | \u{1F941} ${info.bpm || 120} BPM | \u{1F3B9} ${info.musical_key || "N/A"} | \u{1F39A}\uFE0F ${modeStr}${meterTag}${cadenceTag}`;
         tw.value = summaryText;
         if (tw.inputEl) tw.inputEl.value = summaryText;
       }
@@ -2862,19 +3829,19 @@ var CONFIGURATIONS = {
   StoiqoTurboSamplerNode: {
     minWidth: 420,
     multilineHeights: {
-      positive_prompt: 72,
-      negative_prompt: 48
+      positive: 72,
+      negative: 48
     }
   },
-  // 3. Tri-Model Loader Hub
-  StoiqoTriLoaderHubNode: {
+  // 3. Universal Model Loader (All-in-One)
+  StoiqoUniversalModelLoaderNode: {
     minWidth: 380
   },
   // 4. Smart Seed & Variance Controller
   StoiqoSeedControllerNode: {
     minWidth: 340
   },
-  // 5. Inpaint Stitcher & Composite
+  // 5. Inpaint Stitcher & Spatial Re-Roll
   StoiqoInpaintStitcherNode: {
     minWidth: 360
   },
@@ -2893,51 +3860,23 @@ var CONFIGURATIONS = {
       motion_prompt: 56
     }
   },
-  // 8. Modular Prompt Synthesizer Engine
-  StoiqoPromptSynthesizerNode: {
+  // 8. Prompt Generator Engine
+  StoiqoPromptGeneratorNode: {
     minWidth: 420,
     multilineHeights: {
-      user_directives: 68
-    }
-  },
-  // 9. AI Persona & Style Directives
-  StoiqoStyleDirectivesNode: {
-    minWidth: 380,
-    multilineHeights: {
+      custom_modifications: 64,
       custom_system_prompt: 52
     }
   },
-  // 10. LLM Sampling & Precision
-  StoiqoSamplingOptionsNode: {
-    minWidth: 360
-  },
-  // 11. Multi-Image Context Hub
-  StoiqoMultiImageContextNode: {
-    minWidth: 380
-  },
-  // 12. Character Consistency Memory Bank (Lorebook & DNA)
+  // 9. Character Consistency Memory Bank (Lorebook & DNA)
   StoiqoCharacterMemoryNode: {
     minWidth: 420,
     multilineHeights: {
-      face_and_skin: 52,
-      signature_outfit: 52,
+      physical_dna: 64,
+      outfit_and_gear: 56,
       negative_constraints: 48,
-      user_prompt: 48
-    }
-  },
-  // 13. Universal Context Pipe (In / Bus)
-  StoiqoUniversalPipeInNode: {
-    minWidth: 320
-  },
-  // 14. Universal Context Pipe (Out / Unpack)
-  StoiqoUniversalPipeOutNode: {
-    minWidth: 320
-  },
-  // 15. Webhook Notifier & Pipeline Exporter
-  StoiqoWebhookNotifierNode: {
-    minWidth: 400,
-    multilineHeights: {
-      message: 56
+      user_prompt: 48,
+      custom_json_data: 48
     }
   }
 };
@@ -2973,7 +3912,7 @@ function setupPipelineNodes(nodeType, nodeData, appInstance) {
         }
       }
     }
-    if (nodeName === "StoiqoPromptSynthesizerNode") {
+    if (nodeName === "StoiqoPromptGeneratorNode") {
       let tw = node.widgets.find((w) => w.name === "synthesized_prompt");
       if (!tw) {
         tw = node.addWidget(
@@ -3068,7 +4007,7 @@ function setupPipelineNodes(nodeType, nodeData, appInstance) {
       if (this._stoiqoUpdateCustomPrompt) setTimeout(this._stoiqoUpdateCustomPrompt, 50);
     };
   }
-  if (nodeName === "StoiqoPromptSynthesizerNode") {
+  if (nodeName === "StoiqoPromptGeneratorNode") {
     const origOnExecuted = nodeType.prototype.onExecuted;
     nodeType.prototype.onExecuted = function(message) {
       if (origOnExecuted) origOnExecuted.apply(this, arguments);
@@ -3474,20 +4413,20 @@ function createVideoPlayerWidget(node, videoData) {
 }
 
 // src_js/nodes/loraStackNode.js
-import { app as app9 } from "../../../scripts/app.js";
-import { api as api8 } from "../../../scripts/api.js";
+import { app as app8 } from "../../../scripts/app.js";
+import { api as api9 } from "../../../scripts/api.js";
 var LORA_NODE_NAMES = ["StoiqoLoraStackNode", "[STOIQO] LoRA Stack"];
-var MIN_WIDTH = 400;
-var PAD = 6;
-var HEAD_H = 24;
-var ROW_H = 28;
-var BTN_H = 30;
+var MIN_WIDTH2 = 400;
+var PAD2 = 6;
+var HEAD_H2 = 24;
+var ROW_H2 = 28;
+var BTN_H2 = 30;
 var STEP = 0.05;
 var _loraListCache = null;
 async function fetchLoraList(force = false) {
   if (_loraListCache && !force) return _loraListCache;
   try {
-    const resp = await api8.fetchApi("/stoiqo/loras");
+    const resp = await api9.fetchApi("/stoiqo/loras");
     const data = await resp.json();
     _loraListCache = Array.isArray(data.loras) ? data.loras : [];
   } catch (err) {
@@ -3496,7 +4435,7 @@ async function fetchLoraList(force = false) {
   }
   return _loraListCache;
 }
-function roundRect(ctx, x, y, w, h, r) {
+function roundRect2(ctx, x, y, w, h, r) {
   if (ctx.roundRect) {
     ctx.beginPath();
     ctx.roundRect(x, y, w, h, r);
@@ -3505,12 +4444,12 @@ function roundRect(ctx, x, y, w, h, r) {
     ctx.rect(x, y, w, h);
   }
 }
-function baseName(path) {
+function baseName2(path) {
   const parts = String(path).split(/[\\/]/);
   const file = parts[parts.length - 1] || "";
   return file.replace(/\.(safetensors|ckpt|pt|pth|bin)$/i, "");
 }
-function fitText(ctx, text, maxW) {
+function fitText2(ctx, text, maxW) {
   if (ctx.measureText(text).width <= maxW) return text;
   let t = text;
   while (t.length > 1 && ctx.measureText(t + "\u2026").width > maxW) {
@@ -3539,14 +4478,14 @@ var StoiqoLoraStackWidget = class {
     return Math.max(this.loras.length, 1);
   }
   totalHeight() {
-    return PAD + HEAD_H + this.rowsCount() * ROW_H + 6 + BTN_H + PAD;
+    return PAD2 + HEAD_H2 + this.rowsCount() * ROW_H2 + 6 + BTN_H2 + PAD2;
   }
   computeSize(width) {
     return [width, this.totalHeight()];
   }
   computeLayoutSize() {
     const h = this.totalHeight();
-    return { minHeight: h, maxHeight: h, minWidth: MIN_WIDTH };
+    return { minHeight: h, maxHeight: h, minWidth: MIN_WIDTH2 };
   }
   loadFromStore() {
     let parsed = [];
@@ -3557,11 +4496,17 @@ var StoiqoLoraStackWidget = class {
     } catch (e) {
       parsed = [];
     }
-    this.loras = parsed.filter((it) => it && typeof it.name === "string" && it.name).map((it) => ({
-      name: it.name,
-      strength: Number.isFinite(Number(it.strength)) ? Number(it.strength) : 1,
-      enabled: it.enabled !== false
-    }));
+    this.loras = parsed.filter((it) => it && typeof it.name === "string" && it.name).map((it) => {
+      const sm = Number.isFinite(Number(it.strength)) ? Number(it.strength) : 1;
+      const sc = Number.isFinite(Number(it.strength_clip)) ? Number(it.strength_clip) : sm;
+      return {
+        name: it.name,
+        strength: sm,
+        strength_clip: sc,
+        enabled: it.enabled !== false,
+        block_filter: it.block_filter || "All Blocks (Standard)"
+      };
+    });
   }
   sync() {
     if (this.store) {
@@ -3569,8 +4514,9 @@ var StoiqoLoraStackWidget = class {
         this.loras.map((l) => ({
           name: l.name,
           strength: l.strength,
-          strength_clip: l.strength,
-          enabled: l.enabled
+          strength_clip: l.strength_clip !== void 0 ? l.strength_clip : l.strength,
+          enabled: l.enabled,
+          block_filter: l.block_filter || "All Blocks (Standard)"
         }))
       );
     }
@@ -3581,36 +4527,36 @@ var StoiqoLoraStackWidget = class {
     const node = this.node;
     if (!node) return;
     const sz = node.computeSize();
-    node.setSize([Math.max(node.size[0], MIN_WIDTH), sz[1]]);
+    node.setSize([Math.max(node.size[0], MIN_WIDTH2), sz[1]]);
   }
   draw(ctx, node, width, posY) {
     this.hits = [];
     const x0 = 10;
     const w = width - 20;
-    let y = posY + PAD;
+    let y = posY + PAD2;
     ctx.save();
     ctx.textBaseline = "middle";
     const activeCount = this.loras.filter((l) => l.enabled).length;
     ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
     ctx.textAlign = "left";
     ctx.fillStyle = "#94a3b8";
-    ctx.fillText(`LoRA Stack \xB7 ${activeCount}/${this.loras.length} attivi`, x0 + 2, y + HEAD_H / 2);
+    ctx.fillText(`LoRA Stack \xB7 ${activeCount}/${this.loras.length} attivi`, x0 + 2, y + HEAD_H2 / 2);
     const allLabel = activeCount > 0 ? "Disattiva tutti" : "Attiva tutti";
     ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
     const allW = ctx.measureText(allLabel).width + 16;
     const allX = x0 + w - allW;
     if (this.loras.length > 0) {
       ctx.fillStyle = "rgba(255,255,255,0.07)";
-      roundRect(ctx, allX, y + 3, allW, HEAD_H - 6, 4);
+      roundRect2(ctx, allX, y + 3, allW, HEAD_H2 - 6, 4);
       ctx.fill();
       ctx.fillStyle = "#cbd5e1";
       ctx.textAlign = "center";
-      ctx.fillText(allLabel, allX + allW / 2, y + HEAD_H / 2);
+      ctx.fillText(allLabel, allX + allW / 2, y + HEAD_H2 / 2);
       this.hits.push({
         x: allX,
         y: y + 3,
         w: allW,
-        h: HEAD_H - 6,
+        h: HEAD_H2 - 6,
         action: () => {
           const target = activeCount === 0;
           this.loras.forEach((l) => {
@@ -3620,28 +4566,28 @@ var StoiqoLoraStackWidget = class {
         }
       });
     }
-    y += HEAD_H;
+    y += HEAD_H2;
     if (this.loras.length === 0) {
       ctx.font = "italic 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
       ctx.fillStyle = "#64748b";
       ctx.textAlign = "center";
-      ctx.fillText("Nessun LoRA \u2014 premi \u201C+ Aggiungi LoRA\u201D", x0 + w / 2, y + ROW_H / 2);
-      y += ROW_H;
+      ctx.fillText("Nessun LoRA \u2014 premi \u201C+ Aggiungi LoRA\u201D", x0 + w / 2, y + ROW_H2 / 2);
+      y += ROW_H2;
     } else {
       this.loras.forEach((lora, idx) => {
         const rY = y + 2;
-        const rH = ROW_H - 4;
+        const rH = ROW_H2 - 4;
         const on = lora.enabled;
         ctx.fillStyle = on ? "rgba(45, 212, 191, 0.08)" : "rgba(255, 255, 255, 0.04)";
-        roundRect(ctx, x0, rY, w, rH, 5);
+        roundRect2(ctx, x0, rY, w, rH, 5);
         ctx.fill();
         ctx.strokeStyle = on ? "rgba(45, 212, 191, 0.35)" : "rgba(255, 255, 255, 0.08)";
         ctx.lineWidth = 1;
         ctx.stroke();
         const tW = 28, tH = 14;
-        const tX = x0 + 8, tY = rY + (rH - tH) / 2;
+        const tX = x0 + 6, tY = rY + (rH - tH) / 2;
         ctx.fillStyle = on ? "#2dd4bf" : "#475569";
-        roundRect(ctx, tX, tY, tW, tH, 7);
+        roundRect2(ctx, tX, tY, tW, tH, 7);
         ctx.fill();
         ctx.fillStyle = "#0f172a";
         ctx.beginPath();
@@ -3657,65 +4603,136 @@ var StoiqoLoraStackWidget = class {
             this.sync();
           }
         });
-        const btnW = 18, valW = 46, xW = 18, gap = 3;
-        const ctrlW = btnW + valW + btnW + gap + xW;
-        const cX = x0 + w - ctrlW - 6;
+        const upW = 15, dnW = 15, btnW = 16, valW = 52, gearW = 18, xW = 16, gap = 2;
+        const ctrlW = upW + gap + dnW + gap + btnW + valW + btnW + gap + gearW + gap + xW;
+        const cX = x0 + w - ctrlW - 4;
         const cY = rY + 3;
         const cH = rH - 6;
-        const drawBtn = (bx, bw, label, color) => {
-          ctx.fillStyle = "rgba(255,255,255,0.08)";
-          roundRect(ctx, bx, cY, bw, cH, 3);
+        const drawBtn = (bx, bw, label, color, bg = "rgba(255,255,255,0.08)", font = "bold 11px sans-serif") => {
+          ctx.fillStyle = bg;
+          roundRect2(ctx, bx, cY, bw, cH, 3);
           ctx.fill();
           ctx.fillStyle = color;
-          ctx.font = "bold 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+          ctx.font = font;
           ctx.textAlign = "center";
           ctx.fillText(label, bx + bw / 2, cY + cH / 2 + 0.5);
         };
-        drawBtn(cX, btnW, "\u2212", "#e2e8f0");
+        drawBtn(cX, upW, "\u25B2", idx > 0 ? "#cbd5e1" : "#475569", "rgba(255,255,255,0.05)", "9px sans-serif");
         this.hits.push({
           x: cX,
           y: cY,
-          w: btnW,
+          w: upW,
           h: cH,
           action: () => {
-            lora.strength = Math.round((lora.strength - STEP) * 100) / 100;
+            if (idx > 0) {
+              const tmp = this.loras[idx - 1];
+              this.loras[idx - 1] = this.loras[idx];
+              this.loras[idx] = tmp;
+              this.sync();
+            }
+          }
+        });
+        const dnX = cX + upW + gap;
+        drawBtn(dnX, dnW, "\u25BC", idx < this.loras.length - 1 ? "#cbd5e1" : "#475569", "rgba(255,255,255,0.05)", "9px sans-serif");
+        this.hits.push({
+          x: dnX,
+          y: cY,
+          w: dnW,
+          h: cH,
+          action: () => {
+            if (idx < this.loras.length - 1) {
+              const tmp = this.loras[idx + 1];
+              this.loras[idx + 1] = this.loras[idx];
+              this.loras[idx] = tmp;
+              this.sync();
+            }
+          }
+        });
+        const minusX = dnX + dnW + gap;
+        drawBtn(minusX, btnW, "\u2212", "#e2e8f0");
+        this.hits.push({
+          x: minusX,
+          y: cY,
+          w: btnW,
+          h: cH,
+          action: (ev) => {
+            if (ev && ev.shiftKey) {
+              lora.strength_clip = Math.round(((lora.strength_clip ?? lora.strength) - STEP) * 100) / 100;
+            } else {
+              lora.strength = Math.round((lora.strength - STEP) * 100) / 100;
+              if (lora.strength_clip === void 0) lora.strength_clip = lora.strength;
+            }
             this.sync();
           }
         });
-        const vX = cX + btnW;
-        ctx.fillStyle = "rgba(0,0,0,0.25)";
+        const vX = minusX + btnW;
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.fillRect(vX, cY, valW, cH);
         ctx.fillStyle = on ? "#f1f5f9" : "#64748b";
-        ctx.font = "11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+        ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(lora.strength.toFixed(2), vX + valW / 2, cY + cH / 2 + 0.5);
+        const isDecoupled = lora.strength_clip !== void 0 && Math.abs(lora.strength_clip - lora.strength) > 1e-3;
+        const valLabel = isDecoupled ? `${lora.strength.toFixed(1)}|${lora.strength_clip.toFixed(1)}` : lora.strength.toFixed(2);
+        ctx.fillText(valLabel, vX + valW / 2, cY + cH / 2 + 0.5);
         this.hits.push({
           x: vX,
           y: cY,
           w: valW,
           h: cH,
           action: (ev) => {
-            app9.canvas.prompt("Strength", lora.strength, (v) => {
+            const isShift = ev && ev.shiftKey;
+            const promptTitle = isShift ? "CLIP Strength" : "Model Strength (Shift+click for CLIP)";
+            const curVal = isShift ? lora.strength_clip ?? lora.strength : lora.strength;
+            app8.canvas.prompt(promptTitle, curVal, (v) => {
               const num = parseFloat(v);
               if (Number.isFinite(num)) {
-                lora.strength = Math.round(Math.max(-10, Math.min(10, num)) * 100) / 100;
+                const rounded = Math.round(Math.max(-10, Math.min(10, num)) * 100) / 100;
+                if (isShift) {
+                  lora.strength_clip = rounded;
+                } else {
+                  lora.strength = rounded;
+                }
                 this.sync();
               }
             }, ev);
           }
         });
-        drawBtn(vX + valW, btnW, "+", "#e2e8f0");
+        const plusX = vX + valW;
+        drawBtn(plusX, btnW, "+", "#e2e8f0");
         this.hits.push({
-          x: vX + valW,
+          x: plusX,
           y: cY,
           w: btnW,
           h: cH,
-          action: () => {
-            lora.strength = Math.round((lora.strength + STEP) * 100) / 100;
+          action: (ev) => {
+            if (ev && ev.shiftKey) {
+              lora.strength_clip = Math.round(((lora.strength_clip ?? lora.strength) + STEP) * 100) / 100;
+            } else {
+              lora.strength = Math.round((lora.strength + STEP) * 100) / 100;
+              if (lora.strength_clip === void 0) lora.strength_clip = lora.strength;
+            }
             this.sync();
           }
         });
-        const xX = vX + valW + btnW + gap;
+        const hasCustomBlock = Boolean(lora.block_filter && !lora.block_filter.startsWith("All Blocks"));
+        const hasCustomRowCfg = isDecoupled || hasCustomBlock;
+        const gearX = plusX + btnW + gap;
+        drawBtn(
+          gearX,
+          gearW,
+          "\u2699",
+          hasCustomRowCfg ? "#58b0ff" : "#cbd5e1",
+          hasCustomRowCfg ? "rgba(41,151,255,0.18)" : "rgba(255,255,255,0.06)",
+          "11px sans-serif"
+        );
+        this.hits.push({
+          x: gearX,
+          y: cY,
+          w: gearW,
+          h: cH,
+          action: (ev) => this.showRowMenu(ev, lora, idx)
+        });
+        const xX = gearX + gearW + gap;
         drawBtn(xX, xW, "\u2715", "#f87171");
         this.hits.push({
           x: xX,
@@ -3727,28 +4744,35 @@ var StoiqoLoraStackWidget = class {
             this.sync();
           }
         });
-        const nX = tX + tW + 10;
-        const nW = cX - nX - 8;
+        const nX = tX + tW + 8;
+        const nW = cX - nX - 6;
         ctx.font = "12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
         ctx.textAlign = "left";
         ctx.fillStyle = on ? "#e2e8f0" : "#64748b";
-        ctx.fillText(fitText(ctx, baseName(lora.name), nW), nX, rY + rH / 2 + 0.5);
+        const blockTag = hasCustomBlock ? lora.block_filter.includes("OUT") ? " [OUT]" : lora.block_filter.includes("IN/MID") ? " [IN/MID]" : " [MID]" : "";
+        ctx.fillText(fitText2(ctx, baseName2(lora.name) + blockTag, nW), nX, rY + rH / 2 + 0.5);
         this.hits.push({
           x: nX,
           y: rY,
           w: nW,
           h: rH,
-          action: (ev) => this.pickLora(ev, (picked) => {
-            lora.name = picked;
-            this.sync();
-          })
+          action: (ev) => {
+            if (ev && ev.button === 2) {
+              this.showRowMenu(ev, lora, idx);
+            } else {
+              this.pickLora(ev, (picked) => {
+                lora.name = picked;
+                this.sync();
+              });
+            }
+          }
         });
-        y += ROW_H;
+        y += ROW_H2;
       });
     }
     y += 6;
     ctx.fillStyle = "rgba(45, 212, 191, 0.14)";
-    roundRect(ctx, x0, y, w, BTN_H - 4, 6);
+    roundRect2(ctx, x0, y, w, BTN_H2 - 4, 6);
     ctx.fill();
     ctx.strokeStyle = "rgba(45, 212, 191, 0.55)";
     ctx.lineWidth = 1;
@@ -3756,18 +4780,114 @@ var StoiqoLoraStackWidget = class {
     ctx.fillStyle = "#2dd4bf";
     ctx.font = "bold 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("+ Aggiungi LoRA", x0 + w / 2, y + (BTN_H - 4) / 2 + 0.5);
+    ctx.fillText("+ Aggiungi LoRA", x0 + w / 2, y + (BTN_H2 - 4) / 2 + 0.5);
     this.hits.push({
       x: x0,
       y,
       w,
-      h: BTN_H - 4,
+      h: BTN_H2 - 4,
       action: (ev) => this.pickLora(ev, (picked) => {
         this.loras.push({ name: picked, strength: 1, enabled: true });
         this.sync();
       })
     });
     ctx.restore();
+  }
+  async showRowMenu(event, lora, idx) {
+    const LG = window.LiteGraph;
+    if (!LG || !LG.ContextMenu) {
+      this.pickLora(event, (picked) => {
+        lora.name = picked;
+        this.sync();
+      });
+      return;
+    }
+    const items = [
+      {
+        content: `\u{1F50D} Cambia LoRA...`,
+        callback: (v, opts, e) => {
+          this.pickLora(e, (picked) => {
+            lora.name = picked;
+            this.sync();
+          });
+        }
+      },
+      {
+        content: `\u2696\uFE0F Modifica CLIP Strength (${(lora.strength_clip ?? lora.strength).toFixed(2)})`,
+        callback: (_v, _opts, e) => {
+          app8.canvas.prompt("CLIP Strength", lora.strength_clip ?? lora.strength, (val) => {
+            const num = parseFloat(val);
+            if (Number.isFinite(num)) {
+              lora.strength_clip = Math.round(Math.max(-10, Math.min(10, num)) * 100) / 100;
+              this.sync();
+            }
+          }, e);
+        }
+      },
+      {
+        content: `\u{1F9F1} Filtro Blocchi (${lora.block_filter || "All Blocks"})`,
+        has_submenu: true,
+        callback: (_v, _opts, e, menu) => {
+          const filters = [
+            "All Blocks (Standard)",
+            "Style / Texture Only (OUT Blocks)",
+            "Character / Structure Only (IN/MID Blocks)",
+            "Face & Pose Focused (MID Block)"
+          ];
+          new LG.ContextMenu(
+            filters.map((f) => ({
+              content: lora.block_filter === f || !lora.block_filter && f.startsWith("All") ? `\u2713 ${f}` : f,
+              value: f
+            })),
+            {
+              event: e,
+              parentMenu: menu,
+              callback: (chosen) => {
+                if (chosen && chosen.value) {
+                  lora.block_filter = chosen.value;
+                  this.sync();
+                }
+              }
+            }
+          );
+          return true;
+        }
+      },
+      {
+        content: `\u{1F3F7}\uFE0F Mostra / Copia Trigger Words`,
+        callback: async (_v, _opts, e) => {
+          try {
+            const resp = await api9.fetchApi(`/stoiqo/lora_info?name=${encodeURIComponent(lora.name)}`);
+            const data = await resp.json();
+            const triggers = Array.isArray(data.triggers) ? data.triggers : [];
+            if (triggers.length > 0) {
+              const trigStr = triggers.join(", ");
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(trigStr).catch(() => {
+                });
+              }
+              alert(`Trigger words per '${baseName2(lora.name)}':
+
+${trigStr}
+
+(Copiate negli appunti!)`);
+            } else {
+              alert(`Nessuna trigger word trovata nei metadati o sidecar per '${baseName2(lora.name)}'.`);
+            }
+          } catch (err) {
+            alert(`Errore lettura metadati per '${baseName2(lora.name)}'.`);
+          }
+        }
+      },
+      {
+        content: `\u2715 Rimuovi`,
+        callback: () => {
+          this.loras.splice(idx, 1);
+          this.sync();
+        }
+      }
+    ];
+    new LG.ContextMenu(items, { event, title: baseName2(lora.name) });
   }
   async pickLora(event, onPick) {
     const list = await fetchLoraList(true);
@@ -3783,7 +4903,7 @@ var StoiqoLoraStackWidget = class {
     const hasFolders = list.some((n) => /[\\/]/.test(n));
     if (!hasFolders) {
       new LG.ContextMenu(
-        list.map((n) => ({ content: baseName(n), value: n })),
+        list.map((n) => ({ content: baseName2(n), value: n })),
         { event, title: "LoRA", callback: choose }
       );
       return;
@@ -3807,14 +4927,14 @@ var StoiqoLoraStackWidget = class {
         has_submenu: true,
         callback: (_value, _options, e, menu) => {
           new LG.ContextMenu(
-            files.map((n) => ({ content: baseName(n), value: n })),
+            files.map((n) => ({ content: baseName2(n), value: n })),
             { event: e, parentMenu: menu, callback: choose }
           );
           return true;
         }
       });
     }
-    rootFiles.forEach((n) => items.push({ content: baseName(n), value: n }));
+    rootFiles.forEach((n) => items.push({ content: baseName2(n), value: n }));
     new LG.ContextMenu(items, { event, title: "LoRA", callback: choose });
   }
   mouse(event, pos, node) {
@@ -3835,18 +4955,27 @@ var StoiqoLoraStackWidget = class {
 };
 function setupLoraStackNodeUI(node) {
   if (!node) return;
-  if (node.size && node.size[0] < MIN_WIDTH) node.size[0] = MIN_WIDTH;
-  let loraWidget = node.widgets ? node.widgets.find((w) => w instanceof StoiqoLoraStackWidget) : null;
+  if (node.size && node.size[0] < MIN_WIDTH2) node.size[0] = MIN_WIDTH2;
+  if (node.widgets) {
+    const dups = node.widgets.filter((w) => w.name === "_stoiqo_lora_stack");
+    for (const extra of dups.slice(1)) {
+      node.widgets.splice(node.widgets.indexOf(extra), 1);
+    }
+  }
+  let loraWidget = node.widgets ? node.widgets.find((w) => w.name === "_stoiqo_lora_stack") : null;
   if (!loraWidget) {
     const store = node.widgets ? node.widgets.find((w) => w.name === "lora_stack") : null;
-    if (store) {
-      store.hidden = true;
-      store.computeSize = () => [0, -4];
-      store.draw = () => {
-      };
-      if (store.inputEl) {
-        store.inputEl.hidden = true;
-        store.inputEl.style.display = "none";
+    for (const wName of ["lora_stack", "block_filter"]) {
+      const hw = node.widgets ? node.widgets.find((w) => w.name === wName) : null;
+      if (hw) {
+        hw.hidden = true;
+        hw.computeSize = () => [0, -4];
+        hw.draw = () => {
+        };
+        if (hw.inputEl) {
+          hw.inputEl.hidden = true;
+          hw.inputEl.style.display = "none";
+        }
       }
     }
     loraWidget = new StoiqoLoraStackWidget(node, store);
@@ -3871,14 +5000,497 @@ function setupLoraStackNode(nodeType, nodeData, appInstance) {
   };
 }
 
+// src_js/nodes/promptGeneratorNode.js
+import { app as app9 } from "../../../scripts/app.js";
+var TARGET_NODE_NAMES = [
+  "StoiqoPromptGeneratorNode",
+  "[STOIQO] Prompt Generator"
+];
+var MODE_CONFIG = {
+  "text_expansion": {
+    icon: "\u{1F4DD}",
+    badgeText: "TEXT EXPANSION",
+    color: "#a78bfa",
+    bg: "rgba(124, 58, 237, 0.16)",
+    border: "rgba(167, 139, 250, 0.50)",
+    dot: "#c084fc"
+  },
+  "single_image": {
+    icon: "\u{1F5BC}\uFE0F",
+    badgeText: "SINGLE IMAGE VISION",
+    color: "#34d399",
+    bg: "rgba(16, 185, 129, 0.16)",
+    border: "rgba(52, 211, 153, 0.50)",
+    dot: "#4ade80"
+  },
+  "multi_fusion": {
+    icon: "\u{1F500}",
+    badgeText: "MULTI-IMAGE FUSION",
+    color: "#fb923c",
+    bg: "rgba(249, 115, 22, 0.18)",
+    border: "rgba(251, 146, 60, 0.55)",
+    dot: "#f97316"
+  },
+  "batch_caption": {
+    icon: "\u{1F4E6}",
+    badgeText: "BATCH CAPTION",
+    color: "#38bdf8",
+    bg: "rgba(56, 189, 248, 0.16)",
+    border: "rgba(56, 189, 248, 0.50)",
+    dot: "#38bdf8"
+  }
+};
+function drawRoundRect(ctx, x, y, w, h, r) {
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+  }
+}
+function truncateText(ctx, text, maxW) {
+  if (!text) return "";
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + "\u2026").width > maxW) {
+    t = t.slice(0, -1);
+  }
+  return t + "\u2026";
+}
+var StoiqoPromptHUDWidget = class {
+  constructor(node) {
+    this.node = node;
+    this.type = "custom";
+    this.name = "_stoiqo_mode_hud";
+    this.value = {};
+    this.options = { serialize: false };
+    this.isStoiqoHUD = true;
+    this.height = 36;
+  }
+  serializeValue() {
+    return void 0;
+  }
+  computeSize(width) {
+    return [width, this.height];
+  }
+  draw(ctx, node, width, posY, height) {
+    const nodeWidth = node && node.size ? node.size[0] : width;
+    const totalW = nodeWidth - 20;
+    const startX = 10;
+    const startY = posY + 3;
+    const barH = 30;
+    ctx.save();
+    const executedData = node.stoiqo_mode_data;
+    const isExecuted = Boolean(executedData && executedData.mode);
+    const imageInput = node.inputs ? node.inputs.find((i) => i.name === "image_input" || i.name === "image") : null;
+    const textInput = node.inputs ? node.inputs.find((i) => i.name === "text_input" || i.name === "text") : null;
+    const hasImageLink = imageInput && imageInput.link != null;
+    const hasTextLink = textInput && textInput.link != null;
+    let modeKey = "text_expansion";
+    let displayCount = 0;
+    if (isExecuted) {
+      modeKey = executedData.mode;
+      displayCount = executedData.count || 0;
+    } else if (hasImageLink) {
+      modeKey = "single_image";
+      displayCount = 1;
+    } else {
+      modeKey = "text_expansion";
+      displayCount = 0;
+    }
+    const cfg = MODE_CONFIG[modeKey] || MODE_CONFIG["text_expansion"];
+    const ptWidget = node.widgets ? node.widgets.find((w) => w.name === "prompt_type") : null;
+    const asWidget = node.widgets ? node.widgets.find((w) => w.name === "prompt_style" || w.name === "artistic_style") : null;
+    let promptType = executedData?.prompt_type || (ptWidget ? ptWidget.value : "Detailed Narrative");
+    let artisticStyle = executedData?.prompt_style || executedData?.artistic_style || (asWidget ? asWidget.value : "Auto-Detect");
+    promptType = String(promptType).replace(/\s*\(Long\)/i, "").trim();
+    artisticStyle = String(artisticStyle).replace(/Auto-Detect\s*\/\s*/i, "").trim();
+    drawRoundRect(ctx, startX, startY, totalW, barH, 5);
+    ctx.fillStyle = "rgba(10, 14, 23, 0.85)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.09)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    const lineGrad = ctx.createLinearGradient(startX, startY, startX + totalW, startY);
+    lineGrad.addColorStop(0, cfg.color + "11");
+    lineGrad.addColorStop(0.3, cfg.color + "aa");
+    lineGrad.addColorStop(0.7, cfg.color + "aa");
+    lineGrad.addColorStop(1, cfg.color + "11");
+    ctx.strokeStyle = lineGrad;
+    ctx.beginPath();
+    ctx.moveTo(startX + 2, startY);
+    ctx.lineTo(startX + totalW - 2, startY);
+    ctx.stroke();
+    let badgeLabel = cfg.badgeText;
+    if (displayCount > 1) {
+      badgeLabel += ` (${displayCount})`;
+    }
+    ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    const badgeTextW = ctx.measureText(badgeLabel).width;
+    const pillW = badgeTextW + 28;
+    const pillH = 18;
+    const pillX = startX + 6;
+    const pillY = startY + 6;
+    drawRoundRect(ctx, pillX, pillY, pillW, pillH, 4);
+    ctx.fillStyle = cfg.bg;
+    ctx.fill();
+    ctx.strokeStyle = cfg.border;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = cfg.dot;
+    ctx.beginPath();
+    ctx.arc(pillX + 8, pillY + pillH / 2, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = cfg.color;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(badgeLabel, pillX + 16, pillY + pillH / 2 + 0.5);
+    const leftOccupied = pillX + pillW + 10;
+    const rightStatusW = isExecuted ? 50 : 44;
+    const availInfoW = totalW - (leftOccupied - startX) - rightStatusW - 12;
+    if (availInfoW > 60) {
+      ctx.font = "9px 'JetBrains Mono', SFMono-Regular, Consolas, -apple-system, sans-serif";
+      const infoText = `${promptType} \u2022 ${artisticStyle}`;
+      const fittedInfo = truncateText(ctx, infoText, availInfoW);
+      ctx.fillStyle = "#94a3b8";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(fittedInfo, leftOccupied, startY + barH / 2 + 0.5);
+    }
+    const statusLabel = isExecuted ? "\u25CF ACTIVE" : hasImageLink ? "\u25CF LINKED" : "\u25CF READY";
+    const statusColor = isExecuted ? "#34d399" : hasImageLink ? "#38bdf8" : "#64748b";
+    ctx.font = "bold 8.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillStyle = statusColor;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(statusLabel, startX + totalW - 8, startY + barH / 2 + 0.5);
+    ctx.restore();
+  }
+};
+function ensureHUDWidget(node) {
+  if (!node || !node.widgets) return;
+  const existing = node.widgets.filter((w) => w.name === "_stoiqo_mode_hud" || w.isStoiqoHUD);
+  for (const extra of existing.slice(1)) {
+    node.widgets.splice(node.widgets.indexOf(extra), 1);
+  }
+  let hud = existing[0];
+  if (!hud) {
+    hud = new StoiqoPromptHUDWidget(node);
+    node.widgets.push(hud);
+    if (node.setDirtyCanvas) node.setDirtyCanvas(true, true);
+  }
+}
+function setupPromptGeneratorNode(nodeType, nodeData, app11) {
+  if (!TARGET_NODE_NAMES.includes(nodeData.name)) return;
+  const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+  nodeType.prototype.onNodeCreated = function() {
+    if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+    if (this.size && this.size[0] < 380) {
+      this.size[0] = 380;
+    }
+    ensureHUDWidget(this);
+    const origOnConnectionsChange = this.onConnectionsChange;
+    this.onConnectionsChange = function(type, index, isConnected, link_info) {
+      if (origOnConnectionsChange) origOnConnectionsChange.apply(this, arguments);
+      if (this.setDirtyCanvas) this.setDirtyCanvas(true, false);
+    };
+  };
+  const origOnConfigure = nodeType.prototype.onConfigure;
+  nodeType.prototype.onConfigure = function() {
+    if (origOnConfigure) origOnConfigure.apply(this, arguments);
+    ensureHUDWidget(this);
+  };
+  const origOnExecuted = nodeType.prototype.onExecuted;
+  nodeType.prototype.onExecuted = function(message) {
+    if (origOnExecuted) origOnExecuted.apply(this, arguments);
+    if (message && message.stoiqo_mode && message.stoiqo_mode.length > 0) {
+      this.stoiqo_mode_data = message.stoiqo_mode[0];
+      if (this.setDirtyCanvas) this.setDirtyCanvas(true, false);
+    }
+  };
+}
+
+// src_js/nodes/seedNode.js
+function setupSeedNode(nodeType, nodeData, appInstance) {
+  const targetNames = [
+    "StoiqoSeedControllerNode",
+    "[STOIQO] Seed & Resolution Controller",
+    "[STOIQO] Smart Seed & Variance Controller"
+  ];
+  if (!targetNames.includes(nodeData.name)) return;
+  class StoiqoSeedHistoryWidget {
+    constructor(node) {
+      this.node = node;
+      this.type = "custom";
+      this.name = "_stoiqo_seed_history_hud";
+      this.value = {};
+      this.options = { serialize: false };
+      this.isStoiqoHUD = true;
+      this.height = 70;
+      this.activeSeed = null;
+      this.effectiveSeed = null;
+      this.resolution = null;
+      this.seedHistory = [];
+      this.flashStatus = null;
+      this.flashTimeout = null;
+      this.buttonRects = {};
+      this.chipRects = [];
+    }
+    serializeValue() {
+      return void 0;
+    }
+    computeSize(width) {
+      return [width, this.height];
+    }
+    setExecutionData(data) {
+      if (!data) return;
+      if (data.active_seed && data.active_seed.length > 0) {
+        this.activeSeed = data.active_seed[0];
+      }
+      if (data.effective_seed && data.effective_seed.length > 0) {
+        this.effectiveSeed = data.effective_seed[0];
+      }
+      if (data.resolution && data.resolution.length > 0) {
+        this.resolution = data.resolution[0];
+      }
+      if (data.seed_history && Array.isArray(data.seed_history)) {
+        this.seedHistory = data.seed_history;
+      }
+      if (this.node) {
+        this.node.setDirtyCanvas(true, true);
+      }
+    }
+    copyToClipboard(text, flashLabel) {
+      if (text === null || text === void 0) return;
+      const strVal = String(text);
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(strVal);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = strVal;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+        this.triggerFlash(flashLabel || "\u2713 COPIATO");
+      } catch (err) {
+        console.error("[STOIQO Seed] Copy failed:", err);
+      }
+    }
+    triggerFlash(label) {
+      this.flashStatus = label;
+      if (this.flashTimeout) clearTimeout(this.flashTimeout);
+      this.flashTimeout = setTimeout(() => {
+        this.flashStatus = null;
+        if (this.node) this.node.setDirtyCanvas(true, false);
+      }, 1800);
+      if (this.node) this.node.setDirtyCanvas(true, false);
+    }
+    recallSeed(seedVal) {
+      if (!this.node || !this.node.widgets) return;
+      const seedWidget = this.node.widgets.find((w) => w.name === "seed");
+      const modeWidget = this.node.widgets.find((w) => w.name === "control_mode");
+      if (seedWidget) {
+        seedWidget.value = Number(seedVal);
+        if (seedWidget.callback) seedWidget.callback(seedWidget.value);
+      }
+      if (modeWidget) {
+        modeWidget.value = "fixed";
+        if (modeWidget.callback) modeWidget.callback(modeWidget.value);
+      }
+      this.copyToClipboard(seedVal, `\u2713 RIPESCATO ${seedVal} (MODO: FIXED)`);
+      this.node.setDirtyCanvas(true, true);
+    }
+    draw(ctx, node, width, y, height) {
+      if (node.flags && node.flags.collapsed) return;
+      const padX = 12;
+      const cardX = padX;
+      const cardY = y + 4;
+      const cardW = width - padX * 2;
+      const cardH = this.height - 8;
+      this.buttonRects = {};
+      this.chipRects = [];
+      ctx.save();
+      ctx.fillStyle = "rgba(18, 20, 26, 0.95)";
+      ctx.strokeStyle = "rgba(168, 85, 247, 0.40)";
+      ctx.lineWidth = 1.2;
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(cardX, cardY, cardW, cardH, 7);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(cardX, cardY, cardW, cardH);
+        ctx.strokeRect(cardX, cardY, cardW, cardH);
+      }
+      ctx.fillStyle = "#a855f7";
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(cardX, cardY, 4, cardH, [7, 0, 0, 7]);
+        ctx.fill();
+      } else {
+        ctx.fillRect(cardX, cardY, 4, cardH);
+      }
+      const row1Y = cardY + 18;
+      ctx.font = "bold 10px Inter, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#c084fc";
+      ctx.fillText("\u{1F3B2} SEED:", cardX + 12, row1Y);
+      const currentDisplay = this.activeSeed !== null ? String(this.activeSeed) : node.widgets.find((w) => w.name === "seed") ? String(node.widgets.find((w) => w.name === "seed").value) : "0";
+      ctx.font = "bold 11px monospace, sans-serif";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(currentDisplay, cardX + 62, row1Y);
+      let extraX = cardX + 62 + ctx.measureText(currentDisplay).width + 8;
+      if (this.effectiveSeed !== null && this.effectiveSeed !== this.activeSeed) {
+        ctx.font = "9px monospace";
+        ctx.fillStyle = "#38bdf8";
+        const effTxt = `(Eff: ${this.effectiveSeed})`;
+        ctx.fillText(effTxt, extraX, row1Y);
+        extraX += ctx.measureText(effTxt).width + 8;
+      }
+      if (this.resolution) {
+        ctx.font = "bold 9.5px monospace";
+        ctx.fillStyle = "#30d158";
+        ctx.fillText(`\u{1F4D0} ${this.resolution}`, extraX, row1Y);
+      }
+      const copyBtnW = 68;
+      const copyBtnH = 20;
+      const copyBtnX = cardX + cardW - copyBtnW - 8;
+      const copyBtnY = cardY + 8;
+      this.buttonRects["copy_active"] = { x: copyBtnX, y: copyBtnY, w: copyBtnW, h: copyBtnH, data: currentDisplay };
+      ctx.fillStyle = this.flashStatus ? "#065f46" : "#2e1065";
+      ctx.strokeStyle = this.flashStatus ? "#10b981" : "#a855f7";
+      ctx.lineWidth = 1;
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(copyBtnX, copyBtnY, copyBtnW, copyBtnH, 4);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(copyBtnX, copyBtnY, copyBtnW, copyBtnH);
+        ctx.strokeRect(copyBtnX, copyBtnY, copyBtnW, copyBtnH);
+      }
+      ctx.font = "bold 9px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = this.flashStatus ? "#6ee7b7" : "#e9d5ff";
+      ctx.fillText(this.flashStatus || "\u{1F4CB} COPIA", copyBtnX + copyBtnW / 2, copyBtnY + copyBtnH / 2 + 0.5);
+      const row2Y = cardY + 44;
+      ctx.font = "bold 9px Inter, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText("\u{1F4DC} STORICO:", cardX + 12, row2Y);
+      const startChipsX = cardX + 76;
+      let curChipX = startChipsX;
+      const chipH = 18;
+      const chipGap = 6;
+      const historyList = this.seedHistory && this.seedHistory.length > 0 ? this.seedHistory : this.activeSeed !== null ? [{ seed: this.activeSeed }] : [];
+      if (historyList.length === 0) {
+        ctx.font = "9px Inter, italic";
+        ctx.fillStyle = "#64748b";
+        ctx.fillText("Nessun seed generato nella sessione", startChipsX, row2Y);
+      } else {
+        const displayItems = historyList.slice(-5);
+        displayItems.forEach((item, idx) => {
+          const seedNum = String(item.seed);
+          ctx.font = "9.5px monospace";
+          const seedW = ctx.measureText(seedNum).width + 12;
+          if (curChipX + seedW <= cardX + cardW - 8) {
+            const chipY = row2Y - chipH / 2;
+            this.chipRects.push({
+              x: curChipX,
+              y: chipY,
+              w: seedW,
+              h: chipH,
+              seed: item.seed
+            });
+            ctx.fillStyle = "#1e1b4b";
+            ctx.strokeStyle = "#4338ca";
+            ctx.lineWidth = 1;
+            if (ctx.roundRect) {
+              ctx.beginPath();
+              ctx.roundRect(curChipX, chipY, seedW, chipH, 3);
+              ctx.fill();
+              ctx.stroke();
+            } else {
+              ctx.fillRect(curChipX, chipY, seedW, chipH);
+              ctx.strokeRect(curChipX, chipY, seedW, chipH);
+            }
+            ctx.fillStyle = "#cbd5e1";
+            ctx.textAlign = "center";
+            ctx.fillText(seedNum, curChipX + seedW / 2, row2Y + 0.5);
+            curChipX += seedW + chipGap;
+          }
+        });
+      }
+      ctx.restore();
+    }
+    mouse(event, pos, node) {
+      if (event.type === "pointerdown" || event.type === "mousedown") {
+        const x = pos[0];
+        const y = pos[1];
+        for (const [btnId, rect] of Object.entries(this.buttonRects)) {
+          if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
+            this.copyToClipboard(rect.data, "\u2713 COPIATO");
+            return true;
+          }
+        }
+        for (const chip of this.chipRects) {
+          if (x >= chip.x && x <= chip.x + chip.w && y >= chip.y && y <= chip.y + chip.h) {
+            this.recallSeed(chip.seed);
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+  }
+  function ensureSeedHUD(node) {
+    if (!node || !node.widgets) return;
+    const existing = node.widgets.filter((w) => w.name === "_stoiqo_seed_history_hud");
+    for (const extra of existing.slice(1)) {
+      node.widgets.splice(node.widgets.indexOf(extra), 1);
+    }
+    let hud = existing[0];
+    if (!hud) {
+      hud = new StoiqoSeedHistoryWidget(node);
+      node.addCustomWidget(hud);
+    }
+    node._stoiqo_seed_hud = hud;
+  }
+  const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+  nodeType.prototype.onNodeCreated = function() {
+    if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+    if (!this.size || this.size[0] < 380) {
+      this.size = [380, Math.max(this.size ? this.size[1] : 200, 220)];
+    }
+    ensureSeedHUD(this);
+  };
+  const origOnConfigure = nodeType.prototype.onConfigure;
+  nodeType.prototype.onConfigure = function() {
+    if (origOnConfigure) origOnConfigure.apply(this, arguments);
+    ensureSeedHUD(this);
+  };
+  const origOnExecuted = nodeType.prototype.onExecuted;
+  nodeType.prototype.onExecuted = function(message) {
+    if (origOnExecuted) origOnExecuted.apply(this, arguments);
+    if (this._stoiqo_seed_hud) {
+      this._stoiqo_seed_hud.setExecutionData(message);
+    }
+  };
+}
+
 // src_js/utils/telemetry.js
-import { api as api9 } from "../../scripts/api.js";
+import { api as api10 } from "../../scripts/api.js";
 var listenerAttached = false;
 function initGlobalTelemetryListener(appInstance) {
   if (listenerAttached) return;
   listenerAttached = true;
-  if (api9 && api9.addEventListener) {
-    api9.addEventListener("stoiqo_node_telemetry", (event) => {
+  if (api10 && api10.addEventListener) {
+    api10.addEventListener("stoiqo_node_telemetry", (event) => {
       const data = event.detail;
       if (!data) return;
       if (appInstance && appInstance.graph && data.node_id) {
@@ -3944,6 +5556,481 @@ function drawTelemetryBadge(node, ctx) {
   ctx.restore();
 }
 
+// src_js/utils/settingsDrawer.js
+var DRAWER_WIDGET_NAME = "_stoiqo_settings_drawer";
+var PROMPT_PRESET_VALUES = {
+  "Balanced Synthesizer (Recommended)": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 },
+  "Maximum Creativity (Wild Ideation)": { temperature: 0.95, max_new_tokens: 1536, top_p: 0.95, top_k: 80, repetition_penalty: 1.1 },
+  "Scientific / Accurate Visual Description": { temperature: 0.2, max_new_tokens: 768, top_p: 0.8, top_k: 30, repetition_penalty: 1.2 },
+  "Synthetic Captioning for LoRA / Training": { temperature: 0.35, max_new_tokens: 512, top_p: 0.85, top_k: 40, repetition_penalty: 1.15 },
+  "Deterministic / Exact Logic (Greedy)": { temperature: 0, max_new_tokens: 512, top_p: 0, top_k: 1, repetition_penalty: 1.2 },
+  "Cinematic Storyteller": { temperature: 0.75, max_new_tokens: 1280, top_p: 0.92, top_k: 60, repetition_penalty: 1.12 }
+};
+function getVal(node, name) {
+  const w = node?.widgets?.find((x) => x.name === name);
+  return w ? w.value : void 0;
+}
+var NODE_UX_SPECS = {
+  StoiqoPromptGeneratorNode: {
+    label: "Impostazioni LLM & Multi-Image",
+    advanced: [
+      "preset",
+      "fusion_mode",
+      "system_prompt",
+      "custom_system_prompt",
+      "negative_prompt_prefix",
+      "temperature",
+      "max_new_tokens",
+      "top_p",
+      "top_k",
+      "repetition_penalty"
+    ],
+    conditions: {
+      custom_system_prompt: (node) => String(getVal(node, "system_prompt") || "").includes("Custom")
+    },
+    onWidgetChange: (node, name, val) => {
+      if (name === "preset" && PROMPT_PRESET_VALUES[val]) {
+        const pv = PROMPT_PRESET_VALUES[val];
+        for (const [k, v] of Object.entries(pv)) {
+          const tw = node.widgets?.find((w) => w.name === k);
+          if (tw) {
+            tw.value = v;
+            if (tw.inputEl) tw.inputEl.value = String(v);
+          }
+        }
+      }
+    }
+  },
+  StoiqoDatasetWriterNode: {
+    label: "Opzioni Dataset, Tag & Deduplica",
+    advanced: [
+      "blacklist_tags",
+      "tag_separator",
+      "shuffle_tags",
+      "keep_tokens",
+      "save_txt",
+      "save_json_metadata",
+      "use_original_filename",
+      "fallback_prefix",
+      "deduplicate_images",
+      "similarity_threshold",
+      "seed"
+    ],
+    conditions: {
+      image_format: (node) => Boolean(getVal(node, "save_image")),
+      keep_tokens: (node) => Boolean(getVal(node, "shuffle_tags")),
+      fallback_prefix: (node) => !Boolean(getVal(node, "use_original_filename")),
+      similarity_threshold: (node) => Boolean(getVal(node, "deduplicate_images"))
+    }
+  },
+  StoiqoSmartFolderImageIterator: {
+    label: "Filtri Cartella & Opzioni Batch",
+    advanced: [
+      "loop_folder",
+      "recursive",
+      "skip_captioned",
+      "caption_extension"
+    ],
+    conditions: {
+      index: (node) => String(getVal(node, "load_mode") || "").startsWith("Single"),
+      max_batch_images: (node) => String(getVal(node, "load_mode") || "").startsWith("Batch"),
+      seed: (node) => String(getVal(node, "iteration_mode") || "").includes("Random"),
+      loop_folder: (node) => String(getVal(node, "load_mode") || "").startsWith("Single"),
+      caption_extension: (node) => Boolean(getVal(node, "skip_captioned"))
+    }
+  },
+  StoiqoSeedControllerNode: {
+    label: "Opzioni Varianza Seed & Multiplo VAE",
+    advanced: [
+      "multiple_of",
+      "variance_strength",
+      "variance_seed",
+      "seed_prefix"
+    ],
+    conditions: {
+      custom_width: (node) => String(getVal(node, "aspect_ratio") || "").includes("Custom"),
+      custom_height: (node) => String(getVal(node, "aspect_ratio") || "").includes("Custom")
+    }
+  },
+  StoiqoTurboSamplerNode: {
+    label: "Opzioni Sampler & Denoise",
+    advanced: [
+      "sampler_name",
+      "scheduler",
+      "denoise"
+    ]
+  },
+  StoiqoWatermarkNode: {
+    label: "Opzioni Bordi, Chroma Key & Colore Testo",
+    advanced: [
+      "margin_percent",
+      "text_color",
+      "remove_bg_mode",
+      "chroma_tolerance",
+      "feather_radius"
+    ],
+    conditions: {
+      custom_scale: (node) => String(getVal(node, "scale_mode") || "").includes("Custom"),
+      chroma_tolerance: (node) => !String(getVal(node, "remove_bg_mode") || "").startsWith("None")
+    }
+  },
+  StoiqoTextConcatenateNode: {
+    label: "Template, Prefisso/Suffisso & Pulizia Tag",
+    advanced: [
+      "template",
+      "prefix",
+      "suffix",
+      "deduplicate_tags",
+      "clean_whitespace",
+      "convert_underscores",
+      "skip_empty"
+    ]
+  },
+  StoiqoMusicPromptEngineNode: {
+    label: "Impostazioni Producer AI & Sampling",
+    advanced: [
+      "system_prompt",
+      "custom_system_prompt",
+      "custom_directives",
+      "seed",
+      "temperature",
+      "repetition_penalty",
+      "max_new_tokens"
+    ],
+    conditions: {
+      custom_system_prompt: (node) => String(getVal(node, "system_prompt") || "").includes("Custom")
+    }
+  },
+  StoiqoCharacterMemoryNode: {
+    label: "Opzioni Lorebook, Vincoli & Salvataggio JSON",
+    advanced: [
+      "injection_mode",
+      "personality_vibe",
+      "negative_constraints",
+      "user_prompt",
+      "save_profile_as",
+      "custom_json_data"
+    ]
+  },
+  StoiqoSpatialCropperNode: {
+    label: "Coordinate Manuali & Opzioni Maschera",
+    advanced: [
+      "manual_bbox",
+      "invert_mask",
+      "target_megapixel",
+      "coord_order"
+    ]
+  },
+  StoiqoInpaintStitcherNode: {
+    label: "Opzioni BBox, Padding & Beauty Polish",
+    advanced: [
+      "bbox_info",
+      "crop_padding_percent",
+      "skin_smoothing",
+      "detail_clarity"
+    ],
+    conditions: {
+      color_match_strength: (node) => Boolean(getVal(node, "color_match"))
+    }
+  },
+  StoiqoFrequencySeparationNode: {
+    label: "Opzioni High-Pass & Soft-Knee Limiter",
+    advanced: [
+      "texture_boost",
+      "high_pass_mode",
+      "soft_knee_limiter",
+      "split_meta"
+    ]
+  },
+  StoiqoProImageSaverNode: {
+    label: "Cartella, Metadati & Privacy",
+    advanced: [
+      "quality",
+      "subfolder",
+      "sidecar_metadata",
+      "save_workflow",
+      "privacy_mode"
+    ]
+  },
+  StoiqoVideoSaverNode: {
+    label: "Qualit\xE0, Cartella & Sidecar Video",
+    advanced: [
+      "quality",
+      "subfolder",
+      "motion_prompt",
+      "sidecar_metadata"
+    ]
+  },
+  StoiqoAudioSaverNode: {
+    label: "Tag ID3, Testo & Metadati Audio",
+    advanced: [
+      "subfolder",
+      "genre",
+      "bpm",
+      "style",
+      "lyrics",
+      "sidecar_metadata"
+    ]
+  },
+  StoiqoImageCompareNode: {
+    alwaysHidden: ["initial_mode"],
+    label: "Opzioni Heatmap & Soglia Maschera Diff",
+    advanced: [
+      "heatmap_colormap",
+      "diff_gain",
+      "mask_threshold"
+    ]
+  },
+  StoiqoImageLoaderNode: {
+    label: "Opzioni Aspect Ratio Batch",
+    alwaysHidden: ["active_focus"],
+    advanced: ["fit_mode"]
+  },
+  StoiqoVideoEnhancerNode: {
+    label: "Opzioni Deflicker & Curva Motion",
+    advanced: [
+      "window_size",
+      "luminance_tolerance",
+      "stabilization_strength",
+      "motion_smoothness",
+      "blend_curve"
+    ],
+    conditions: {
+      window_size: (node) => Boolean(getVal(node, "enable_deflicker")),
+      luminance_tolerance: (node) => Boolean(getVal(node, "enable_deflicker")),
+      stabilization_strength: (node) => Boolean(getVal(node, "enable_deflicker")),
+      motion_smoothness: (node) => !String(getVal(node, "fps_multiplier") || "").startsWith("1x"),
+      blend_curve: (node) => !String(getVal(node, "fps_multiplier") || "").startsWith("1x")
+    }
+  }
+};
+function setWidgetVisibility(w, visible) {
+  if (!w) return;
+  if (!w._stoiqoSavedOrig) {
+    w._stoiqoSavedOrig = {
+      computeSize: w.computeSize,
+      draw: w.draw
+    };
+  }
+  if (visible) {
+    w.hidden = false;
+    if (w._stoiqoSavedOrig.computeSize) {
+      w.computeSize = w._stoiqoSavedOrig.computeSize;
+    } else {
+      delete w.computeSize;
+    }
+    if (w._stoiqoSavedOrig.draw) {
+      w.draw = w._stoiqoSavedOrig.draw;
+    } else {
+      delete w.draw;
+    }
+    if (w.inputEl) {
+      w.inputEl.hidden = false;
+      w.inputEl.style.display = "";
+    }
+  } else {
+    w.hidden = true;
+    w.computeSize = () => [0, -4];
+    w.draw = () => {
+    };
+    if (w.inputEl) {
+      w.inputEl.hidden = true;
+      w.inputEl.style.display = "none";
+    }
+  }
+}
+var StoiqoSettingsDrawerWidget = class {
+  constructor(node, spec) {
+    this.type = "custom";
+    this.name = DRAWER_WIDGET_NAME;
+    this.node = node;
+    this.spec = spec;
+    this.options = { serialize: false };
+    this.lastClick = 0;
+    this.hitBox = null;
+  }
+  get value() {
+    return "";
+  }
+  set value(_v) {
+  }
+  serializeValue() {
+    return void 0;
+  }
+  isVisible() {
+    if (this.spec.drawerWhen && !this.spec.drawerWhen(this.node)) {
+      return false;
+    }
+    return Array.isArray(this.spec.advanced) && this.spec.advanced.length > 0;
+  }
+  computeSize(width) {
+    if (!this.isVisible()) return [0, -4];
+    return [width, 28];
+  }
+  draw(ctx, node, width, y) {
+    if (!this.isVisible()) {
+      this.hitBox = null;
+      return;
+    }
+    const nodeW = node && node.size ? node.size[0] : width;
+    const padX = 10;
+    const barX = padX;
+    const barY = y + 2;
+    const barW = nodeW - padX * 2;
+    const barH = 22;
+    const expanded = Boolean(node._stoiqoAdvExpanded);
+    this.hitBox = { x: barX, y: barY, w: barW, h: barH };
+    ctx.save();
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(barX, barY, barW, barH, 5);
+    } else {
+      ctx.rect(barX, barY, barW, barH);
+    }
+    ctx.fillStyle = expanded ? "rgba(41, 151, 255, 0.14)" : "rgba(255, 255, 255, 0.04)";
+    ctx.fill();
+    ctx.strokeStyle = expanded ? "rgba(41, 151, 255, 0.45)" : "rgba(255, 255, 255, 0.09)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.font = "600 10.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.fillStyle = expanded ? "#58b0ff" : "#98a2b3";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    const label = this.spec.label || "Impostazioni Avanzate";
+    ctx.fillText(`\u2699  ${label}`, barX + 10, barY + barH / 2);
+    const advList = this.spec.advanced || [];
+    const count = advList.length;
+    let modCount = 0;
+    if (node && node.widgets) {
+      for (const name of advList) {
+        const w = node.widgets.find((x) => x.name === name);
+        if (w && w._stoiqoDefaultVal !== void 0 && String(w.value ?? "") !== String(w._stoiqoDefaultVal ?? "")) {
+          modCount++;
+        }
+      }
+    }
+    const rightText = expanded ? "Nascondi \u25B4" : `Mostra (${count}) \u25BE`;
+    ctx.font = "500 9.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.fillStyle = expanded ? "#58b0ff" : "#667085";
+    ctx.textAlign = "right";
+    ctx.fillText(rightText, barX + barW - 10, barY + barH / 2);
+    if (!expanded && modCount > 0) {
+      const rightW = ctx.measureText(rightText).width;
+      ctx.font = "600 9.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#ff9f0a";
+      ctx.fillText(`\u25CF ${modCount} mod.`, barX + barW - 10 - rightW - 8, barY + barH / 2);
+    }
+    ctx.restore();
+  }
+  mouse(event, pos, node) {
+    if (!this.isVisible() || !this.hitBox) return false;
+    if (!event || event.type !== "pointerdown" && event.type !== "mousedown") return false;
+    if (!pos) return false;
+    const now = performance.now();
+    if (now - this.lastClick < 150) return true;
+    const [mx, my] = pos;
+    const b = this.hitBox;
+    if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+      this.lastClick = now;
+      node._stoiqoAdvExpanded = !Boolean(node._stoiqoAdvExpanded);
+      if (node._stoiqoApplyUX) {
+        node._stoiqoApplyUX(true);
+      }
+      return true;
+    }
+    return false;
+  }
+};
+function applyNodeUXSpec(node, spec) {
+  if (!node || !node.widgets || !spec) return;
+  const existingDrawers = node.widgets.filter((w) => w.name === DRAWER_WIDGET_NAME);
+  for (const extra of existingDrawers.slice(1)) {
+    node.widgets.splice(node.widgets.indexOf(extra), 1);
+  }
+  let drawer = node.widgets.find((w) => w.name === DRAWER_WIDGET_NAME);
+  if (!drawer && spec.advanced && spec.advanced.length > 0) {
+    drawer = new StoiqoSettingsDrawerWidget(node, spec);
+    const firstAdvIdx = node.widgets.findIndex((w) => spec.advanced.includes(w.name));
+    if (firstAdvIdx !== -1) {
+      node.widgets.splice(firstAdvIdx, 0, drawer);
+    } else {
+      node.widgets.push(drawer);
+    }
+  }
+  const advSet = new Set(spec.advanced || []);
+  const alwaysHiddenSet = new Set(spec.alwaysHidden || []);
+  const conditions = spec.conditions || {};
+  const refreshUX = (resizeHeight = false) => {
+    const expanded = Boolean(node._stoiqoAdvExpanded);
+    const drawerAllowed = !spec.drawerWhen || spec.drawerWhen(node);
+    for (const w of node.widgets) {
+      if (!w || w.name === DRAWER_WIDGET_NAME) continue;
+      if (alwaysHiddenSet.has(w.name)) {
+        setWidgetVisibility(w, false);
+        continue;
+      }
+      const inAdv = advSet.has(w.name);
+      const condFn = conditions[w.name];
+      const condOk = condFn ? Boolean(condFn(node)) : true;
+      if (inAdv) {
+        setWidgetVisibility(w, drawerAllowed && expanded && condOk);
+      } else if (condFn) {
+        setWidgetVisibility(w, condOk);
+      }
+    }
+    if (typeof node.computeSize === "function") {
+      const computed = node.computeSize();
+      if (resizeHeight) {
+        node.size[1] = Math.max(60, Math.ceil(computed[1]));
+      } else {
+        node.size[1] = Math.max(node.size[1] || 60, Math.ceil(computed[1]));
+      }
+    }
+    node.setDirtyCanvas?.(true, true);
+  };
+  node._stoiqoApplyUX = refreshUX;
+  for (const w of node.widgets) {
+    if (!w || w.name === DRAWER_WIDGET_NAME) continue;
+    if (w._stoiqoDefaultVal === void 0) {
+      w._stoiqoDefaultVal = w.options && w.options.default !== void 0 ? w.options.default : w.value;
+    }
+    if (w._stoiqoUXHooked) continue;
+    w._stoiqoUXHooked = true;
+    const origCb = w.callback;
+    w.callback = function(val) {
+      if (origCb) origCb.apply(this, arguments);
+      if (spec.onWidgetChange) {
+        spec.onWidgetChange(node, w.name, val);
+      }
+      refreshUX(true);
+    };
+  }
+  refreshUX(true);
+}
+function setupSettingsDrawers(nodeType, nodeData) {
+  const spec = NODE_UX_SPECS[nodeData.name];
+  if (!spec) return;
+  const origCreated = nodeType.prototype.onNodeCreated;
+  nodeType.prototype.onNodeCreated = function() {
+    if (origCreated) origCreated.apply(this, arguments);
+    const node = this;
+    if (node.widgets) {
+      for (const w of node.widgets) {
+        if (w && w._stoiqoDefaultVal === void 0) {
+          w._stoiqoDefaultVal = w.options && w.options.default !== void 0 ? w.options.default : w.value;
+        }
+      }
+    }
+    setTimeout(() => applyNodeUXSpec(node, spec), 0);
+  };
+  const origConfigure = nodeType.prototype.onConfigure;
+  nodeType.prototype.onConfigure = function() {
+    if (origConfigure) origConfigure.apply(this, arguments);
+    const node = this;
+    setTimeout(() => applyNodeUXSpec(node, spec), 0);
+  };
+}
+
 // src_js/index.js
 app10.registerExtension({
   name: "Stoiqo.PromptGeneratorEngine.Dividers",
@@ -3953,7 +6040,6 @@ app10.registerExtension({
     }
     setupShowPromptNode(nodeType, nodeData, app11);
     setupModelLoaderNode(nodeType, nodeData, app11);
-    setupVisualDiffNode(nodeType, nodeData, app11);
     setupImageCompareNode(nodeType, nodeData, app11);
     setupDatasetNode(nodeType, nodeData, app11);
     setupIteratorNode(nodeType, nodeData, app11);
@@ -3963,5 +6049,8 @@ app10.registerExtension({
     setupMusicPromptNode(nodeType, nodeData, app11);
     setupPipelineNodes(nodeType, nodeData, app11);
     setupLoraStackNode(nodeType, nodeData, app11);
+    setupPromptGeneratorNode(nodeType, nodeData, app11);
+    setupSeedNode(nodeType, nodeData, app11);
+    setupSettingsDrawers(nodeType, nodeData);
   }
 });

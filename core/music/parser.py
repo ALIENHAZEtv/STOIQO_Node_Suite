@@ -8,8 +8,18 @@ Eliminates metadata leakage, CJK artifacts, and repetition loops.
 import re
 try:
     from .builder import clean_user_custom_lyrics, detect_existing_lyrics
+    from .metrics import (
+        analyze_lyrics_metrics,
+        auto_structure_unstructured_lyrics,
+        auto_balance_long_lines,
+    )
 except (ImportError, ValueError):
     from builder import clean_user_custom_lyrics, detect_existing_lyrics
+    from metrics import (
+        analyze_lyrics_metrics,
+        auto_structure_unstructured_lyrics,
+        auto_balance_long_lines,
+    )
 
 
 def generate_fallback_song_lyrics(title="", target_language="Italian", genre="", idea=""):
@@ -602,6 +612,14 @@ def parse_music_response(
     lyrics = re.sub(r"\n{3,}", "\n\n", lyrics).strip()
     style = re.sub(r"\n{2,}", " ", style).strip()
 
+    # 7. Structural normalization and Auto-Structuring
+    if "[" not in lyrics or not re.search(r"\[(?:Verse|Chorus|Bridge|Outro|Intro|Strofa|Ritornello)", lyrics, re.IGNORECASE):
+        lyrics = auto_structure_unstructured_lyrics(lyrics, structure_preset=structure)
+
+    # 8. Rhythmic Balance & Metric Analysis
+    lyrics = auto_balance_long_lines(lyrics, max_syllables=18, language=target_language)
+    metrics_data = analyze_lyrics_metrics(lyrics, language=target_language)
+
     # Dynamic metric duration calculation based on actual lyric density, sections, and BPM pacing
     # Real musical pacing in 4/4 meter:
     # 1 full measure = 240 / BPM seconds.
@@ -637,4 +655,8 @@ def parse_music_response(
         "time_signature": str(time_signature),
         "genre_tags": str(genre_tags),
         "vocal_description": str(vocal_description),
+        "metrics": metrics_data,
+        "metric_summary": metrics_data.get("summary", ""),
+        "dominant_meter": metrics_data.get("dominant_song_meter", ""),
+        "rhythmic_score": metrics_data.get("rhythmic_balance_score", 85),
     }

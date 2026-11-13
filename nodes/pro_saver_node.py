@@ -9,6 +9,7 @@ import json
 import re
 from datetime import datetime
 import numpy as np
+import torch
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
@@ -46,16 +47,43 @@ def _extract_graph_metadata(prompt_dict):
     if not isinstance(prompt_dict, dict):
         return meta
 
+    def _resolve_text(val):
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+        if isinstance(val, (list, tuple)) and len(val) >= 2 and prompt_dict:
+            src_id = str(val[0])
+            src_node = prompt_dict.get(src_id)
+            if src_node and isinstance(src_node, dict):
+                src_inputs = src_node.get("inputs", {})
+                src_type = src_node.get("class_type", "")
+                if "TextConcatenate" in src_type or "Concat" in src_type:
+                    collected = []
+                    for i in range(1, 9):
+                        part = _resolve_text(src_inputs.get(f"text_{i}"))
+                        if part:
+                            collected.append(part)
+                    sep = src_inputs.get("custom_separator") or ", "
+                    return sep.join(collected)
+                if "PromptGenerator" in src_type:
+                    return _resolve_text(src_inputs.get("custom_modifications")) or _resolve_text(src_inputs.get("text_input")) or ""
+                if "text" in src_inputs:
+                    return _resolve_text(src_inputs.get("text"))
+        return None
+
     for node_id, node_data in prompt_dict.items():
         if not isinstance(node_data, dict):
             continue
         class_type = node_data.get("class_type", "")
         inputs = node_data.get("inputs", {})
 
-        # KSampler inspection
-        if "Sampler" in class_type or "KSampler" in class_type:
+        # KSampler & StoiqoTurboSampler inspection
+        if "Sampler" in class_type or "KSampler" in class_type or "TurboSampler" in class_type:
             if meta["seed"] is None:
                 meta["seed"] = inputs.get("seed") or inputs.get("noise_seed")
+                if isinstance(meta["seed"], (list, tuple)) and prompt_dict:
+                    src_node = prompt_dict.get(str(meta["seed"][0]))
+                    if src_node:
+                        meta["seed"] = src_node.get("inputs", {}).get("seed")
             if meta["steps"] is None:
                 meta["steps"] = inputs.get("steps")
             if meta["cfg"] is None:
@@ -64,25 +92,38 @@ def _extract_graph_metadata(prompt_dict):
                 meta["sampler_name"] = inputs.get("sampler_name")
             if meta["scheduler"] is None:
                 meta["scheduler"] = inputs.get("scheduler")
+            if meta["positive_prompt"] is None:
+                pos = _resolve_text(inputs.get("positive") or inputs.get("positive_prompt"))
+                if pos:
+                    meta["positive_prompt"] = pos
+            if meta["negative_prompt"] is None:
+                neg = _resolve_text(inputs.get("negative") or inputs.get("negative_prompt"))
+                if neg:
+                    meta["negative_prompt"] = neg
 
         # Model Loader inspection
-        if "CheckpointLoader" in class_type or "UNETLoader" in class_type:
+        if "ModelLoader" in class_type or "CheckpointLoader" in class_type or "UNETLoader" in class_type:
             if meta["model_name"] is None:
-                model = inputs.get("ckpt_name") or inputs.get("unet_name") or inputs.get("model_name")
+                model = inputs.get("model_name") or inputs.get("ckpt_name") or inputs.get("unet_name")
                 if model:
                     meta["model_name"] = os.path.splitext(os.path.basename(str(model)))[0]
 
-        # Text prompt inspection
+        # Seed Controller inspection
+        if "SeedController" in class_type or "Seed" in class_type:
+            if meta["seed"] is None and "seed" in inputs:
+                meta["seed"] = inputs.get("seed")
+
+        # Standard CLIPTextEncode inspection
         if "CLIPTextEncode" in class_type or "TextEncode" in class_type:
-            txt = inputs.get("text")
-            if isinstance(txt, str) and txt.strip():
+            txt = _resolve_text(inputs.get("text"))
+            if txt:
                 node_title = str(node_data.get("_meta", {}).get("title", "")).lower()
                 if "negative" in node_title:
                     if meta["negative_prompt"] is None:
-                        meta["negative_prompt"] = txt.strip()
+                        meta["negative_prompt"] = txt
                 else:
                     if meta["positive_prompt"] is None:
-                        meta["positive_prompt"] = txt.strip()
+                        meta["positive_prompt"] = txt
 
     return meta
 
@@ -118,10 +159,38 @@ def _resolve_tokens(pattern, width, height, meta, counter=1):
     return resolved
 
 
+def _format_a1111_parameters(meta, w, h):
+    """Formats standard A1111/Civitai parameter string for EXIF ImageDescription and PNG parameters."""
+    pos = (meta.get("positive_prompt") or "").strip()
+    neg = (meta.get("negative_prompt") or "").strip()
+    parts = []
+    if pos:
+        parts.append(pos)
+    if neg:
+        parts.append(f"Negative prompt: {neg}")
+
+    details = []
+    if meta.get("steps") is not None:
+        details.append(f"Steps: {meta['steps']}")
+    if meta.get("sampler_name") is not None:
+        details.append(f"Sampler: {meta['sampler_name']}")
+    if meta.get("cfg") is not None:
+        details.append(f"CFG scale: {meta['cfg']}")
+    if meta.get("seed") is not None:
+        details.append(f"Seed: {meta['seed']}")
+    details.append(f"Size: {w}x{h}")
+    if meta.get("model_name"):
+        details.append(f"Model: {meta['model_name']}")
+
+    if details:
+        parts.append(", ".join(details))
+    return "\n".join(parts)
+
+
 class StoiqoProImageSaverNode:
     """
     [STOIQO] Pro Image Saver & Metadata Hub
-    High-efficiency image saver with multi-format support, sidecars, and zero preview clutter.
+    High-efficiency image saver with multi-format support, EXIF injection, Privacy Mode, and zero preview clutter.
     """
 
     FORMAT_OPTIONS = [
@@ -186,27 +255,18 @@ class StoiqoProImageSaverNode:
                         "tooltip": "Generate human-readable sidecar metadata files alongside the image.",
                     },
                 ),
-                "prompt_text": (
-                    "STRING",
-                    {
-                        "multiline": True,
-                        "default": "",
-                        "tooltip": "Optional prompt text to write into TXT caption and JSON metadata.",
-                    },
-                ),
-                "negative_text": (
-                    "STRING",
-                    {
-                        "multiline": True,
-                        "default": "",
-                        "tooltip": "Optional negative prompt text.",
-                    },
-                ),
                 "save_workflow": (
                     "BOOLEAN",
                     {
                         "default": True,
-                        "tooltip": "Embed full ComfyUI graph metadata into PNG chunks or JSON sidecar.",
+                        "tooltip": "Embed full ComfyUI graph metadata and A1111/Civitai parameters into PNG/EXIF or JSON sidecar.",
+                    },
+                ),
+                "privacy_mode": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": "Privacy Mode: When enabled, strips 100% of metadata (prompts, seeds, models, workflow graphs, and EXIF) for safe, lightweight public web publishing.",
                     },
                 ),
             },
@@ -230,17 +290,30 @@ class StoiqoProImageSaverNode:
         quality=90,
         subfolder="StoiqoCreations/%date%",
         sidecar_metadata="Both (.json + .txt)",
-        prompt_text="",
-        negative_text="",
         save_workflow=True,
+        privacy_mode=False,
+        prompt_text=None,
+        negative_text=None,
         prompt=None,
         extra_pnginfo=None,
+        **kwargs,
     ):
         extracted_meta = _extract_graph_metadata(prompt)
-        if prompt_text.strip():
-            extracted_meta["positive_prompt"] = prompt_text.strip()
-        if negative_text.strip():
-            extracted_meta["negative_prompt"] = negative_text.strip()
+        if prompt_text and str(prompt_text).strip():
+            extracted_meta["positive_prompt"] = str(prompt_text).strip()
+        if negative_text and str(negative_text).strip():
+            extracted_meta["negative_prompt"] = str(negative_text).strip()
+
+        # If Privacy Mode is active, strip all sensitive generation data
+        if privacy_mode:
+            save_workflow = False
+            extracted_meta["positive_prompt"] = ""
+            extracted_meta["negative_prompt"] = ""
+            extracted_meta["seed"] = None
+            extracted_meta["steps"] = None
+            extracted_meta["cfg"] = None
+            extracted_meta["sampler_name"] = None
+            extracted_meta["model_name"] = None
 
         # Format extension & PIL format name
         if "WEBP" in format:
@@ -272,7 +345,7 @@ class StoiqoProImageSaverNode:
         counter = len(existing) + 1
 
         for batch_idx, img_tensor in enumerate(images):
-            arr = (255.0 * img_tensor.cpu().numpy()).clip(0, 255).astype(np.uint8)
+            arr = (img_tensor.clamp(0.0, 1.0).mul(255).to(torch.uint8)).cpu().numpy()
             pil_img = Image.fromarray(arr)
             cur_w, cur_h = pil_img.size
 
@@ -285,26 +358,50 @@ class StoiqoProImageSaverNode:
             file_path = os.path.join(target_dir, file_name)
 
             # Metadata prep
-            pnginfo = PngInfo() if pil_fmt == "PNG" and save_workflow else None
-            if pnginfo and save_workflow:
-                if prompt is not None:
-                    pnginfo.add_text("prompt", json.dumps(prompt))
-                if extra_pnginfo is not None:
-                    for k, v in extra_pnginfo.items():
-                        pnginfo.add_text(k, json.dumps(v))
-                if extracted_meta["positive_prompt"]:
-                    pnginfo.add_text("parameters", extracted_meta["positive_prompt"])
+            pnginfo = None
+            exif = None
+
+            if not privacy_mode and save_workflow:
+                a1111_params = _format_a1111_parameters(extracted_meta, cur_w, cur_h)
+
+                if pil_fmt == "PNG":
+                    pnginfo = PngInfo()
+                    if prompt is not None:
+                        pnginfo.add_text("prompt", json.dumps(prompt))
+                    if extra_pnginfo is not None:
+                        for k, v in extra_pnginfo.items():
+                            pnginfo.add_text(k, json.dumps(v))
+                    if a1111_params:
+                        pnginfo.add_text("parameters", a1111_params)
+                else:
+                    # Injected EXIF for WEBP and JPEG (Civitai, A1111 & ComfyUI readable)
+                    exif = pil_img.getexif()
+                    if a1111_params:
+                        exif[0x010E] = a1111_params  # ImageDescription
+                    user_comment_data = {}
+                    if prompt is not None:
+                        user_comment_data["prompt"] = prompt
+                    if extra_pnginfo is not None and "workflow" in extra_pnginfo:
+                        user_comment_data["workflow"] = extra_pnginfo["workflow"]
+                    if user_comment_data:
+                        comment_bytes = b"ASCII\x00\x00\x00" + json.dumps(user_comment_data, ensure_ascii=False).encode("utf-8")
+                        exif[0x9286] = comment_bytes  # UserComment
 
             # Save according to format
             if pil_fmt == "PNG":
-                # Quality 1-100 maps to compress_level 9 to 1 (inverted: higher quality = faster/lower compression)
                 comp_level = max(1, min(9, int((100 - quality) / 10)))
                 pil_img.save(file_path, format="PNG", pnginfo=pnginfo, compress_level=comp_level)
             elif pil_fmt == "WEBP":
-                pil_img.save(file_path, format="WEBP", quality=quality, lossless=(quality >= 100))
+                save_kwargs = {"quality": quality, "lossless": (quality >= 100)}
+                if exif and len(exif) > 0 and not privacy_mode:
+                    save_kwargs["exif"] = exif
+                pil_img.save(file_path, format="WEBP", **save_kwargs)
             elif pil_fmt == "JPEG":
                 rgb_pil = pil_img.convert("RGB")
-                rgb_pil.save(file_path, format="JPEG", quality=quality, subsampling=0)
+                save_kwargs = {"quality": quality, "subsampling": 0}
+                if exif and len(exif) > 0 and not privacy_mode:
+                    save_kwargs["exif"] = exif
+                rgb_pil.save(file_path, format="JPEG", **save_kwargs)
 
             # File size calculation
             file_bytes = os.path.getsize(file_path)
@@ -313,25 +410,36 @@ class StoiqoProImageSaverNode:
 
             # Sidecar generation
             if sidecar_metadata in ("JSON (.json)", "Both (.json + .txt)"):
-                sidecar_data = {
-                    "filename": file_name,
-                    "resolution": f"{cur_w}x{cur_h}",
-                    "file_size": size_str,
-                    "format": pil_fmt,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "positive_prompt": extracted_meta["positive_prompt"] or "",
-                    "negative_prompt": extracted_meta["negative_prompt"] or "",
-                    "generation_parameters": {
-                        "seed": extracted_meta["seed"],
-                        "steps": extracted_meta["steps"],
-                        "cfg": extracted_meta["cfg"],
-                        "sampler": extracted_meta["sampler_name"],
-                        "scheduler": extracted_meta["scheduler"],
-                        "model": extracted_meta["model_name"],
-                    },
-                }
-                if save_workflow and extra_pnginfo:
-                    sidecar_data["workflow"] = extra_pnginfo.get("workflow")
+                if privacy_mode:
+                    sidecar_data = {
+                        "filename": file_name,
+                        "resolution": f"{cur_w}x{cur_h}",
+                        "file_size": size_str,
+                        "format": pil_fmt,
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "privacy_mode": True,
+                    }
+                else:
+                    sidecar_data = {
+                        "filename": file_name,
+                        "resolution": f"{cur_w}x{cur_h}",
+                        "file_size": size_str,
+                        "format": pil_fmt,
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "positive_prompt": extracted_meta["positive_prompt"] or "",
+                        "negative_prompt": extracted_meta["negative_prompt"] or "",
+                        "generation_parameters": {
+                            "seed": extracted_meta["seed"],
+                            "steps": extracted_meta["steps"],
+                            "cfg": extracted_meta["cfg"],
+                            "sampler": extracted_meta["sampler_name"],
+                            "scheduler": extracted_meta["scheduler"],
+                            "model": extracted_meta["model_name"],
+                        },
+                        "privacy_mode": False,
+                    }
+                    if save_workflow and extra_pnginfo:
+                        sidecar_data["workflow"] = extra_pnginfo.get("workflow")
 
                 json_path = os.path.splitext(file_path)[0] + ".json"
                 try:
@@ -340,7 +448,7 @@ class StoiqoProImageSaverNode:
                 except Exception as e:
                     print(f"[STOIQO Pro Saver] Warning saving JSON sidecar: {e}")
 
-            if sidecar_metadata in ("TXT Caption (.txt)", "Both (.json + .txt)"):
+            if not privacy_mode and sidecar_metadata in ("TXT Caption (.txt)", "Both (.json + .txt)"):
                 caption_text = extracted_meta["positive_prompt"] or ""
                 txt_path = os.path.splitext(file_path)[0] + ".txt"
                 try:
@@ -362,6 +470,7 @@ class StoiqoProImageSaverNode:
                 "width": cur_w,
                 "height": cur_h,
                 "format": pil_fmt,
+                "privacy_mode": privacy_mode,
             })
             counter += 1
 

@@ -161,15 +161,8 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
 
         updateSystemPromptVisibility();
 
-        // 3. Insert Section Dividers Idempotently
+        // 3. Remove legacy section dividers (clean UI managed by ⚙ settings drawer)
         node.widgets = node.widgets.filter(w => !w.isStoiqoDivider);
-        for (const sec of SECTIONS) {
-            const targetIdx = node.widgets.findIndex(w => w.name === sec.targetWidget);
-            if (targetIdx !== -1) {
-                const divider = new StoiqoSectionDividerWidget(sec.num, sec.title, sec.color);
-                node.widgets.splice(targetIdx, 0, divider);
-            }
-        }
 
         // 4. Ensure Live Preview Widgets Exist (Style & Lyrics HUD)
         let trackInfoDisplay = node.widgets.find(w => w.name === "preview_track_info");
@@ -346,6 +339,47 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
             copyLyricsBtn.options = { serialize: false };
         }
 
+        let copyMetricsBtn = node.widgets.find(w => w._isMusicCopyMetrics);
+        if (!copyMetricsBtn) {
+            copyMetricsBtn = node.addWidget(
+                "button",
+                "📐 Copia Analisi Metrica Sillabica",
+                null,
+                function() {
+                    const lastInfo = node._lastMusicInfo;
+                    let report = "";
+                    if (lastInfo && lastInfo.metric_summary) {
+                        report = `🎵 ${lastInfo.title || "Song"} — Lyrical Metric Analysis\n` +
+                                 `Dominant Meter: ${lastInfo.dominant_meter || "N/A"}\n` +
+                                 `Rhythmic Cadence Score: ${lastInfo.rhythmic_score || 85}%\n` +
+                                 `Summary: ${lastInfo.metric_summary}\n\n`;
+                        if (lastInfo.metrics && lastInfo.metrics.sections) {
+                            report += "Section Breakdown:\n";
+                            for (const sec of lastInfo.metrics.sections) {
+                                report += `  ${sec.section_name} (${sec.line_count} lines, avg ${sec.avg_syllables} syl/line — ${sec.dominant_meter})\n`;
+                                for (const ln of sec.lines) {
+                                    report += `    • [${ln.syllables} syl] ${ln.text}\n`;
+                                }
+                            }
+                        }
+                    } else {
+                        const tw = node.widgets?.find(w => w.name === "preview_track_info");
+                        report = tw ? (tw.value || "") : "No metrics available.";
+                    }
+                    if (report && navigator.clipboard) {
+                        navigator.clipboard.writeText(report);
+                        const orig = this.name;
+                        this.name = "✓ Metrica Copiata!";
+                        node.setDirtyCanvas(true);
+                        setTimeout(() => { this.name = orig; node.setDirtyCanvas(true); }, 1800);
+                    }
+                },
+                { serialize: false }
+            );
+            copyMetricsBtn._isMusicCopyMetrics = true;
+            copyMetricsBtn.options = { serialize: false };
+        }
+
         // Adjust dimensions
         if (typeof node.computeSize === "function") {
             const computed = node.computeSize();
@@ -375,6 +409,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
 
         if (message && message.music_info && message.music_info.length > 0) {
             const info = message.music_info[0];
+            this._lastMusicInfo = info;
             const tw = this.widgets?.find(w => w.name === "preview_track_info");
             const sw = this.widgets?.find(w => w.name === "preview_style");
             const lw = this.widgets?.find(w => w.name === "preview_lyrics");
@@ -385,7 +420,9 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
                 const durRemSec = String(durSec % 60).padStart(2, '0');
                 const durStr = durSec > 0 ? `${durSec}s (~${durMin}:${durRemSec}m)` : "Dynamic";
                 const modeStr = info.mode === "full" ? "Full Song" : (info.mode === "melody" ? "Melody Lead" : "Vocal");
-                const summaryText = `🎵 ${info.title || "Untitled"} | ⏱️ ${durStr} | 🥁 ${info.bpm || 120} BPM | 🎹 ${info.musical_key || "N/A"} | 🎚️ ${modeStr}`;
+                const meterTag = info.dominant_meter ? ` | 📐 ${info.dominant_meter}` : "";
+                const cadenceTag = info.rhythmic_score ? ` (${info.rhythmic_score}%)` : "";
+                const summaryText = `🎵 ${info.title || "Untitled"} | ⏱️ ${durStr} | 🥁 ${info.bpm || 120} BPM | 🎹 ${info.musical_key || "N/A"} | 🎚️ ${modeStr}${meterTag}${cadenceTag}`;
                 tw.value = summaryText;
                 if (tw.inputEl) tw.inputEl.value = summaryText;
             }

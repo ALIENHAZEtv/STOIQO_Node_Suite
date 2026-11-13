@@ -7,6 +7,8 @@
  * - Zero preview clutter, 100% focused on workflow telemetry & file management
  */
 
+import { api } from "../../../scripts/api.js";
+
 export function setupProSaverNode(nodeType, nodeData, appInstance) {
     const targetNames = [
         "StoiqoProImageSaverNode",
@@ -119,10 +121,17 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
 
             // Status Badge (Top Row)
             const badgeY = cardY + 16;
-            ctx.fillStyle = "#10b981"; // Emerald green
-            ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
-            ctx.textAlign = "left";
-            ctx.fillText("✓ SALVATO", cardX + 12, badgeY);
+            if (info.privacy_mode) {
+                ctx.fillStyle = "#f59e0b"; // Amber / Gold for Privacy Mode
+                ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
+                ctx.textAlign = "left";
+                ctx.fillText("✓ SALVATO • 🛡️ PRIVACY (ZERO EXIF)", cardX + 12, badgeY);
+            } else {
+                ctx.fillStyle = "#10b981"; // Emerald green
+                ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
+                ctx.textAlign = "left";
+                ctx.fillText("✓ SALVATO", cardX + 12, badgeY);
+            }
 
             // Format & Size Badges
             const tagText = `${info.format || "IMG"} • ${info.width}x${info.height} • ${info.size_str || ""}${batchCount > 1 ? ` (+${batchCount - 1} altri)` : ""}`;
@@ -154,32 +163,40 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
             }
             ctx.fillText(displaySub, cardX + 12, subfolderY);
 
-            // Action Buttons Row (Bottom)
+            // Action Buttons Row (Bottom): 4 Compact Buttons
             const btnY = cardY + 76;
             const btnH = 26;
-            const btnGap = 8;
-            const btnCount = 3;
+            const btnGap = 6;
+            const btnCount = 4;
             const totalGap = btnGap * (btnCount - 1);
             const btnW = Math.floor((cardW - 24 - totalGap) / btnCount);
+
+            const folderDir = info.filepath ? (info.filepath.substring(0, info.filepath.lastIndexOf(info.filename || "") - 1) || info.subfolder) : (info.subfolder || "output");
 
             const buttons = [
                 {
                     id: "copy_path",
-                    text: this.copiedButton === "copy_path" ? "✓ COPIATO" : "📋 COPIA PATH",
+                    text: this.copiedButton === "copy_path" ? "✓ COPIATO" : "📋 PATH",
                     active: this.copiedButton === "copy_path",
                     actionText: info.filepath,
                 },
                 {
                     id: "copy_name",
-                    text: this.copiedButton === "copy_name" ? "✓ COPIATO" : "📄 COPIA NOME",
+                    text: this.copiedButton === "copy_name" ? "✓ COPIATO" : "📄 NOME",
                     active: this.copiedButton === "copy_name",
                     actionText: info.filename,
                 },
                 {
                     id: "copy_folder",
-                    text: this.copiedButton === "copy_folder" ? "✓ COPIATO" : "📁 COPIA DIR",
+                    text: this.copiedButton === "copy_folder" ? "✓ COPIATO" : "📁 DIR",
                     active: this.copiedButton === "copy_folder",
-                    actionText: info.filepath ? info.filepath.substring(0, info.filepath.lastIndexOf(info.filename || "") - 1) : info.subfolder,
+                    actionText: folderDir,
+                },
+                {
+                    id: "open_folder",
+                    text: this.copiedButton === "open_folder" ? "✓ APERTA" : "📂 APRI",
+                    active: this.copiedButton === "open_folder",
+                    actionText: folderDir,
                 },
             ];
 
@@ -188,8 +205,8 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
                 this.buttonRects[btn.id] = { x: bX, y: btnY, w: btnW, h: btnH, data: btn.actionText };
 
                 // Button Fill
-                ctx.fillStyle = btn.active ? "#065f46" : "#1a202c";
-                ctx.strokeStyle = btn.active ? "#10b981" : "#2d3748";
+                ctx.fillStyle = btn.active ? "#065f46" : (btn.id === "open_folder" ? "#1e293b" : "#1a202c");
+                ctx.strokeStyle = btn.active ? "#10b981" : (btn.id === "open_folder" ? "#3b82f6" : "#2d3748");
                 ctx.lineWidth = 1;
 
                 if (ctx.roundRect) {
@@ -203,7 +220,7 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
                 }
 
                 // Button Text
-                ctx.fillStyle = btn.active ? "#6ee7b7" : "#cbd5e1";
+                ctx.fillStyle = btn.active ? "#6ee7b7" : (btn.id === "open_folder" ? "#93c5fd" : "#cbd5e1");
                 ctx.font = "bold 9px system-ui, -apple-system, sans-serif";
                 ctx.textAlign = "center";
                 ctx.fillText(btn.text, bX + btnW / 2, btnY + 16);
@@ -218,12 +235,44 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
 
             for (const [btnId, rect] of Object.entries(this.buttonRects)) {
                 if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
-                    this.copyToClipboard(rect.data, btnId);
-                    return true;
+                    if (btnId === "open_folder") {
+                        if (api && api.fetchApi) {
+                            api.fetchApi("/stoiqo/open_folder", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ folder_path: rect.data }),
+                            }).catch(err => console.warn("[STOIQO Pro Saver] Open folder error:", err));
+                        }
+                        this.copiedButton = "open_folder";
+                        if (this.copyTimeout) clearTimeout(this.copyTimeout);
+                        this.copyTimeout = setTimeout(() => {
+                            this.copiedButton = null;
+                            if (this.node) this.node.setDirtyCanvas(true, false);
+                        }, 1800);
+                        this.node.setDirtyCanvas(true, false);
+                        return true;
+                    } else {
+                        this.copyToClipboard(rect.data, btnId);
+                        return true;
+                    }
                 }
             }
             return false;
         }
+    }
+
+    function ensureSaverHUD(node) {
+        if (!node || !node.widgets) return;
+        const existing = node.widgets.filter(w => w.name === "_stoiqo_saver_hud");
+        for (const extra of existing.slice(1)) {
+            node.widgets.splice(node.widgets.indexOf(extra), 1);
+        }
+        let hud = existing[0];
+        if (!hud) {
+            hud = new StoiqoSaverStatusWidget(node);
+            node.addCustomWidget(hud);
+        }
+        node._stoiqo_saver_hud = hud;
     }
 
     const onNodeCreated = nodeType.prototype.onNodeCreated;
@@ -235,10 +284,8 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
         this.imgs = null;
         this.images = null;
 
-        // Add custom HUD status widget
-        const hudWidget = new StoiqoSaverStatusWidget(this);
-        this.addCustomWidget(hudWidget);
-        this._stoiqo_saver_hud = hudWidget;
+        // Add custom HUD status widget (deduplicated)
+        ensureSaverHUD(this);
 
         // Ensure comfortable node dimensions
         if (!this.size || this.size[0] < 380) {
@@ -264,6 +311,12 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
             }
             this.setDirtyCanvas(true, true);
         };
+    };
+
+    const onConfigure = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function () {
+        if (onConfigure) onConfigure.apply(this, arguments);
+        ensureSaverHUD(this);
     };
 
     // Override onDrawBackground to avoid default preview image rendering on canvas

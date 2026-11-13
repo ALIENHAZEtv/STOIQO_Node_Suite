@@ -10,6 +10,7 @@ The canvas UI (src_js/nodes/loraStackNode.js) persists its state as JSON inside 
 """
 
 import json
+import os
 
 try:
     import folder_paths
@@ -32,8 +33,85 @@ except ImportError:
     comfy = None
 
 
+def extract_lora_trigger_words(lora_path: str) -> list:
+    """
+    Fast extraction of trained trigger words from safetensors header or sidecar files.
+    Checks:
+    1. Sidecar .civitai.info (JSON -> trainedWords)
+    2. Sidecar .txt (comma-separated tags)
+    3. Safetensors header metadata (modelspec.trigger_phrase, ss_tag_frequency)
+    Zero tensor weights loaded; executes in sub-millisecond.
+    """
+    if not lora_path or not os.path.isfile(lora_path):
+        return []
+
+    triggers = []
+    base, _ = os.path.splitext(lora_path)
+
+    # 1. Sidecar .civitai.info
+    info_path = base + ".civitai.info"
+    if os.path.isfile(info_path):
+        try:
+            with open(info_path, "r", encoding="utf-8") as f:
+                cdata = json.load(f)
+                tw = cdata.get("trainedWords")
+                if isinstance(tw, list):
+                    for w in tw:
+                        if isinstance(w, str) and w.strip():
+                            triggers.append(w.strip())
+        except Exception:
+            pass
+
+    # 2. Sidecar .txt
+    if not triggers:
+        txt_path = base + ".txt"
+        if os.path.isfile(txt_path):
+            try:
+                with open(txt_path, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    if content:
+                        parts = [p.strip() for p in content.split(",") if p.strip()]
+                        triggers.extend(parts[:10])
+            except Exception:
+                pass
+
+    # 3. Safetensors header metadata
+    if not triggers and lora_path.endswith(".safetensors"):
+        try:
+            import safetensors
+            with safetensors.safe_open(lora_path, framework="pt") as f:
+                meta = f.metadata()
+                if meta:
+                    tp = meta.get("modelspec.trigger_phrase")
+                    if tp:
+                        triggers.extend([t.strip() for t in tp.split(",") if t.strip()])
+                    if not triggers and "ss_tag_frequency" in meta:
+                        try:
+                            tag_freq = json.loads(meta["ss_tag_frequency"])
+                            all_tags = {}
+                            for _, dir_tags in tag_freq.items():
+                                if isinstance(dir_tags, dict):
+                                    for t, count in dir_tags.items():
+                                        all_tags[t] = all_tags.get(t, 0) + count
+                            sorted_tags = sorted(all_tags.items(), key=lambda x: x[1], reverse=True)
+                            triggers.extend([t[0] for t in sorted_tags[:5]])
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+    seen = set()
+    unique_triggers = []
+    for t in triggers:
+        norm = t.lower().strip()
+        if norm not in seen and len(norm) > 1:
+            seen.add(norm)
+            unique_triggers.append(t.strip())
+    return unique_triggers
+
+
 def register_lora_routes():
-    """Registers GET /stoiqo/loras (list of available LoRA files) with ComfyUI's PromptServer."""
+    """Registers GET /stoiqo/loras and /stoiqo/lora_info with ComfyUI's PromptServer."""
     try:
         from server import PromptServer
         from aiohttp import web
@@ -48,6 +126,20 @@ def register_lora_routes():
                     except Exception:
                         loras = []
                     return web.json_response({"loras": list(loras)})
+
+            if not any(getattr(r, "path", None) == "/stoiqo/lora_info" for r in routes):
+                @routes.get("/stoiqo/lora_info")
+                async def stoiqo_lora_info(request):
+                    name = request.query.get("name", "").strip()
+                    if not name:
+                        return web.json_response({"error": "name parameter missing"}, status=400)
+                    full_path = folder_paths.get_full_path("loras", name)
+                    triggers = extract_lora_trigger_words(full_path) if full_path else []
+                    return web.json_response({
+                        "name": name,
+                        "found": full_path is not None,
+                        "triggers": triggers,
+                    })
     except Exception as exc:
         print(f"[STOIQO] Notice: LoRA route registration deferred: {exc}")
 
@@ -100,6 +192,7 @@ def parse_lora_stack(raw):
                 "strength": strength,
                 "strength_clip": strength_clip,
                 "enabled": bool(item.get("enabled", True)),
+                "block_filter": str(item.get("block_filter") or "All Blocks (Standard)"),
             }
         )
     return entries
@@ -122,6 +215,12 @@ class StoiqoLoraStackNode:
             },
             "optional": {
                 "clip": ("CLIP", {"tooltip": "Optional text encoder to patch with the active LoRAs."}),
+                "optional_lora_stack": (
+                    "LORA_STACK",
+                    {
+                        "tooltip": "Optional incoming LoRA stack from upstream node to daisy-chain.",
+                    },
+                ),
                 "block_filter": (
                     [
                         "All Blocks (Standard)",
@@ -129,7 +228,7 @@ class StoiqoLoraStackNode:
                         "Character / Structure Only (IN/MID Blocks)",
                         "Face & Pose Focused (MID Block)",
                     ],
-                    {"default": "All Blocks (Standard)", "tooltip": "LoRA Block Weighting (#80): Filter specific layers (IN=geometry/pose, MID=subject/face, OUT=texture/style)."},
+                    {"default": "All Blocks (Standard)", "tooltip": "LoRA Block Weighting: Filter specific layers (IN=geometry/pose, MID=subject/face, OUT=texture/style)."},
                 ),
                 "lora_stack": (
                     "STRING",
@@ -196,12 +295,66 @@ class StoiqoLoraStackNode:
         self._lora_cache[key] = state_dict
         return state_dict
 
-    def apply_loras(self, model, clip=None, lora_stack="[]", block_filter="All Blocks (Standard)"):
-        # Handle positional swap if block_filter contains json array
-        if lora_stack == "[]" and isinstance(block_filter, str) and block_filter.strip().startswith("["):
-            lora_stack, block_filter = block_filter, "All Blocks (Standard)"
+    def apply_loras(
+        self,
+        model,
+        clip=None,
+        arg3=None,
+        arg4=None,
+        optional_lora_stack=None,
+        **kwargs,
+    ):
+        # Gracefully handle all calling conventions:
+        # 1. apply_loras(model, clip, lora_stack) [3 args]
+        # 2. apply_loras(model, clip, lora_stack, block_filter) [4 args, old signature]
+        # 3. apply_loras(model, clip, block_filter, lora_stack) [4 args, matching INPUT_TYPES order]
+        # 4. keyword arguments
+        lora_stack = kwargs.get("lora_stack", None)
+        block_filter = kwargs.get("block_filter", None)
 
-        entries = parse_lora_stack(lora_stack)
+        for arg in (arg3, arg4):
+            if arg is None:
+                continue
+            if isinstance(arg, str):
+                s = arg.strip()
+                if s.startswith("[") or s.startswith("{"):
+                    lora_stack = arg
+                elif s in [
+                    "All Blocks (Standard)",
+                    "Style / Texture Only (OUT Blocks)",
+                    "Character / Structure Only (IN/MID Blocks)",
+                    "Face & Pose Focused (MID Block)",
+                ]:
+                    block_filter = arg
+                elif not lora_stack and s:
+                    if any(c in s for c in '[]{}:"'):
+                        lora_stack = arg
+                    else:
+                        block_filter = arg
+
+        if lora_stack is None:
+            lora_stack = "[]"
+        if block_filter is None:
+            block_filter = "All Blocks (Standard)"
+
+        # 1. Process optional incoming LORA_STACK
+        entries = []
+        if optional_lora_stack and isinstance(optional_lora_stack, (list, tuple)):
+            for item in optional_lora_stack:
+                if isinstance(item, (list, tuple)) and len(item) >= 2:
+                    st_name = str(item[0])
+                    st_sm = _to_float(item[1], 1.0)
+                    st_sc = _to_float(item[2], st_sm) if len(item) > 2 else st_sm
+                    entries.append({
+                        "name": st_name,
+                        "strength": st_sm,
+                        "strength_clip": st_sc,
+                        "enabled": True,
+                        "source": "upstream_stack",
+                    })
+
+        # 2. Append local node entries
+        entries.extend(parse_lora_stack(lora_stack))
         summary_lines = []
 
         for entry in entries:
@@ -210,30 +363,38 @@ class StoiqoLoraStackNode:
             sc = entry["strength_clip"] if clip is not None else 0.0
             entry_filter = entry.get("block_filter") or block_filter
 
-            if not entry["enabled"]:
+            if not entry.get("enabled", True):
                 summary_lines.append(f"[OFF] {name}")
                 continue
             if sm == 0.0 and sc == 0.0:
                 summary_lines.append(f"[SKIP strength 0] {name}")
                 continue
 
+            # Look up path & triggers
+            path = folder_paths.get_full_path("loras", name)
+            triggers = extract_lora_trigger_words(path) if path else []
+            triggers_str = f" (Triggers: {', '.join(triggers[:5])})" if triggers else ""
+
             if comfy is None:
                 # Headless environment (unit tests): nothing to patch.
-                summary_lines.append(f"[ON] {name} @ {sm:g}" + (f" [{entry_filter}]" if entry_filter != "All Blocks (Standard)" else ""))
+                summary_lines.append(f"[ON] {name} @ {sm:g}" + (f" [{entry_filter}]" if entry_filter != "All Blocks (Standard)" else "") + triggers_str)
                 continue
 
-            path = folder_paths.get_full_path("loras", name)
             if path is None:
                 print(f"[STOIQO] LoRA Stack: '{name}' not found in models/loras, skipped.")
                 summary_lines.append(f"[MISSING] {name}")
                 continue
 
-            raw_state_dict = self._load_lora_state_dict(path)
-            state_dict = self.filter_lora_state_dict(raw_state_dict, entry_filter)
-            model, clip = comfy.sd.load_lora_for_models(model, clip, state_dict, sm, sc)
-            filter_tag = f" [{entry_filter}]" if entry_filter != "All Blocks (Standard)" else ""
-            summary_lines.append(f"[ON] {name} @ {sm:g}" + (f" / clip {sc:g}" if clip is not None and sc != sm else "") + filter_tag)
-            print(f"[STOIQO] LoRA Stack: applied '{name}' (model={sm:g}, clip={sc:g}{filter_tag})")
+            try:
+                raw_state_dict = self._load_lora_state_dict(path)
+                state_dict = self.filter_lora_state_dict(raw_state_dict, entry_filter)
+                model, clip = comfy.sd.load_lora_for_models(model, clip, state_dict, sm, sc)
+                filter_tag = f" [{entry_filter}]" if entry_filter != "All Blocks (Standard)" else ""
+                summary_lines.append(f"[ON] {name} @ {sm:g}" + (f" / clip {sc:g}" if clip is not None and sc != sm else "") + filter_tag + triggers_str)
+                print(f"[STOIQO] LoRA Stack: applied '{name}' (model={sm:g}, clip={sc:g}{filter_tag}{triggers_str})")
+            except Exception as err:
+                print(f"[STOIQO] LoRA Stack: Error patching '{name}': {err}. Skipping this LoRA.")
+                summary_lines.append(f"[ERROR] {name} ({err})")
 
         summary = "\n".join(summary_lines) if summary_lines else "(no LoRAs)"
         return (model, clip, summary)

@@ -13,6 +13,7 @@ from .system_prompts import (
     BASE_MULTI_IMAGE_PROMPT,
     LEGACY_SYSTEM_PROMPT_ALIASES,
     resolve_system_prompt,
+    build_dynamic_system_prompt,
 )
 from .prompt_types import (
     PROMPT_TYPES,
@@ -37,6 +38,7 @@ __all__ = [
     "BASE_MULTI_IMAGE_PROMPT",
     "LEGACY_SYSTEM_PROMPT_ALIASES",
     "resolve_system_prompt",
+    "build_dynamic_system_prompt",
     "PROMPT_TYPES",
     "PROMPT_TYPE_DIRECTIVES",
     "resolve_prompt_type",

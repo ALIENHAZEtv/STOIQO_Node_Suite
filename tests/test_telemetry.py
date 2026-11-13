@@ -6,7 +6,7 @@ import time
 import unittest
 import torch
 from core.telemetry import NodeTelemetryTimer, inject_telemetry, TelemetryResult
-from nodes.prompt_synthesizer_node import StoiqoPromptSynthesizerNode
+from nodes.prompt_generator_node import StoiqoPromptGeneratorNode
 
 
 class TestTelemetry(unittest.TestCase):
@@ -56,8 +56,8 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(v1, "val1")
         self.assertEqual(v2, "val2")
 
-    def test_synthesizer_with_character_context(self):
-        synth_node = StoiqoPromptSynthesizerNode()
+    def test_generator_with_character_context(self):
+        gen_node = StoiqoPromptGeneratorNode()
         char_ctx = {
             "character_name": "Aria Vance",
             "trigger_tag": "aria_vance",
@@ -73,7 +73,7 @@ class TestTelemetry(unittest.TestCase):
         class _MockModel:
             pass
 
-        res = synth_node.synthesize_prompt(
+        res = gen_node.generate_prompt(
             stoiqo_model=_MockModel(),
             user_directives="standing atop a neon skyscraper",
             character_context=char_ctx,
@@ -83,7 +83,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertIsInstance(res, dict)
         self.assertIn("ui", res)
         self.assertIn("stoiqo_telemetry", res["ui"])
-        self.assertEqual(res["ui"]["stoiqo_telemetry"][0]["node_name"], "PromptSynthesizer")
+        self.assertEqual(res["ui"]["stoiqo_telemetry"][0]["node_name"], "PromptGenerator")
 
         prompt, tags, neg, raw = res["result"]
         prompt, tags, neg, raw = prompt[0], tags[0], neg[0], raw[0]

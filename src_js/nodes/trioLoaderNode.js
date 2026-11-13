@@ -14,7 +14,9 @@ import { StoiqoSectionDividerWidget } from "../utils/core.js";
 
 export function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
     const targetNames = [
+        "StoiqoImageLoaderNode",
         "StoiqoTripleImageLoaderNode",
+        "[STOIQO] Image Loader",
         "[STOIQO] Trio Image Loader (Hero & Thumbs)",
     ];
 
@@ -340,12 +342,27 @@ export function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
         if (this.size[0] < MIN_WIDTH) this.size[0] = MIN_WIDTH;
         if (this.size[1] < MIN_HEIGHT) this.size[1] = MIN_HEIGHT;
 
-        // Visual header divider
-        this.addCustomWidget(new StoiqoSectionDividerWidget(1, "MULTI-IMAGE TRIO LOADER", "#a855f7"));
+        this.widgets = this.widgets || [];
 
-        // Interactive Gallery Widget
-        const galleryWidget = new StoiqoTrioGalleryWidget(this);
-        this.addCustomWidget(galleryWidget);
+        // Visual header divider (deduplicated)
+        const existingDivs = this.widgets.filter(w => w.name === "divider_1");
+        for (const extra of existingDivs.slice(1)) {
+            this.widgets.splice(this.widgets.indexOf(extra), 1);
+        }
+        if (existingDivs.length === 0) {
+            this.addCustomWidget(new StoiqoSectionDividerWidget(1, "MULTI-IMAGE TRIO LOADER", "#a855f7"));
+        }
+
+        // Interactive Gallery Widget (deduplicated)
+        const existingGals = this.widgets.filter(w => w.name === "_stoiqo_trio_gallery");
+        for (const extra of existingGals.slice(1)) {
+            this.widgets.splice(this.widgets.indexOf(extra), 1);
+        }
+        let galleryWidget = existingGals[0];
+        if (!galleryWidget) {
+            galleryWidget = new StoiqoTrioGalleryWidget(this);
+            this.addCustomWidget(galleryWidget);
+        }
         this._trio_gallery = galleryWidget;
 
         // Hook onExecuted

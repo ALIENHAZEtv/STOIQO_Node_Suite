@@ -1,7 +1,6 @@
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 import { ComfyWidgets } from "../../../scripts/widgets.js";
-import { StoiqoSectionDividerWidget, currentDownloadProgress } from "../utils/core.js";
 
 let _streamListenersRegistered = false;
 
@@ -19,6 +18,10 @@ function ensureStreamListeners() {
         if (tw) {
             tw.value = "";
             if (tw.inputEl) tw.inputEl.value = "";
+            if (node._batchTexts) {
+                node._batchTexts = [""];
+                node._batchIndex = 0;
+            }
             node.setDirtyCanvas(true);
         }
     });
@@ -37,6 +40,9 @@ function ensureStreamListeners() {
                 tw.inputEl.value = tw.value;
                 tw.inputEl.scrollTop = tw.inputEl.scrollHeight;
             }
+            if (node._batchTexts && node._batchTexts.length > 0) {
+                node._batchTexts[node._batchIndex || 0] = tw.value;
+            }
             node.setDirtyCanvas(true);
         }
     });
@@ -52,167 +58,393 @@ function ensureStreamListeners() {
     });
 }
 
-export function setupShowPromptNode(nodeType, nodeData, app) {
-        ensureStreamListeners();
-        // 2. SHOW PROMPT NODE ENHANCEMENTS
-        // ══════════════════════════════════════════════════════════════════════
-        const showPromptTargetNames = [
-            "StoiqoShowPromptNode",
-            "[STOIQO] Show Prompt",
-        ];
-        if (showPromptTargetNames.includes(nodeData.name)) {
-            const SHOW_MIN_WIDTH = 460;
-            const SHOW_MIN_HEIGHT = 220;
+function syncDisplayWidgetText(node) {
+    const tw = node.widgets?.find(w => w.name === "display_text");
+    if (!tw) return;
+    let targetText = "";
+    if (node._viewAll && node._batchTexts && node._batchTexts.length > 0) {
+        targetText = node._batchTexts.map((t, idx) => `=== PROMPT #${idx + 1} ===\n${t}`).join("\n\n");
+    } else if (node._batchTexts && node._batchTexts.length > 0) {
+        targetText = node._batchTexts[node._batchIndex || 0] || "";
+    } else {
+        targetText = tw.value || "";
+    }
+    tw.value = targetText;
+    if (tw.inputEl) {
+        tw.inputEl.value = targetText;
+    }
+    node.setDirtyCanvas(true, true);
+}
 
-            function setupShowPromptNode(node) {
-                if (!node) return;
+function drawChipButton(ctx, rect, label, bg, border, textColor, icon) {
+    ctx.save();
+    ctx.fillStyle = bg;
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+        ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 4);
+    } else {
+        ctx.rect(rect.x, rect.y, rect.w, rect.h);
+    }
+    ctx.fill();
+    ctx.stroke();
 
-                // Clean up any previously hardcoded background/color to restore native ComfyUI defaults
-                if (node.bgcolor === "#0e1218" || node.bgcolor === "#0b1411") {
-                    delete node.bgcolor;
-                }
-                if (node.color === "#18202c" || node.color === "#14251f") {
-                    delete node.color;
-                }
+    ctx.font = "bold 10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+    ctx.fillStyle = textColor;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const text = (icon ? icon + " " : "") + label;
+    ctx.fillText(text, rect.x + rect.w / 2, rect.y + rect.h / 2);
+    ctx.restore();
+}
 
-                if (node.size) {
-                    if (node.size[0] < SHOW_MIN_WIDTH) node.size[0] = SHOW_MIN_WIDTH;
-                    if (node.size[1] < SHOW_MIN_HEIGHT) node.size[1] = SHOW_MIN_HEIGHT;
-                }
+function createPromptViewerWidget(node) {
+    const widget = {
+        type: "STOIQO_PROMPT_VIEWER",
+        name: "prompt_viewer_hud",
+        options: { serialize: false },
+        _feedbackText: null,
+        _feedbackAllText: null,
+        _rects: {},
 
-                // 1. Ensure multiline display text widget exists
-                node.widgets = node.widgets || [];
-                let textWidget = node.widgets.find(w => w.name === "display_text");
-                if (!textWidget) {
-                    if (typeof ComfyWidgets !== "undefined" && ComfyWidgets["STRING"]) {
-                        textWidget = ComfyWidgets["STRING"](
-                            node,
-                            "display_text",
-                            ["STRING", { multiline: true }],
-                            app
-                        ).widget;
-                    } else {
-                        textWidget = node.addWidget(
-                            "customtext",
-                            "display_text",
-                            "",
-                            function() {},
-                            { multiline: true }
-                        );
-                    }
-                }
+        computeSize(width) {
+            const isBatch = node._batchTexts && node._batchTexts.length > 1;
+            return [width, isBatch ? 66 : 40];
+        },
 
-                if (textWidget) {
-                    textWidget.name = "display_text";
-                    textWidget.options = textWidget.options || {};
-                    textWidget.options.serialize = false;
+        draw(ctx, node, width, y, height) {
+            const padX = 10;
+            const cardW = width - padX * 2;
+            const isBatch = node._batchTexts && node._batchTexts.length > 1;
+            const cardH = isBatch ? 64 : 38;
 
-                    const styleInput = (el) => {
-                        if (!el) return;
-                        el.readOnly = true;
-                        el.placeholder = "Generated prompt will be displayed here...";
-                        el.style.boxSizing = "border-box";
-                        el.style.opacity = "0.92";
-                        el.style.fontSize = "11.5px";
-                        el.style.lineHeight = "1.45";
-                        el.style.fontFamily = "monospace, -apple-system, sans-serif";
-                        el.style.resize = "vertical";
-                    };
+            this._rects = {};
 
-                    if (textWidget.inputEl) {
-                        styleInput(textWidget.inputEl);
-                    } else {
-                        let rawInputEl = null;
-                        Object.defineProperty(textWidget, "inputEl", {
-                            configurable: true,
-                            enumerable: true,
-                            get() { return rawInputEl; },
-                            set(val) {
-                                rawInputEl = val;
-                                styleInput(val);
-                            }
-                        });
-                    }
-                }
+            ctx.save();
+            // Background card
+            ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+            ctx.strokeStyle = "rgba(148, 163, 184, 0.22)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(padX, y, cardW, cardH, 6);
+            } else {
+                ctx.rect(padX, y, cardW, cardH);
+            }
+            ctx.fill();
+            ctx.stroke();
 
-                // 2. Add convenient Copy Prompt button if not already present
-                let copyBtn = node.widgets.find(w => w._isCopyButton);
-                if (!copyBtn) {
-                    copyBtn = node.addWidget(
-                        "button",
-                        "📋 Copy Prompt to Clipboard",
-                        null,
-                        function() {
-                            const tw = node.widgets?.find(w => w.name === "display_text" || w.name === "text");
-                            const textVal = tw ? (tw.value || (tw.inputEl && tw.inputEl.value) || "") : "";
-                            if (textVal && navigator.clipboard) {
-                                navigator.clipboard.writeText(String(textVal));
-                                const origLabel = this.name;
-                                this.name = "✓ Copied to Clipboard!";
-                                node.setDirtyCanvas(true);
-                                setTimeout(() => {
-                                    this.name = origLabel;
-                                    node.setDirtyCanvas(true);
-                                }, 1800);
-                            }
-                        },
-                        { serialize: false }
-                    );
-                    copyBtn._isCopyButton = true;
-                    copyBtn.options = { serialize: false };
-                }
+            // Calculate active text stats
+            const currentText = (node._batchTexts && node._batchTexts.length > 0 && !node._viewAll)
+                ? (node._batchTexts[node._batchIndex || 0] || "")
+                : (node.widgets?.find(w => w.name === "display_text")?.value || "");
 
-                // Keep copyBtn positioned right under the text widget
-                const textIdx = node.widgets.findIndex(w => w.name === "display_text");
-                if (textIdx !== -1 && copyBtn) {
-                    const curBtnIdx = node.widgets.indexOf(copyBtn);
-                    if (curBtnIdx !== -1 && curBtnIdx < textIdx) {
-                        node.widgets.splice(curBtnIdx, 1);
-                        node.widgets.splice(textIdx, 0, copyBtn);
-                    }
-                }
+            const words = currentText.trim() ? currentText.trim().split(/\s+/).length : 0;
+            const chars = currentText.length;
+            const estTokens = words > 0 ? Math.max(1, Math.round(words * 1.33)) : 0;
 
-                node.setDirtyCanvas(true, true);
+            let rowY = y + 6;
+
+            if (isBatch) {
+                // ROW 1: Batch Pagination Bar
+                const total = node._batchTexts.length;
+                const idx = (node._batchIndex || 0) + 1;
+
+                // Prev button
+                const prevRect = { x: padX + 8, y: rowY, w: 26, h: 22 };
+                this._rects.prev = prevRect;
+                drawChipButton(ctx, prevRect, "◀", "rgba(30, 41, 59, 0.85)", "rgba(148, 163, 184, 0.35)", "#e2e8f0");
+
+                // Badge Item Counter
+                const badgeLabel = node._viewAll ? `📑 Vista Batch (${total})` : `Item ${idx} di ${total}`;
+                const badgeRect = { x: padX + 38, y: rowY, w: 104, h: 22 };
+                drawChipButton(
+                    ctx,
+                    badgeRect,
+                    badgeLabel,
+                    node._viewAll ? "rgba(124, 58, 237, 0.25)" : "rgba(30, 41, 59, 0.6)",
+                    node._viewAll ? "rgba(167, 139, 250, 0.45)" : "rgba(148, 163, 184, 0.25)",
+                    node._viewAll ? "#c084fc" : "#94a3b8"
+                );
+
+                // Next button
+                const nextRect = { x: padX + 146, y: rowY, w: 26, h: 22 };
+                this._rects.next = nextRect;
+                drawChipButton(ctx, nextRect, "▶", "rgba(30, 41, 59, 0.85)", "rgba(148, 163, 184, 0.35)", "#e2e8f0");
+
+                // Toggle View All / Single
+                const toggleRect = { x: padX + 178, y: rowY, w: 78, h: 22 };
+                this._rects.toggle = toggleRect;
+                drawChipButton(
+                    ctx,
+                    toggleRect,
+                    node._viewAll ? "📄 Singolo" : "📑 Tutti",
+                    "rgba(30, 41, 59, 0.85)",
+                    "rgba(148, 163, 184, 0.35)",
+                    "#cbd5e1"
+                );
+
+                rowY += 28;
             }
 
-            const origShowCreated = nodeType.prototype.onNodeCreated;
-            nodeType.prototype.onNodeCreated = function() {
-                if (origShowCreated) origShowCreated.apply(this, arguments);
-                setupShowPromptNode(this);
-            };
+            // ROW 2 (or single ROW): Stats & Copy Button
+            ctx.font = "11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+            ctx.fillStyle = "#94a3b8";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
 
-            const origShowConfigure = nodeType.prototype.onConfigure;
-            nodeType.prototype.onConfigure = function() {
-                if (origShowConfigure) origShowConfigure.apply(this, arguments);
-                setupShowPromptNode(this);
-            };
+            const statsText = node._viewAll
+                ? `Totale: ${chars} car. • ${words} par.`
+                : `${chars} car. • ${words} par. • ~${estTokens} tok`;
+            ctx.fillText(statsText, padX + 10, rowY + 12);
 
-            // Intercept execution result from backend to populate canvas text box
-            const origShowExecuted = nodeType.prototype.onExecuted;
-            nodeType.prototype.onExecuted = function(message) {
-                if (origShowExecuted) origShowExecuted.apply(this, arguments);
-                if (message && message.text) {
-                    let tw = this.widgets?.find(w => w.name === "display_text");
-                    if (!tw) {
-                        setupShowPromptNode(this);
-                        tw = this.widgets?.find(w => w.name === "display_text");
-                    }
-                    if (tw) {
-                        let textStr = "";
-                        if (Array.isArray(message.text)) {
-                            textStr = message.text.join("\n\n---\n\n");
-                        } else {
-                            textStr = String(message.text || "");
-                        }
-                        tw.value = textStr;
-                        if (tw.inputEl) {
-                            tw.inputEl.value = textStr;
-                        }
-                    }
-                    this.setDirtyCanvas(true, true);
+            // Copy button on right side
+            const copyLabel = this._feedbackText || (isBatch && node._viewAll ? "Copia Tutti" : "Copia Prompt");
+            const copyW = this._feedbackText ? 110 : (isBatch && node._viewAll ? 85 : 95);
+            const copyRect = { x: padX + cardW - copyW - 8, y: rowY + 1, w: copyW, h: 22 };
+            this._rects.copy = copyRect;
+
+            const isCopied = !!this._feedbackText;
+            drawChipButton(
+                ctx,
+                copyRect,
+                copyLabel,
+                isCopied ? "rgba(16, 185, 129, 0.3)" : "rgba(30, 41, 59, 0.9)",
+                isCopied ? "rgba(52, 211, 153, 0.6)" : "rgba(148, 163, 184, 0.4)",
+                isCopied ? "#34d399" : "#f1f5f9",
+                isCopied ? "✓" : "📋"
+            );
+
+            // If batch and in single view, add optional "Copia Tutti" button
+            if (isBatch && !node._viewAll) {
+                const copyAllLabel = this._feedbackAllText || `Tutti (${node._batchTexts.length})`;
+                const copyAllW = this._feedbackAllText ? 95 : 68;
+                const copyAllRect = { x: copyRect.x - copyAllW - 6, y: rowY + 1, w: copyAllW, h: 22 };
+                this._rects.copyAll = copyAllRect;
+
+                const isAllCopied = !!this._feedbackAllText;
+                drawChipButton(
+                    ctx,
+                    copyAllRect,
+                    copyAllLabel,
+                    isAllCopied ? "rgba(16, 185, 129, 0.3)" : "rgba(30, 41, 59, 0.75)",
+                    isAllCopied ? "rgba(52, 211, 153, 0.6)" : "rgba(148, 163, 184, 0.3)",
+                    isAllCopied ? "#34d399" : "#cbd5e1",
+                    isAllCopied ? "✓" : "📑"
+                );
+            }
+
+            ctx.restore();
+        },
+
+        mouse(event, pos, node) {
+            if (event.type !== "pointerdown" && event.type !== "mousedown") return false;
+            const [clickX, clickY] = pos;
+
+            const isInside = (r) => r && clickX >= r.x && clickX <= r.x + r.w && clickY >= r.y && clickY <= r.y + r.h;
+
+            if (isInside(this._rects.prev)) {
+                const total = node._batchTexts?.length || 1;
+                node._batchIndex = ((node._batchIndex || 0) - 1 + total) % total;
+                node._viewAll = false;
+                syncDisplayWidgetText(node);
+                return true;
+            }
+
+            if (isInside(this._rects.next)) {
+                const total = node._batchTexts?.length || 1;
+                node._batchIndex = ((node._batchIndex || 0) + 1) % total;
+                node._viewAll = false;
+                syncDisplayWidgetText(node);
+                return true;
+            }
+
+            if (isInside(this._rects.toggle)) {
+                node._viewAll = !node._viewAll;
+                syncDisplayWidgetText(node);
+                return true;
+            }
+
+            if (isInside(this._rects.copy)) {
+                const tw = node.widgets?.find(w => w.name === "display_text");
+                const textToCopy = tw?.value || "";
+                if (navigator.clipboard && textToCopy) {
+                    navigator.clipboard.writeText(textToCopy);
+                    this._feedbackText = "Copiato!";
+                    node.setDirtyCanvas(true);
+                    setTimeout(() => {
+                        this._feedbackText = null;
+                        node.setDirtyCanvas(true);
+                    }, 1800);
                 }
-            };
+                return true;
+            }
+
+            if (isInside(this._rects.copyAll)) {
+                if (node._batchTexts && node._batchTexts.length > 0 && navigator.clipboard) {
+                    const allText = node._batchTexts.map((t, idx) => `=== PROMPT #${idx + 1} ===\n${t}`).join("\n\n");
+                    navigator.clipboard.writeText(allText);
+                    this._feedbackAllText = "Copiati!";
+                    node.setDirtyCanvas(true);
+                    setTimeout(() => {
+                        this._feedbackAllText = null;
+                        node.setDirtyCanvas(true);
+                    }, 1800);
+                }
+                return true;
+            }
+
+            return false;
+        },
+    };
+
+    return widget;
+}
+
+export function setupShowPromptNode(nodeType, nodeData, app) {
+    ensureStreamListeners();
+
+    const showPromptTargetNames = [
+        "StoiqoShowPromptNode",
+        "[STOIQO] Show Prompt",
+    ];
+
+    if (showPromptTargetNames.includes(nodeData.name)) {
+        const SHOW_MIN_WIDTH = 460;
+        const SHOW_MIN_HEIGHT = 230;
+
+        function configureShowPromptNode(node) {
+            if (!node) return;
+
+            // Restore native comfy colors
+            if (node.bgcolor === "#0e1218" || node.bgcolor === "#0b1411") delete node.bgcolor;
+            if (node.color === "#18202c" || node.color === "#14251f") delete node.color;
+
+            if (node.size) {
+                if (node.size[0] < SHOW_MIN_WIDTH) node.size[0] = SHOW_MIN_WIDTH;
+                if (node.size[1] < SHOW_MIN_HEIGHT) node.size[1] = SHOW_MIN_HEIGHT;
+            }
+
+            node.widgets = node.widgets || [];
+
+            // 1. Ensure multiline display text widget exists
+            let textWidget = node.widgets.find(w => w.name === "display_text");
+            if (!textWidget) {
+                if (typeof ComfyWidgets !== "undefined" && ComfyWidgets["STRING"]) {
+                    textWidget = ComfyWidgets["STRING"](
+                        node,
+                        "display_text",
+                        ["STRING", { multiline: true }],
+                        app
+                    ).widget;
+                } else {
+                    textWidget = node.addWidget(
+                        "customtext",
+                        "display_text",
+                        "",
+                        function() {},
+                        { multiline: true }
+                    );
+                }
+            }
+
+            if (textWidget) {
+                textWidget.name = "display_text";
+                textWidget.options = textWidget.options || {};
+                textWidget.options.serialize = false;
+
+                const styleInput = (el) => {
+                    if (!el) return;
+                    el.readOnly = false;
+                    el.placeholder = "In attesa del prompt generato o testo in input...";
+                    el.style.boxSizing = "border-box";
+                    el.style.opacity = "0.95";
+                    el.style.fontSize = "12px";
+                    el.style.lineHeight = "1.5";
+                    el.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+                    el.style.resize = "vertical";
+
+                    el.oninput = (e) => {
+                        if (node._batchTexts && node._batchTexts.length > 0 && !node._viewAll) {
+                            node._batchTexts[node._batchIndex || 0] = e.target.value;
+                        }
+                        node.setDirtyCanvas(true);
+                    };
+                };
+
+                if (textWidget.inputEl) {
+                    styleInput(textWidget.inputEl);
+                } else {
+                    let rawInputEl = null;
+                    Object.defineProperty(textWidget, "inputEl", {
+                        configurable: true,
+                        enumerable: true,
+                        get() { return rawInputEl; },
+                        set(val) {
+                            rawInputEl = val;
+                            styleInput(val);
+                        }
+                    });
+                }
+            }
+
+            // Remove legacy copy buttons if present
+            const legacyBtnIdx = node.widgets.findIndex(w => w._isCopyButton || w.name === "📋 Copy Prompt to Clipboard");
+            if (legacyBtnIdx !== -1) {
+                node.widgets.splice(legacyBtnIdx, 1);
+            }
+
+            // 2. Attach or reposition the interactive Prompt Viewer Widget (deduplicated)
+            const existingViewers = node.widgets.filter(w => w.name === "prompt_viewer_hud");
+            for (const extra of existingViewers.slice(1)) {
+                node.widgets.splice(node.widgets.indexOf(extra), 1);
+            }
+            let viewerWidget = existingViewers[0];
+            if (!viewerWidget) {
+                viewerWidget = createPromptViewerWidget(node);
+                node.widgets.push(viewerWidget);
+            }
+
+            node.setDirtyCanvas(true, true);
         }
 
-        
+        const origShowCreated = nodeType.prototype.onNodeCreated;
+        nodeType.prototype.onNodeCreated = function() {
+            if (origShowCreated) origShowCreated.apply(this, arguments);
+            this._batchTexts = [];
+            this._batchIndex = 0;
+            this._viewAll = false;
+            configureShowPromptNode(this);
+        };
+
+        const origShowConfigure = nodeType.prototype.onConfigure;
+        nodeType.prototype.onConfigure = function() {
+            if (origShowConfigure) origShowConfigure.apply(this, arguments);
+            const tw = this.widgets?.find(w => w.name === "display_text");
+            if (tw && tw.value && (!this._batchTexts || this._batchTexts.length === 0)) {
+                this._batchTexts = [tw.value];
+                this._batchIndex = 0;
+                this._viewAll = false;
+            }
+            configureShowPromptNode(this);
+        };
+
+        const origShowExecuted = nodeType.prototype.onExecuted;
+        nodeType.prototype.onExecuted = function(message) {
+            if (origShowExecuted) origShowExecuted.apply(this, arguments);
+            if (message && message.text) {
+                let texts = [];
+                if (Array.isArray(message.text)) {
+                    texts = message.text.map(t => String(t || ""));
+                } else {
+                    texts = [String(message.text || "")];
+                }
+                this._batchTexts = texts;
+                this._batchIndex = 0;
+                this._viewAll = false;
+                syncDisplayWidgetText(this);
+            }
+        };
+    }
 }

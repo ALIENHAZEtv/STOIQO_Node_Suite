@@ -13,19 +13,19 @@ const CONFIGURATIONS = {
     StoiqoTurboSamplerNode: {
         minWidth: 420,
         multilineHeights: {
-            positive_prompt: 72,
-            negative_prompt: 48,
+            positive: 72,
+            negative: 48,
         },
     },
-    // 3. Tri-Model Loader Hub
-    StoiqoTriLoaderHubNode: {
+    // 3. Universal Model Loader (All-in-One)
+    StoiqoUniversalModelLoaderNode: {
         minWidth: 380,
     },
     // 4. Smart Seed & Variance Controller
     StoiqoSeedControllerNode: {
         minWidth: 340,
     },
-    // 5. Inpaint Stitcher & Composite
+    // 5. Inpaint Stitcher & Spatial Re-Roll
     StoiqoInpaintStitcherNode: {
         minWidth: 360,
     },
@@ -44,51 +44,23 @@ const CONFIGURATIONS = {
             motion_prompt: 56,
         },
     },
-    // 8. Modular Prompt Synthesizer Engine
-    StoiqoPromptSynthesizerNode: {
+    // 8. Prompt Generator Engine
+    StoiqoPromptGeneratorNode: {
         minWidth: 420,
         multilineHeights: {
-            user_directives: 68,
-        },
-    },
-    // 9. AI Persona & Style Directives
-    StoiqoStyleDirectivesNode: {
-        minWidth: 380,
-        multilineHeights: {
+            custom_modifications: 64,
             custom_system_prompt: 52,
         },
     },
-    // 10. LLM Sampling & Precision
-    StoiqoSamplingOptionsNode: {
-        minWidth: 360,
-    },
-    // 11. Multi-Image Context Hub
-    StoiqoMultiImageContextNode: {
-        minWidth: 380,
-    },
-    // 12. Character Consistency Memory Bank (Lorebook & DNA)
+    // 9. Character Consistency Memory Bank (Lorebook & DNA)
     StoiqoCharacterMemoryNode: {
         minWidth: 420,
         multilineHeights: {
-            face_and_skin: 52,
-            signature_outfit: 52,
+            physical_dna: 64,
+            outfit_and_gear: 56,
             negative_constraints: 48,
             user_prompt: 48,
-        },
-    },
-    // 13. Universal Context Pipe (In / Bus)
-    StoiqoUniversalPipeInNode: {
-        minWidth: 320,
-    },
-    // 14. Universal Context Pipe (Out / Unpack)
-    StoiqoUniversalPipeOutNode: {
-        minWidth: 320,
-    },
-    // 15. Webhook Notifier & Pipeline Exporter
-    StoiqoWebhookNotifierNode: {
-        minWidth: 400,
-        multilineHeights: {
-            message: 56,
+            custom_json_data: 48,
         },
     },
 };
@@ -135,7 +107,7 @@ export function setupPipelineNodes(nodeType, nodeData, appInstance) {
             }
         }
 
-        if (nodeName === "StoiqoPromptSynthesizerNode") {
+        if (nodeName === "StoiqoPromptGeneratorNode") {
             let tw = node.widgets.find(w => w.name === "synthesized_prompt");
             if (!tw) {
                 tw = node.addWidget(
@@ -229,7 +201,7 @@ export function setupPipelineNodes(nodeType, nodeData, appInstance) {
         };
     }
 
-    if (nodeName === "StoiqoPromptSynthesizerNode") {
+    if (nodeName === "StoiqoPromptGeneratorNode") {
         const origOnExecuted = nodeType.prototype.onExecuted;
         nodeType.prototype.onExecuted = function(message) {
             if (origOnExecuted) origOnExecuted.apply(this, arguments);

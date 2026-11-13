@@ -102,6 +102,68 @@ class TestApplyHeadless(unittest.TestCase):
         self.assertIn("diffusion_model.middle_block.0.weight", in_mid_only)
         self.assertNotIn("diffusion_model.output_blocks.2.weight", in_mid_only)
 
+    def test_optional_lora_stack_daisy_chain(self):
+        node = lora_mod.StoiqoLoraStackNode()
+        upstream_stack = [
+            ("upstream_style.safetensors", 0.6, 0.4),
+            ("upstream_details.safetensors", 0.8),
+        ]
+        local_raw = '[{"name": "local_char.safetensors", "strength": 1.0, "enabled": true}]'
+
+        _, _, summary = node.apply_loras(
+            model="MODEL",
+            clip="CLIP",
+            lora_stack=local_raw,
+            optional_lora_stack=upstream_stack,
+        )
+
+        self.assertIn("[ON] upstream_style.safetensors", summary)
+        self.assertIn("[ON] upstream_details.safetensors", summary)
+        self.assertIn("[ON] local_char.safetensors", summary)
+        # Upstream must appear before local
+        idx_up = summary.index("upstream_style.safetensors")
+        idx_loc = summary.index("local_char.safetensors")
+        self.assertLess(idx_up, idx_loc)
+
+    def test_extract_lora_trigger_words(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Test 1: sidecar .txt
+            lora_file = os.path.join(tmpdir, "test_hero.safetensors")
+            with open(lora_file, "wb") as f:
+                f.write(b"dummy")
+            txt_file = os.path.join(tmpdir, "test_hero.txt")
+            with open(txt_file, "w", encoding="utf-8") as f:
+                f.write("cyberpunk_girl, glowing neon, futuristic helmet")
+
+            triggers = lora_mod.extract_lora_trigger_words(lora_file)
+            self.assertEqual(triggers, ["cyberpunk_girl", "glowing neon", "futuristic helmet"])
+
+            # Test 2: sidecar .civitai.info takes precedence
+            info_file = os.path.join(tmpdir, "test_hero.civitai.info")
+            with open(info_file, "w", encoding="utf-8") as f:
+                f.write('{"trainedWords": ["master_trigger", "sub_trigger"]}')
+
+            triggers2 = lora_mod.extract_lora_trigger_words(lora_file)
+            self.assertEqual(triggers2, ["master_trigger", "sub_trigger"])
+
+    def test_argument_permutations(self):
+        node = lora_mod.StoiqoLoraStackNode()
+        raw = '[{"name": "test.safetensors", "strength": 0.9, "enabled": true}]'
+
+        # 3 positional args: (model, clip, lora_stack)
+        _, _, s1 = node.apply_loras("M", None, raw)
+        self.assertIn("[ON] test.safetensors", s1)
+
+        # 4 positional args: (model, clip, block_filter, lora_stack)
+        _, _, s2 = node.apply_loras("M", None, "All Blocks (Standard)", raw)
+        self.assertIn("[ON] test.safetensors", s2)
+
+        # 4 positional args swapped: (model, clip, lora_stack, block_filter)
+        _, _, s3 = node.apply_loras("M", None, raw, "All Blocks (Standard)")
+        self.assertIn("[ON] test.safetensors", s3)
+
 
 if __name__ == "__main__":
     unittest.main()
