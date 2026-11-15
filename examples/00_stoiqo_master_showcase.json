@@ -8,12 +8,12 @@
       "id": 1,
       "type": "StoiqoUniversalModelLoaderNode",
       "pos": [
-        100,
-        130
+        130,
+        170
       ],
       "size": [
-        440,
-        290
+        480,
+        330
       ],
       "flags": {},
       "order": 1,
@@ -45,12 +45,12 @@
       "id": 2,
       "type": "StoiqoLoraStackNode",
       "pos": [
-        100,
-        460
+        130,
+        570
       ],
       "size": [
-        440,
-        240
+        480,
+        330
       ],
       "flags": {},
       "order": 2,
@@ -101,12 +101,12 @@
       "id": 3,
       "type": "StoiqoSeedControllerNode",
       "pos": [
-        100,
-        740
+        130,
+        970
       ],
       "size": [
-        440,
-        360
+        480,
+        480
       ],
       "flags": {},
       "order": 3,
@@ -175,12 +175,12 @@
       "id": 4,
       "type": "StoiqoTurboSamplerNode",
       "pos": [
-        100,
-        1140
+        130,
+        1520
       ],
       "size": [
-        440,
-        420
+        480,
+        540
       ],
       "flags": {},
       "order": 4,
@@ -259,12 +259,12 @@
       "id": 5,
       "type": "StoiqoPromptGeneratorNode",
       "pos": [
-        660,
-        130
+        790,
+        170
       ],
       "size": [
-        440,
-        450
+        500,
+        570
       ],
       "flags": {},
       "order": 5,
@@ -333,12 +333,12 @@
       "id": 6,
       "type": "StoiqoCharacterMemoryNode",
       "pos": [
-        660,
-        620
+        790,
+        810
       ],
       "size": [
-        440,
-        390
+        500,
+        520
       ],
       "flags": {},
       "order": 6,
@@ -403,12 +403,12 @@
       "id": 7,
       "type": "StoiqoTextConcatenateNode",
       "pos": [
-        660,
-        1050
+        790,
+        1400
       ],
       "size": [
-        440,
-        320
+        500,
+        420
       ],
       "flags": {},
       "order": 7,
@@ -463,12 +463,12 @@
       "id": 8,
       "type": "StoiqoShowPromptNode",
       "pos": [
-        660,
-        1410
+        790,
+        1890
       ],
       "size": [
-        440,
-        160
+        500,
+        260
       ],
       "flags": {},
       "order": 8,
@@ -492,12 +492,12 @@
       "id": 9,
       "type": "StoiqoImageLoaderNode",
       "pos": [
-        1220,
-        130
+        1470,
+        170
       ],
       "size": [
-        420,
-        270
+        540,
+        520
       ],
       "flags": {},
       "order": 9,
@@ -550,12 +550,12 @@
       "id": 10,
       "type": "StoiqoSpatialCropperNode",
       "pos": [
-        1220,
-        440
+        1470,
+        760
       ],
       "size": [
-        420,
-        360
+        540,
+        560
       ],
       "flags": {},
       "order": 10,
@@ -612,12 +612,12 @@
       "id": 11,
       "type": "StoiqoInpaintStitcherNode",
       "pos": [
-        1220,
-        840
+        1470,
+        1390
       ],
       "size": [
-        420,
-        400
+        540,
+        520
       ],
       "flags": {},
       "order": 11,
@@ -680,12 +680,12 @@
       "id": 12,
       "type": "StoiqoImageCompareNode",
       "pos": [
-        1670,
-        130
+        2090,
+        170
       ],
       "size": [
-        420,
-        310
+        600,
+        580
       ],
       "flags": {},
       "order": 12,
@@ -743,12 +743,12 @@
       "id": 13,
       "type": "StoiqoFrequencySeparationNode",
       "pos": [
-        1670,
-        480
+        2090,
+        820
       ],
       "size": [
-        420,
-        320
+        600,
+        480
       ],
       "flags": {},
       "order": 13,
@@ -803,12 +803,12 @@
       "id": 14,
       "type": "StoiqoWatermarkNode",
       "pos": [
-        1670,
-        840
+        2090,
+        1370
       ],
       "size": [
-        420,
-        440
+        600,
+        560
       ],
       "flags": {},
       "order": 14,
@@ -868,12 +868,12 @@
       "id": 15,
       "type": "StoiqoMusicPromptEngineNode",
       "pos": [
-        100,
-        1710
+        130,
+        2470
       ],
       "size": [
-        440,
-        440
+        480,
+        740
       ],
       "flags": {},
       "order": 15,
@@ -976,12 +976,12 @@
       "id": 16,
       "type": "StoiqoAudioSaverNode",
       "pos": [
-        100,
-        2190
+        130,
+        3280
       ],
       "size": [
-        440,
-        270
+        480,
+        460
       ],
       "flags": {},
       "order": 16,
@@ -1034,12 +1034,12 @@
       "id": 17,
       "type": "StoiqoVideoEnhancerNode",
       "pos": [
-        660,
-        1710
+        790,
+        2470
       ],
       "size": [
-        440,
-        360
+        500,
+        520
       ],
       "flags": {},
       "order": 17,
@@ -1085,12 +1085,12 @@
       "id": 18,
       "type": "StoiqoVideoSaverNode",
       "pos": [
-        660,
-        2110
+        790,
+        3070
       ],
       "size": [
-        440,
-        340
+        500,
+        640
       ],
       "flags": {},
       "order": 18,
@@ -1146,12 +1146,12 @@
       "id": 19,
       "type": "StoiqoSmartFolderImageIterator",
       "pos": [
-        1220,
-        1710
+        1470,
+        2470
       ],
       "size": [
-        420,
-        360
+        540,
+        520
       ],
       "flags": {},
       "order": 19,
@@ -1204,12 +1204,12 @@
       "id": 20,
       "type": "StoiqoDatasetWriterNode",
       "pos": [
-        1670,
-        1710
+        2090,
+        2470
       ],
       "size": [
-        420,
-        480
+        600,
+        720
       ],
       "flags": {},
       "order": 20,
@@ -1273,12 +1273,12 @@
       "id": 21,
       "type": "StoiqoProImageSaverNode",
       "pos": [
-        1220,
-        2110
+        1470,
+        3070
       ],
       "size": [
-        420,
-        340
+        540,
+        560
       ],
       "flags": {},
       "order": 21,
@@ -1334,70 +1334,82 @@
   "links": [],
   "groups": [
     {
+      "id": 1,
       "title": "ZONE 1: PIPELINE CORE & GENERATIVE ENGINES",
       "bounding": [
-        60,
-        60,
-        520,
-        1540
+        80,
+        80,
+        580,
+        2200
       ],
-      "color": "#182234",
-      "font_size": 24
+      "color": "#1e293b",
+      "font_size": 24,
+      "flags": {}
     },
     {
+      "id": 2,
       "title": "ZONE 2: PROMPTING, VLM & IDENTITY",
       "bounding": [
-        620,
-        60,
-        520,
-        1540
+        740,
+        80,
+        600,
+        2200
       ],
-      "color": "#14261d",
-      "font_size": 24
+      "color": "#1e293b",
+      "font_size": 24,
+      "flags": {}
     },
     {
+      "id": 3,
       "title": "ZONE 3: IMAGE RETOUCHING, INPAINTING & FORENSICS",
       "bounding": [
-        1180,
-        60,
-        940,
-        1540
+        1420,
+        80,
+        1340,
+        2200
       ],
-      "color": "#2b2014",
-      "font_size": 24
+      "color": "#1e293b",
+      "font_size": 24,
+      "flags": {}
     },
     {
+      "id": 4,
       "title": "ZONE 4: AUDIO & MUSIC PRODUCTION",
       "bounding": [
-        60,
-        1640,
-        520,
-        860
+        80,
+        2380,
+        580,
+        1450
       ],
-      "color": "#191e2b",
-      "font_size": 24
+      "color": "#1e293b",
+      "font_size": 24,
+      "flags": {}
     },
     {
+      "id": 5,
       "title": "ZONE 5: VIDEO & MOTION GENERATION",
       "bounding": [
-        620,
-        1640,
-        520,
-        860
+        740,
+        2380,
+        600,
+        1450
       ],
-      "color": "#281414",
-      "font_size": 24
+      "color": "#1e293b",
+      "font_size": 24,
+      "flags": {}
     },
     {
+      "id": 6,
       "title": "ZONE 6: DATASET, TRAINING & PRO EXPORT",
       "bounding": [
-        1180,
-        1640,
-        940,
-        860
+        1420,
+        2380,
+        1340,
+        1450
       ],
-      "color": "#1c1d22",
-      "font_size": 24
+      "color": "#1e293b",
+      "font_size": 24,
+      "flags": {}
     }
   ],
   "config": {},
