@@ -70,7 +70,7 @@ The suite is systematically partitioned into **6 functional zones**:
 
 ### Metodo 1: ComfyUI Manager (Consigliato)
 1. Apri **ComfyUI Manager** all'interno della tua installazione ComfyUI.
-2. Cerca `STOIQO Comfyui Nodes` nel catalogo.
+2. Cerca `STOIQO Node Suite` nel catalogo.
 3. Clicca **Install** e riavvia ComfyUI.
 
 ### Metodo 2: Installazione Manuale Git
