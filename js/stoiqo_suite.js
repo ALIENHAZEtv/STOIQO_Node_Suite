@@ -6031,13 +6031,44 @@ function applyNodeUXSpec(node, spec) {
   }
   refreshUX(true);
 }
-function sanitizeNodeWidgetValues(node) {
+function sanitizeNodeWidgetValues(node, info) {
   if (!node || !node.widgets) return;
+  if (info && info.widgets_values_named && typeof info.widgets_values_named === "object") {
+    for (const w of node.widgets) {
+      if (!w || w.name === DRAWER_WIDGET_NAME || w.serialize === false) continue;
+      const namedVal = info.widgets_values_named[w.name];
+      if (namedVal !== void 0 && namedVal !== null && namedVal !== "") {
+        w.value = namedVal;
+        if (w.inputEl) w.inputEl.value = String(namedVal);
+      }
+    }
+  }
   for (const w of node.widgets) {
     if (!w || w.name === DRAWER_WIDGET_NAME || w.serialize === false) continue;
+    if (w.name === "subfolder") {
+      if (typeof w.value === "number" || w.value === 90 || w.value === "90" || typeof w.value === "string" && !isNaN(Number(w.value.trim())) && w.value.trim() !== "" || w.value === "%data") {
+        w.value = "StoiqoCreations/%date%";
+        if (w.inputEl) w.inputEl.value = w.value;
+      }
+    }
+    if (w.name === "sidecar_metadata") {
+      const valid = ["None", "Both (.json + .txt)", "JSON (.json)", "TXT Caption (.txt)"];
+      if (!valid.includes(w.value)) {
+        w.value = "None";
+        if (w.inputEl) w.inputEl.value = "None";
+      }
+    }
     if (w.type === "combo" && w.options && Array.isArray(w.options.values)) {
       if (!w.options.values.includes(w.value)) {
-        const def = w.options.default !== void 0 && w.options.values.includes(w.options.default) ? w.options.default : w._stoiqoDefaultVal !== void 0 && w.options.values.includes(w._stoiqoDefaultVal) ? w._stoiqoDefaultVal : w.options.values[0];
+        let def = w.options.default !== void 0 && w.options.values.includes(w.options.default) ? w.options.default : w._stoiqoDefaultVal !== void 0 && w.options.values.includes(w._stoiqoDefaultVal) ? w._stoiqoDefaultVal : w.options.values[0];
+        if (w.name === "sampler_name" && w.options.values.includes("euler")) def = "euler";
+        if (w.name === "scheduler" && w.options.values.includes("beta")) def = "beta";
+        if (w.name === "sidecar_metadata" && w.options.values.includes("None")) def = "None";
+        if (w.name === "preset" && w.options.values.includes("Balanced Synthesizer (Recommended)")) def = "Balanced Synthesizer (Recommended)";
+        if (w.name === "fusion_mode" && w.options.values.includes("Auto (Fuse 2-4 images, Batch if >4)")) def = "Auto (Fuse 2-4 images, Batch if >4)";
+        if (w.name === "system_prompt" && w.options.values.includes("Auto-Detect / Balanced")) def = "Auto-Detect / Balanced";
+        if (w.name === "deduplicate_tags" && w.options.values.includes("None")) def = "None";
+        if (w.name === "format" && w.options.values.includes("PNG (Lossless)")) def = "PNG (Lossless)";
         w.value = def;
         if (w.inputEl) w.inputEl.value = String(def);
       }
@@ -6045,9 +6076,26 @@ function sanitizeNodeWidgetValues(node) {
     if (w.type === "number" || w.options && (w.options.min !== void 0 || w.options.max !== void 0 || w.options.step !== void 0)) {
       let num = Number(w.value);
       const isInt = w.options && w.options.step && Number.isInteger(w.options.step) && (w.options.round === void 0 || w.options.round === 0);
-      if (typeof w.value !== "number" || isNaN(num)) {
-        num = w.options && w.options.default !== void 0 ? Number(w.options.default) : w._stoiqoDefaultVal !== void 0 ? Number(w._stoiqoDefaultVal) : 0;
+      if (typeof w.value !== "number" || isNaN(num) || String(w.value).trim() === "") {
+        if (w.name === "temperature") num = 0.65;
+        else if (w.name === "max_new_tokens") num = 1024;
+        else if (w.name === "top_p") num = 0.9;
+        else if (w.name === "top_k") num = 50;
+        else if (w.name === "repetition_penalty") num = 1.15;
+        else if (w.name === "denoise") num = 1;
+        else if (w.name === "variance_strength") num = 0;
+        else if (w.name === "quality") num = 90;
+        else {
+          num = w.options && w.options.default !== void 0 ? Number(w.options.default) : w._stoiqoDefaultVal !== void 0 ? Number(w._stoiqoDefaultVal) : 0;
+        }
       }
+      if (w.name === "denoise" && num > 1) num = 1;
+      if (w.name === "variance_strength" && num > 1) num = 0;
+      if (w.name === "top_p" && num > 1) num = 0.9;
+      if (w.name === "repetition_penalty" && (num < 1 || num > 2)) num = 1.15;
+      if (w.name === "max_new_tokens" && (num < 64 || num > 4096)) num = 1024;
+      if (w.name === "top_k" && (num < 1 || num > 100)) num = 50;
+      if (w.name === "quality" && (num < 1 || num > 100)) num = 90;
       if (w.options) {
         if (w.options.min !== void 0 && num < w.options.min) {
           num = w.options.default !== void 0 && w.options.default >= w.options.min ? w.options.default : w.options.min;
@@ -6059,9 +6107,11 @@ function sanitizeNodeWidgetValues(node) {
       w.value = isInt ? Math.round(num) : num;
       if (w.inputEl) w.inputEl.value = String(w.value);
     }
-    if (w.type === "toggle") {
+    if (w.type === "toggle" || typeof w.value === "boolean") {
       if (typeof w.value !== "boolean") {
-        w.value = w.options && w.options.default !== void 0 ? Boolean(w.options.default) : Boolean(w.value);
+        if (w.name === "save_workflow") w.value = true;
+        else if (w.name === "privacy_mode") w.value = false;
+        else w.value = w.options && w.options.default !== void 0 ? Boolean(w.options.default) : Boolean(w.value);
       }
     }
   }
@@ -6083,24 +6133,43 @@ function setupSettingsDrawers(nodeType, nodeData) {
     applyNodeUXSpec(node, spec);
   };
   const origConfigure = nodeType.prototype.onConfigure;
-  nodeType.prototype.onConfigure = function() {
+  nodeType.prototype.onConfigure = function(info) {
     if (origConfigure) origConfigure.apply(this, arguments);
     const node = this;
     applyNodeUXSpec(node, spec);
-    sanitizeNodeWidgetValues(node);
+    sanitizeNodeWidgetValues(node, info);
+  };
+  const origSerialize = nodeType.prototype.serialize;
+  nodeType.prototype.serialize = function() {
+    sanitizeNodeWidgetValues(this);
+    return origSerialize ? origSerialize.apply(this, arguments) : {};
   };
 }
 
 // src_js/index.js
 app10.registerExtension({
   name: "Stoiqo.PromptGeneratorEngine.Dividers",
+  async beforeQueue() {
+    if (app10.graph && Array.isArray(app10.graph._nodes)) {
+      for (const n of app10.graph._nodes) {
+        if (n && (n.type?.startsWith("Stoiqo") || n.category === "STOIQO")) {
+          sanitizeNodeWidgetValues(n);
+        }
+      }
+    }
+  },
   async beforeRegisterNodeDef(nodeType, nodeData, app11) {
     if (nodeData.category === "STOIQO" || nodeData.name && nodeData.name.startsWith("Stoiqo")) {
       setupTelemetryBadge(nodeType, nodeData, app11);
       const origConfigure = nodeType.prototype.onConfigure;
-      nodeType.prototype.onConfigure = function() {
+      nodeType.prototype.onConfigure = function(info) {
         if (origConfigure) origConfigure.apply(this, arguments);
+        sanitizeNodeWidgetValues(this, info);
+      };
+      const origSerialize = nodeType.prototype.serialize;
+      nodeType.prototype.serialize = function() {
         sanitizeNodeWidgetValues(this);
+        return origSerialize ? origSerialize.apply(this, arguments) : {};
       };
     }
     setupShowPromptNode(nodeType, nodeData, app11);

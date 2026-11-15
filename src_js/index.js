@@ -17,14 +17,29 @@ import { setupSettingsDrawers, sanitizeNodeWidgetValues } from "./utils/settings
 
 app.registerExtension({
     name: "Stoiqo.PromptGeneratorEngine.Dividers",
+    async beforeQueue() {
+        if (app.graph && Array.isArray(app.graph._nodes)) {
+            for (const n of app.graph._nodes) {
+                if (n && (n.type?.startsWith("Stoiqo") || n.category === "STOIQO")) {
+                    sanitizeNodeWidgetValues(n);
+                }
+            }
+        }
+    },
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if (nodeData.category === "STOIQO" || (nodeData.name && nodeData.name.startsWith("Stoiqo"))) {
             setupTelemetryBadge(nodeType, nodeData, app);
 
             const origConfigure = nodeType.prototype.onConfigure;
-            nodeType.prototype.onConfigure = function () {
+            nodeType.prototype.onConfigure = function (info) {
                 if (origConfigure) origConfigure.apply(this, arguments);
+                sanitizeNodeWidgetValues(this, info);
+            };
+
+            const origSerialize = nodeType.prototype.serialize;
+            nodeType.prototype.serialize = function () {
                 sanitizeNodeWidgetValues(this);
+                return origSerialize ? origSerialize.apply(this, arguments) : {};
             };
         }
 

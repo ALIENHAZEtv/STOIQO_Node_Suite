@@ -1174,7 +1174,7 @@ def build_workflow():
             "PNG (Lossless)",
             90,
             "StoiqoCreations/%date%",
-            "Both (.json + .txt)",
+            "None",
             "",
             "",
             True

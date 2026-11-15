@@ -200,10 +200,10 @@ class StoiqoProImageSaverNode:
     ]
 
     SIDECAR_OPTIONS = [
+        "None",
         "Both (.json + .txt)",
         "JSON (.json)",
         "TXT Caption (.txt)",
-        "None",
     ]
 
     def __init__(self):
@@ -251,7 +251,7 @@ class StoiqoProImageSaverNode:
                 "sidecar_metadata": (
                     cls.SIDECAR_OPTIONS,
                     {
-                        "default": cls.SIDECAR_OPTIONS[0],
+                        "default": "None",
                         "tooltip": "Generate human-readable sidecar metadata files alongside the image.",
                     },
                 ),
@@ -289,7 +289,7 @@ class StoiqoProImageSaverNode:
         format="PNG (Lossless)",
         quality=90,
         subfolder="StoiqoCreations/%date%",
-        sidecar_metadata="Both (.json + .txt)",
+        sidecar_metadata="None",
         save_workflow=True,
         privacy_mode=False,
         prompt_text=None,
