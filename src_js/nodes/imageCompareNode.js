@@ -130,11 +130,11 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                     this.imgA.onload = () => { if (this.node) this.node.setDirtyCanvas(true, true); };
                     this.imgB.onload = () => { if (this.node) this.node.setDirtyCanvas(true, true); };
                     this.imgA.onerror = () => {
-                        this.loadError = "Impossibile caricare immagine A";
+                        this.loadError = "Unable to load image A";
                         if (this.node) this.node.setDirtyCanvas(true, true);
                     };
                     this.imgB.onerror = () => {
-                        this.loadError = "Impossibile caricare immagine B";
+                        this.loadError = "Unable to load image B";
                         if (this.node) this.node.setDirtyCanvas(true, true);
                     };
 
@@ -479,12 +479,12 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                         if (this.loadError) {
                             ctx.fillText(this.loadError, vp.x + vp.w / 2, vp.y + vp.h / 2);
                         } else if (this.imgA && !this.imgA.complete) {
-                            ctx.fillText("⏳ Caricamento anteprima immagini...", vp.x + vp.w / 2, vp.y + vp.h / 2);
+                            ctx.fillText("⏳ Loading image preview...", vp.x + vp.w / 2, vp.y + vp.h / 2);
                         } else {
-                            ctx.fillText("Collega image_a e image_b, poi clicca Queue Prompt per visualizzare", vp.x + vp.w / 2, vp.y + vp.h / 2 - 10);
+                            ctx.fillText("Connect image_a and image_b, then click Queue Prompt to inspect", vp.x + vp.w / 2, vp.y + vp.h / 2 - 10);
                             ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
                             ctx.fillStyle = "#64748b";
-                            ctx.fillText("Hover Slider • Zero Stretch • Zero Crop • Centratura Perfetta", vp.x + vp.w / 2, vp.y + vp.h / 2 + 12);
+                            ctx.fillText("Hover Slider • Zero Stretch • Zero Crop • Precise Centering", vp.x + vp.w / 2, vp.y + vp.h / 2 + 12);
                         }
                         ctx.restore();
                         return;
@@ -685,8 +685,8 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                     if (this.mode === "toggle") {
                         const showB = this.isHoldingPointer ? !this.toggleShowB : this.toggleShowB;
                         const tText = showB
-                            ? `👁 B: ${this.labelB} (${natWB}×${natHB}) • Clicca / Spazio per A`
-                            : `👁 A: ${this.labelA} (${natWA}×${natHA}) • Clicca / Spazio per B`;
+                            ? `👁 B: ${this.labelB} (${natWB}×${natHB}) • Click / Space for A`
+                            : `👁 A: ${this.labelA} (${natWA}×${natHA}) • Click / Space for B`;
                         const tW = ctx.measureText(tText).width + 16;
                         ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
                         ctx.strokeStyle = showB ? "#c084fc" : "#38bdf8";
@@ -747,7 +747,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
 
                     // Instruction pill if zoomed in
                     if (this.zoom > 1.05) {
-                        const hint = "🔍 Trascina per Pan • Rotella per Zoom • Spazio per Toggle A/B";
+                        const hint = "🔍 Drag to Pan • Wheel to Zoom • Space to Toggle A/B";
                         const hintW = ctx.measureText(hint).width + 16;
                         const hintX = vp.x + (vp.w - hintW) / 2;
                         const hintY = vp.y + vp.h - 22;

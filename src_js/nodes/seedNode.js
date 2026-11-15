@@ -226,7 +226,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
             if (historyList.length === 0) {
                 ctx.font = "9px Inter, italic";
                 ctx.fillStyle = "#64748b";
-                ctx.fillText("Nessun seed generato nella sessione", startChipsX, row2Y);
+                ctx.fillText("No seeds generated in current session", startChipsX, row2Y);
             } else {
                 // Show up to the last 5 seeds in chronological order
                 const displayItems = historyList.slice(-5);

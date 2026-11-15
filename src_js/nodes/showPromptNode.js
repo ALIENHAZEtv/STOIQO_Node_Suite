@@ -158,7 +158,7 @@ function createPromptViewerWidget(node) {
                 drawChipButton(ctx, prevRect, "◀", "rgba(30, 41, 59, 0.85)", "rgba(148, 163, 184, 0.35)", "#e2e8f0");
 
                 // Badge Item Counter
-                const badgeLabel = node._viewAll ? `📑 Vista Batch (${total})` : `Item ${idx} di ${total}`;
+                const badgeLabel = node._viewAll ? `📑 Batch View (${total})` : `Item ${idx} of ${total}`;
                 const badgeRect = { x: padX + 38, y: rowY, w: 104, h: 22 };
                 drawChipButton(
                     ctx,
@@ -359,7 +359,7 @@ export function setupShowPromptNode(nodeType, nodeData, app) {
                 const styleInput = (el) => {
                     if (!el) return;
                     el.readOnly = false;
-                    el.placeholder = "In attesa del prompt generato o testo in input...";
+                    el.placeholder = "Waiting for generated prompt or input text...";
                     el.style.boxSizing = "border-box";
                     el.style.opacity = "0.95";
                     el.style.fontSize = "12px";

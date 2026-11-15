@@ -32,81 +32,81 @@ Streamlined from early experimental prototypes into **21 hardened sovereign node
 The suite is systematically partitioned into **6 functional zones**:
 
 ### Zone 1: Pipeline Core & Generative Engines
-* **`[STOIQO] Universal Model Loader (All-in-One)`** (`StoiqoUniversalModelLoaderNode`): Carica DiT, UNet, CLIP, Text Encoders e VAE con quantizzazione configurabile (fp8, 4-bit NF4) e calibrazione automatica del Flow Matching Shift.
-* **`[STOIQO] LoRA Stack`** (`StoiqoLoraStackNode`): Chaining fino a 4 LoRA contemporanee con selettore di bypass trasparente a costo zero computazionale.
-* **`[STOIQO] Seed & Resolution Controller`** (`StoiqoSeedControllerNode`): Gestione avanzata del seed, varianza con sub-seed e quantizzazione delle risoluzioni su griglie VAE-safe ($64\text{px}$ / $16\text{px}$).
-* **`[STOIQO] Turbo Sampler & Direct Decoder`** (`StoiqoTurboSamplerNode`): Campionatore unificato ad altissima velocità (ottimizzato per 8 step) con decodifica VAE diretta a Float32.
+* **`[STOIQO] Universal Model Loader (All-in-One)`** (`StoiqoUniversalModelLoaderNode`): Loads DiT, UNet, CLIP, Text Encoders, and VAE with configurable quantization (fp8, 4-bit NF4) and automated Flow Matching Shift calibration.
+* **`[STOIQO] LoRA Stack`** (`StoiqoLoraStackNode`): Chains up to 4 concurrent LoRAs with zero-overhead transparent bypass switching and metadata inspection.
+* **`[STOIQO] Seed & Resolution Controller`** (`StoiqoSeedControllerNode`): Advanced seed management, sub-seed variance exploration, and resolution quantization onto VAE-safe grids ($64\text{px}$ / $16\text{px}$).
+* **`[STOIQO] Turbo Sampler & Direct Decoder`** (`StoiqoTurboSamplerNode`): High-throughput unified sampler (optimized for 8-step generation) with direct Float32 VAE decoding.
 
 ### Zone 2: Prompting, Vision-Language & Identity
-* **`[STOIQO] Prompt Generator`** (`StoiqoPromptGeneratorNode`): Motore multimodale per sintesi e arricchimento di prompt testuali o da immagini di riferimento basato su architetture Qwen-VL e VLM.
-* **`[STOIQO] Character Memory Bank (Lorebook & DNA)`** (`StoiqoCharacterMemoryNode`): Conserva profili persistenti di personaggi, DNA estetico, trigger tag e vincoli negativi con iniezione dinamica nel prompt.
-* **`[STOIQO] Text Concatenate & Clean`** (`StoiqoTextConcatenateNode`): Unione multi-blocco con deduplicazione automatica dei tag, rimozione whitespace e formattazione prefisso/suffisso.
-* **`[STOIQO] Show Prompt`** (`StoiqoShowPromptNode`): Visualizzatore interattivo a tutto schermo sul canvas per monitorare l'espansione del prompt finale.
+* **`[STOIQO] Prompt Generator`** (`StoiqoPromptGeneratorNode`): Multimodal engine for prompt synthesis and enhancement from raw concepts or reference images, powered by Qwen-VL and VLM architectures.
+* **`[STOIQO] Character Memory Bank (Lorebook & DNA)`** (`StoiqoCharacterMemoryNode`): Persists character profiles, aesthetic visual DNA, trigger tags, and negative constraints with dynamic prompt injection.
+* **`[STOIQO] Text Concatenate & Clean`** (`StoiqoTextConcatenateNode`): Multi-segment string joiner with automated tag deduplication, whitespace normalization, and prefix/suffix formatting.
+* **`[STOIQO] Show Prompt`** (`StoiqoShowPromptNode`): Interactive full-canvas viewer to monitor expanded prompts, character counts, and token estimates in real time.
 
 ### Zone 3: Image Retouching, Inpainting & Forensics
-* **`[STOIQO] Image Loader (Multi-Slot)`** (`StoiqoImageLoaderNode`): Caricamento simultaneo di fino a 3 immagini di riferimento con anteprima sincronizzata.
-* **`[STOIQO] Visual Compare Slider & Zoom`** (`StoiqoImageCompareNode`): Cursore split-slider interattivo prima/dopo, zoom sincronizzato 1:1, heatmap termica differenziale e maschere di cambio pixel.
-* **`[STOIQO] Spatial Cropper & Mask Generator`** (`StoiqoSpatialCropperNode`): Ritaglio semantico guidato da prompt con calcolo delle coordinate normalizzate e bridge compatibile con Impact-Pack `SEGS`.
-* **`[STOIQO] Inpaint Stitcher & Spatial Re-Roll`** (`StoiqoInpaintStitcherNode`): Riassemblaggio seam-free con blend esponenziale/gaussiano e correzione colore per inpainting chirurgico.
-* **`[STOIQO] Frequency Separation & Texture Hub`** (`StoiqoFrequencySeparationNode`): Scomposizione in frequenze basse (colore/illuminazione) e alte (micro-texture) per ritocco avanzato.
-* **`[STOIQO] Smart Watermark & Logo Stamp`** (`StoiqoWatermarkNode`): Applicazione di watermark e loghi con posizionamento perimetrale, trasparenza e chroma-key rimozione sfondo.
+* **`[STOIQO] Image Loader (Multi-Slot)`** (`StoiqoImageLoaderNode`): Simultaneous loading of up to 3 reference images with synchronized previewing and aspect-ratio conforming.
+* **`[STOIQO] Visual Compare Slider & Zoom`** (`StoiqoImageCompareNode`): Interactive split-slider before/after curtain, synchronized 1:1 pan & zoom, differential thermal heatmaps (Turbo, Inferno, Jet), and pixel delta masks.
+* **`[STOIQO] Spatial Cropper & Mask Generator`** (`StoiqoSpatialCropperNode`): Semantic prompt-guided cropping with normalized bounding-box computation and an Impact-Pack `SEGS` compatible bridge.
+* **`[STOIQO] Inpaint Stitcher & Spatial Re-Roll`** (`StoiqoInpaintStitcherNode`): Seam-free reassembly with exponential/Gaussian edge blending and color matching for surgical inpainting.
+* **`[STOIQO] Frequency Separation & Texture Hub`** (`StoiqoFrequencySeparationNode`): Dual-band decomposition into low frequencies (color/lighting) and high frequencies (micro-texture) for high-end beauty retouching.
+* **`[STOIQO] Smart Watermark & Logo Stamp`** (`StoiqoWatermarkNode`): Watermark and logo stamping with boundary positioning, opacity control, and chroma-key background removal.
 
 ### Zone 4: Audio & Music Production
-* **`[STOIQO] Music Prompt & Lyrics Engine (YuE2)`** (`StoiqoMusicPromptEngineNode`): Assistente compositivo AI per la strutturazione di brani (Intro, Verse, Chorus, Outro), BPM, tonalità e liriche per modelli Ace-Step e YuE2.
-* **`[STOIQO] Pro Audio Saver & Metadata Hub`** (`StoiqoAudioSaverNode`): Esportatore MP3 a 320 kbps e WAV master con tag ID3 incorporati (titolo, BPM, liriche, genere) senza file collaterali su disco.
+* **`[STOIQO] Music Prompt & Lyrics Engine (YuE2)`** (`StoiqoMusicPromptEngineNode`): AI songwriting assistant structuring track sections (Intro, Verse, Chorus, Outro), BPM, key, and lyrics for Ace-Step 1.5 and YuE2 models.
+* **`[STOIQO] Pro Audio Saver & Metadata Hub`** (`StoiqoAudioSaverNode`): High-quality 320 kbps MP3 and master WAV exporter with embedded ID3 tags (title, BPM, lyrics, genre) and zero disk sidecar clutter.
 
 ### Zone 5: Video & Motion Processing
-* **`[STOIQO] Video Deflicker & Frame Interpolator`** (`StoiqoVideoEnhancerNode`): Filtro temporale per eliminare tremolii di luminanza (deflickering) e moltiplicatore FPS (2x/4x) per video AI (LTX-Video, Wan, Hunyuan).
-* **`[STOIQO] Pro Video Saver & Frame Exporter`** (`StoiqoVideoSaverNode`): Compilatore video MP4 (H.264 / ProRes) con audio muxing nativo tramite FFmpeg e metadati di generazione integrati.
+* **`[STOIQO] Video Deflicker & Frame Interpolator`** (`StoiqoVideoEnhancerNode`): Temporal filter eliminating luminance strobing (deflickering) and frame rate multiplier (2x/4x) for AI video engines (LTX-Video, Wan, Hunyuan).
+* **`[STOIQO] Pro Video Saver & Frame Exporter`** (`StoiqoVideoSaverNode`): MP4 video compiler (H.264 / ProRes) with native FFmpeg audio muxing and embedded generation metadata.
 
 ### Zone 6: Dataset, Training & Pro Export
-* **`[STOIQO] Smart Folder Image Iterator`** (`StoiqoSmartFolderImageIterator`): Iteratore per dataset con ordinamento naturale, scoperta ricorsiva e skip automatico delle immagini già taggate (`skip_captioned`).
-* **`[STOIQO] Dataset & LoRA Toolkit`** (`StoiqoDatasetWriterNode`): Scrittura di manifesti per addestramento LoRA (Kohya / AI-Toolkit) con blacklist di tag e gestione trigger word.
-* **`[STOIQO] Pro Image Saver & Metadata Hub`** (`StoiqoProImageSaverNode`): Hub di salvataggio immagini ad altissima velocità in PNG lossless, WEBP o JPEG con embedding completo del workflow per riproducibilità totale.
+* **`[STOIQO] Smart Folder Image Iterator`** (`StoiqoSmartFolderImageIterator`): Dataset iterator with natural alphanumeric sorting, recursive folder discovery, and automated skipping of already captioned images (`skip_captioned`).
+* **`[STOIQO] Dataset & LoRA Toolkit`** (`StoiqoDatasetWriterNode`): Manifest and pairing generator for LoRA fine-tuning (Kohya / AI-Toolkit) with tag blacklisting and trigger word enforcement.
+* **`[STOIQO] Pro Image Saver & Metadata Hub`** (`StoiqoProImageSaverNode`): Ultra-fast image saving hub in lossless PNG, WEBP, or JPEG with embedded full workflow JSON for total reproducibility.
 
 ---
 
-## 📦 Installazione
+## 📦 Installation
 
-### Metodo 1: ComfyUI Manager (Consigliato)
-1. Apri **ComfyUI Manager** all'interno della tua installazione ComfyUI.
-2. Cerca `STOIQO Node Suite` nel catalogo.
-3. Clicca **Install** e riavvia ComfyUI.
+### Method 1: ComfyUI Manager (Recommended)
+1. Open **ComfyUI Manager** within your ComfyUI interface.
+2. Search for `STOIQO Node Suite` in the catalog.
+3. Click **Install** and restart ComfyUI.
 
-### Metodo 2: Installazione Manuale Git
+### Method 2: Manual Git Installation
 ```bash
 cd ComfyUI/custom_nodes
 git clone https://github.com/ALIENHAZEtv/STOIQO_Node_Suite.git
 cd STOIQO_Node_Suite
 pip install -r requirements.txt
 ```
-Riavvia ComfyUI. Tutti i 21 nodi saranno disponibili nella categoria `STOIQO`.
+Restart ComfyUI. All 21 sovereign nodes will appear under the `STOIQO` category.
 
 ---
 
-## 🎨 Workflow Esempi Inclusi (`examples/`)
+## 🎨 Included Example Workflows (`examples/`)
 
-La directory [`examples/`](file:///y:/Project_ExCathedra/SideProject/ComfyUI_CustomNodes/STOIQO_Node_Suite/examples) fornisce template pronti all'uso:
+The [`examples/`](file:///y:/Project_ExCathedra/SideProject/ComfyUI_CustomNodes/STOIQO_Node_Suite/examples) directory provides ready-to-run templates:
 
-1. **`00_stoiqo_master_showcase.json`**: Il visual showroom puro dei 21 nodi organizzati per categoria con zero cavi di collegamento.
-2. **`01_prompt_synthesis_live_streaming.json`**: Sintesi di prompt con streaming live dei token sul canvas.
-3. **`02_turbo_sampler_krea2_pipeline.json`**: Pipeline completa Text-to-Image in 8 step con Krea 2.0 Turbo e VAE decode integrato.
-4. **`03_spatial_grounding_impact_pack_segs.json`**: Segmentazione semantica e ponte verso Impact-Pack detailer.
-5. **`04_music_production_yue2_audio.json`**: Pipeline completa di generazione musicale con Ace-Step 1.5 e YuE2.
+1. **`00_stoiqo_master_showcase.json`**: Pure visual showroom of all 21 sovereign nodes organized by category with zero links.
+2. **`01_prompt_synthesis_live_streaming.json`**: Prompt synthesis with real-time typewriter token streaming on canvas.
+3. **`02_turbo_sampler_krea2_pipeline.json`**: Complete 8-step Text-to-Image pipeline with Krea 2.0 Turbo and direct Float32 VAE decode.
+4. **`03_spatial_grounding_impact_pack_segs.json`**: Semantic segmentation and bridge into Impact-Pack detailers.
+5. **`04_music_production_yue2_audio.json`**: Complete end-to-end music generation pipeline with Ace-Step 1.5 and YuE2.
 
 ---
 
-## 🧪 Validazione & Test Suite
+## 🧪 Validation & Test Suite
 
-La suite è coperta da test unitari rigorosi che convalidano le strutture tensoriali, le rotte HTTP/WebSocket e la sanitizzazione:
+The suite is hardened with a comprehensive test suite validating tensor geometry, HTTP/WebSocket endpoints, and widget sanitization:
 
 ```bash
 pytest tests/ -v
 ```
-*Esito corrente: **150 passati**, 1 saltato.*
+*Current status: **150 passed**, 1 skipped.*
 
 ---
 
-## 📄 Licenza
+## 📄 License
 
-Distribuito sotto licenza **MIT**. Consulta il file [`LICENSE`](file:///y:/Project_ExCathedra/SideProject/ComfyUI_CustomNodes/STOIQO_Node_Suite/LICENSE) per i termini completi.
+Distributed under the **MIT License**. See [`LICENSE`](file:///y:/Project_ExCathedra/SideProject/ComfyUI_CustomNodes/STOIQO_Node_Suite/LICENSE) for complete terms.

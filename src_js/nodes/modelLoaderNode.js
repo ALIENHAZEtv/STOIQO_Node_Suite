@@ -3,10 +3,10 @@ import { api } from "../../../scripts/api.js";
 
 /**
  * [STOIQO] Universal Model Loader Stack — Canvas UI
- * Pattern identico a loraStackNode.js:
- *   - `mouse()` per il click handling (non onMouseDown del nodo)
- *   - `hits[]` per hit-test dei pulsanti disegnati su canvas
- *   - Widget legacy nascosti con hidden + computeSize → [0, -4]
+ * Identical architectural pattern to loraStackNode.js:
+ *   - `mouse()` for click handling (not node onMouseDown)
+ *   - `hits[]` for hit-testing canvas-rendered buttons
+ *   - Legacy widgets hidden with hidden + computeSize → [0, -4]
  */
 
 const MODEL_NODE_NAMES = [
@@ -14,7 +14,7 @@ const MODEL_NODE_NAMES = [
     "[STOIQO] Universal Model Loader (All-in-One)",
 ];
 
-// Widget legacy del backend da nascondere completamente
+// Backend legacy widgets to hide completely
 const LEGACY_WIDGET_NAMES = [
     "model_name",
     "clip_type",
@@ -47,7 +47,7 @@ async function fetchModelList(force = false) {
         if (Array.isArray(data.presets) && data.presets.length) _presets = data.presets;
         _modelListCache = Array.isArray(data.models) ? data.models : [];
     } catch (err) {
-        console.warn("[STOIQO Model Stack] Impossibile leggere la lista modelli:", err);
+        console.warn("[STOIQO Model Stack] Unable to load models list:", err);
         _modelListCache = [];
     }
     return _modelListCache;
@@ -178,20 +178,20 @@ class ModelStackWidget {
         ctx.textBaseline = "middle";
 
         // ── Header ────────────────────────────────────────────────────────────
-        // Header: modello attivo (una sola uscita)
+        // Header: active model (single output)
         const active = this.models.find(m => m.enabled);
         ctx.font      = "bold 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
         ctx.textAlign = "left";
         ctx.fillStyle = "#2997ff";
-        ctx.fillText(`Model Stack · ${this.models.length} modelli · attivo: ${active ? baseName(active.name) : "nessuno"}`.slice(0, 70), x0 + 2, y + HEAD_H / 2);
+        ctx.fillText(`Model Stack · ${this.models.length} models · active: ${active ? baseName(active.name) : "none"}`.slice(0, 70), x0 + 2, y + HEAD_H / 2);
         y += HEAD_H;
 
-        // ── Righe modello ─────────────────────────────────────────────────────
+        // ── Model rows ────────────────────────────────────────────────────────
         if (this.models.length === 0) {
             ctx.font      = "italic 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
             ctx.fillStyle = "#64748b";
             ctx.textAlign = "center";
-            ctx.fillText("Nessun modello — premi \"+ Add Model to Stack\"", x0 + w / 2, y + ROW_H / 2);
+            ctx.fillText("No models — click \"+ Add Model to Stack\"", x0 + w / 2, y + ROW_H / 2);
             y += ROW_H;
         } else {
             this.models.forEach((model, idx) => {
@@ -273,13 +273,13 @@ class ModelStackWidget {
                     action: () => { this.models.splice(idx, 1); this.sync(); },
                 });
 
-                // Nome modello (clicca per scegliere)
+                // Model name (click to pick)
                 const nX   = tX + tW + 8;
                 const nW   = pX - nX - 8;
                 ctx.font      = "12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
                 ctx.textAlign = "left";
                 ctx.fillStyle = on ? "#e2e8f0" : "#64748b";
-                const disp = baseName(model.name || "(seleziona modello)");
+                const disp = baseName(model.name || "(select model)");
                 ctx.fillText(fitText(ctx, disp, nW), nX, rY + rH / 2 + 0.5);
                 this.hits.push({
                     x: nX, y: rY, w: nW, h: rH,
@@ -290,7 +290,7 @@ class ModelStackWidget {
             });
         }
 
-        // ── Pulsante "+ Add Model to Stack" ───────────────────────────────────
+        // ── "+ Add Model to Stack" button ─────────────────────────────────────
         y += 6;
         ctx.fillStyle   = "rgba(41, 151, 255, 0.12)";
         ctx.strokeStyle = "rgba(41, 151, 255, 0.5)";
@@ -310,7 +310,7 @@ class ModelStackWidget {
         ctx.restore();
     }
 
-    // ── Azioni ────────────────────────────────────────────────────────────────
+    // ── Actions ───────────────────────────────────────────────────────────────
 
     async addModel(ev) {
         await this.pickModel(ev, null);
@@ -323,7 +323,7 @@ class ModelStackWidget {
 
         if (!list.length) {
             new LG.ContextMenu(
-                [{ content: "Nessun modello trovato nelle directory di ComfyUI", disabled: true }],
+                [{ content: "No models found in ComfyUI directories", disabled: true }],
                 { event: ev }
             );
             return;

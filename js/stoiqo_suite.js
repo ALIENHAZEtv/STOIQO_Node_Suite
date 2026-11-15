@@ -137,7 +137,7 @@ function createPromptViewerWidget(node) {
         const prevRect = { x: padX + 8, y: rowY, w: 26, h: 22 };
         this._rects.prev = prevRect;
         drawChipButton(ctx, prevRect, "\u25C0", "rgba(30, 41, 59, 0.85)", "rgba(148, 163, 184, 0.35)", "#e2e8f0");
-        const badgeLabel = node2._viewAll ? `\u{1F4D1} Vista Batch (${total})` : `Item ${idx} di ${total}`;
+        const badgeLabel = node2._viewAll ? `\u{1F4D1} Batch View (${total})` : `Item ${idx} of ${total}`;
         const badgeRect = { x: padX + 38, y: rowY, w: 104, h: 22 };
         drawChipButton(
           ctx,
@@ -300,7 +300,7 @@ function setupShowPromptNode(nodeType, nodeData, app11) {
         const styleInput = (el) => {
           if (!el) return;
           el.readOnly = false;
-          el.placeholder = "In attesa del prompt generato o testo in input...";
+          el.placeholder = "Waiting for generated prompt or input text...";
           el.style.boxSizing = "border-box";
           el.style.opacity = "0.95";
           el.style.fontSize = "12px";
@@ -421,7 +421,7 @@ async function fetchModelList(force = false) {
     if (Array.isArray(data.presets) && data.presets.length) _presets = data.presets;
     _modelListCache = Array.isArray(data.models) ? data.models : [];
   } catch (err) {
-    console.warn("[STOIQO Model Stack] Impossibile leggere la lista modelli:", err);
+    console.warn("[STOIQO Model Stack] Unable to load models list:", err);
     _modelListCache = [];
   }
   return _modelListCache;
@@ -535,13 +535,13 @@ var ModelStackWidget = class {
     ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
     ctx.textAlign = "left";
     ctx.fillStyle = "#2997ff";
-    ctx.fillText(`Model Stack \xB7 ${this.models.length} modelli \xB7 attivo: ${active ? baseName(active.name) : "nessuno"}`.slice(0, 70), x0 + 2, y + HEAD_H / 2);
+    ctx.fillText(`Model Stack \xB7 ${this.models.length} models \xB7 active: ${active ? baseName(active.name) : "none"}`.slice(0, 70), x0 + 2, y + HEAD_H / 2);
     y += HEAD_H;
     if (this.models.length === 0) {
       ctx.font = "italic 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
       ctx.fillStyle = "#64748b";
       ctx.textAlign = "center";
-      ctx.fillText('Nessun modello \u2014 premi "+ Add Model to Stack"', x0 + w / 2, y + ROW_H / 2);
+      ctx.fillText('No models \u2014 click "+ Add Model to Stack"', x0 + w / 2, y + ROW_H / 2);
       y += ROW_H;
     } else {
       this.models.forEach((model, idx) => {
@@ -631,7 +631,7 @@ var ModelStackWidget = class {
         ctx.font = "12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
         ctx.textAlign = "left";
         ctx.fillStyle = on ? "#e2e8f0" : "#64748b";
-        const disp = baseName(model.name || "(seleziona modello)");
+        const disp = baseName(model.name || "(select model)");
         ctx.fillText(fitText(ctx, disp, nW), nX, rY + rH / 2 + 0.5);
         this.hits.push({
           x: nX,
@@ -663,7 +663,7 @@ var ModelStackWidget = class {
     });
     ctx.restore();
   }
-  // ── Azioni ────────────────────────────────────────────────────────────────
+  // ── Actions ───────────────────────────────────────────────────────────────
   async addModel(ev) {
     await this.pickModel(ev, null);
   }
@@ -673,7 +673,7 @@ var ModelStackWidget = class {
     if (!LG || !LG.ContextMenu) return;
     if (!list.length) {
       new LG.ContextMenu(
-        [{ content: "Nessun modello trovato nelle directory di ComfyUI", disabled: true }],
+        [{ content: "No models found in ComfyUI directories", disabled: true }],
         { event: ev }
       );
       return;
@@ -1222,11 +1222,11 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           if (this.node) this.node.setDirtyCanvas(true, true);
         };
         this.imgA.onerror = () => {
-          this.loadError = "Impossibile caricare immagine A";
+          this.loadError = "Unable to load image A";
           if (this.node) this.node.setDirtyCanvas(true, true);
         };
         this.imgB.onerror = () => {
-          this.loadError = "Impossibile caricare immagine B";
+          this.loadError = "Unable to load image B";
           if (this.node) this.node.setDirtyCanvas(true, true);
         };
         this.imgA.src = urlA;
@@ -1523,12 +1523,12 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           if (this.loadError) {
             ctx.fillText(this.loadError, vp.x + vp.w / 2, vp.y + vp.h / 2);
           } else if (this.imgA && !this.imgA.complete) {
-            ctx.fillText("\u23F3 Caricamento anteprima immagini...", vp.x + vp.w / 2, vp.y + vp.h / 2);
+            ctx.fillText("\u23F3 Loading image preview...", vp.x + vp.w / 2, vp.y + vp.h / 2);
           } else {
-            ctx.fillText("Collega image_a e image_b, poi clicca Queue Prompt per visualizzare", vp.x + vp.w / 2, vp.y + vp.h / 2 - 10);
+            ctx.fillText("Connect image_a and image_b, then click Queue Prompt to inspect", vp.x + vp.w / 2, vp.y + vp.h / 2 - 10);
             ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
             ctx.fillStyle = "#64748b";
-            ctx.fillText("Hover Slider \u2022 Zero Stretch \u2022 Zero Crop \u2022 Centratura Perfetta", vp.x + vp.w / 2, vp.y + vp.h / 2 + 12);
+            ctx.fillText("Hover Slider \u2022 Zero Stretch \u2022 Zero Crop \u2022 Precise Centering", vp.x + vp.w / 2, vp.y + vp.h / 2 + 12);
           }
           ctx.restore();
           return;
@@ -1683,7 +1683,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         ctx.textBaseline = "middle";
         if (this.mode === "toggle") {
           const showB = this.isHoldingPointer ? !this.toggleShowB : this.toggleShowB;
-          const tText = showB ? `\u{1F441} B: ${this.labelB} (${natWB}\xD7${natHB}) \u2022 Clicca / Spazio per A` : `\u{1F441} A: ${this.labelA} (${natWA}\xD7${natHA}) \u2022 Clicca / Spazio per B`;
+          const tText = showB ? `\u{1F441} B: ${this.labelB} (${natWB}\xD7${natHB}) \u2022 Click / Space for A` : `\u{1F441} A: ${this.labelA} (${natWA}\xD7${natHA}) \u2022 Click / Space for B`;
           const tW = ctx.measureText(tText).width + 16;
           ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
           ctx.strokeStyle = showB ? "#c084fc" : "#38bdf8";
@@ -1739,7 +1739,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           }
         }
         if (this.zoom > 1.05) {
-          const hint = "\u{1F50D} Trascina per Pan \u2022 Rotella per Zoom \u2022 Spazio per Toggle A/B";
+          const hint = "\u{1F50D} Drag to Pan \u2022 Wheel to Zoom \u2022 Space to Toggle A/B";
           const hintW = ctx.measureText(hint).width + 16;
           const hintX = vp.x + (vp.w - hintW) / 2;
           const hintY = vp.y + vp.h - 22;
@@ -2232,7 +2232,7 @@ function setupDatasetNode(nodeType, nodeData, app11) {
               node.setDirtyCanvas(true, true);
             }
           } catch (err) {
-            console.error("[STOIQO Dataset Toolkit] Errore selezione cartella:", err);
+            console.error("[STOIQO Dataset Toolkit] Folder selection error:", err);
           }
         });
         browseBtn.serialize = false;
@@ -2656,11 +2656,11 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
         ctx.font = "bold 12px Inter, system-ui, sans-serif";
         ctx.textAlign = "center";
         const isNone = !activeRaw || activeRaw === "none";
-        const emptyMsg = isNone ? `[Slot ${this.activeFocus}: Nessuna immagine selezionata]` : `[Slot ${this.activeFocus}: Caricamento in corso...]`;
+        const emptyMsg = isNone ? `[Slot ${this.activeFocus}: No image selected]` : `[Slot ${this.activeFocus}: Loading image...]`;
         ctx.fillText(emptyMsg, pad + availableWidth / 2, heroY + heroHeight / 2 - 8);
         ctx.font = "10px Inter, system-ui, sans-serif";
         ctx.fillStyle = "#334155";
-        ctx.fillText("Seleziona un'immagine dal menu sopra per visualizzarla", pad + availableWidth / 2, heroY + heroHeight / 2 + 12);
+        ctx.fillText("Select an image from the dropdown above to preview", pad + availableWidth / 2, heroY + heroHeight / 2 + 12);
         ctx.textAlign = "left";
       }
       const thumbsY = heroY + heroHeight + 12;
@@ -3227,10 +3227,10 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
         ctx.fillStyle = "#4a5568";
         ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("READY / IN ATTESA DI GENERAZIONE", cardX + cardW / 2, cardY + 50);
+        ctx.fillText("READY / AWAITING GENERATION", cardX + cardW / 2, cardY + 50);
         ctx.fillStyle = "#2d3748";
         ctx.font = "10px monospace";
-        ctx.fillText("I file salvati e i metadati appariranno qui", cardX + cardW / 2, cardY + 74);
+        ctx.fillText("Saved files and metadata will appear here", cardX + cardW / 2, cardY + 74);
         ctx.restore();
         return;
       }
@@ -3241,14 +3241,14 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
         ctx.fillStyle = "#f59e0b";
         ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
         ctx.textAlign = "left";
-        ctx.fillText("\u2713 SALVATO \u2022 \u{1F6E1}\uFE0F PRIVACY (ZERO EXIF)", cardX + 12, badgeY);
+        ctx.fillText("\u2713 SAVED \u2022 \u{1F6E1}\uFE0F PRIVACY (ZERO EXIF)", cardX + 12, badgeY);
       } else {
         ctx.fillStyle = "#10b981";
         ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
         ctx.textAlign = "left";
-        ctx.fillText("\u2713 SALVATO", cardX + 12, badgeY);
+        ctx.fillText("\u2713 SAVED", cardX + 12, badgeY);
       }
-      const tagText = `${info.format || "IMG"} \u2022 ${info.width}x${info.height} \u2022 ${info.size_str || ""}${batchCount > 1 ? ` (+${batchCount - 1} altri)` : ""}`;
+      const tagText = `${info.format || "IMG"} \u2022 ${info.width}x${info.height} \u2022 ${info.size_str || ""}${batchCount > 1 ? ` (+${batchCount - 1} more)` : ""}`;
       ctx.fillStyle = "#00e5ff";
       ctx.font = "bold 10px monospace";
       ctx.textAlign = "right";
@@ -4450,7 +4450,7 @@ async function fetchLoraList(force = false) {
     const data = await resp.json();
     _loraListCache = Array.isArray(data.loras) ? data.loras : [];
   } catch (err) {
-    console.warn("[STOIQO LoRA Stack] Impossibile leggere la lista LoRA:", err);
+    console.warn("[STOIQO LoRA Stack] Unable to load LoRA list:", err);
     _loraListCache = [];
   }
   return _loraListCache;
@@ -4561,8 +4561,8 @@ var StoiqoLoraStackWidget = class {
     ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
     ctx.textAlign = "left";
     ctx.fillStyle = "#94a3b8";
-    ctx.fillText(`LoRA Stack \xB7 ${activeCount}/${this.loras.length} attivi`, x0 + 2, y + HEAD_H2 / 2);
-    const allLabel = activeCount > 0 ? "Disattiva tutti" : "Attiva tutti";
+    ctx.fillText(`LoRA Stack \xB7 ${activeCount}/${this.loras.length} active`, x0 + 2, y + HEAD_H2 / 2);
+    const allLabel = activeCount > 0 ? "Disable all" : "Enable all";
     ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
     const allW = ctx.measureText(allLabel).width + 16;
     const allX = x0 + w - allW;
@@ -4592,7 +4592,7 @@ var StoiqoLoraStackWidget = class {
       ctx.font = "italic 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
       ctx.fillStyle = "#64748b";
       ctx.textAlign = "center";
-      ctx.fillText("Nessun LoRA \u2014 premi \u201C+ Aggiungi LoRA\u201D", x0 + w / 2, y + ROW_H2 / 2);
+      ctx.fillText('No LoRAs \u2014 click "+ Add LoRA"', x0 + w / 2, y + ROW_H2 / 2);
       y += ROW_H2;
     } else {
       this.loras.forEach((lora, idx) => {
@@ -4846,7 +4846,7 @@ var StoiqoLoraStackWidget = class {
         }
       },
       {
-        content: `\u{1F9F1} Filtro Blocchi (${lora.block_filter || "All Blocks"})`,
+        content: `\u{1F9F1} Block Filter (${lora.block_filter || "All Blocks"})`,
         has_submenu: true,
         callback: (_v, _opts, e, menu) => {
           const filters = [
@@ -4875,7 +4875,7 @@ var StoiqoLoraStackWidget = class {
         }
       },
       {
-        content: `\u{1F3F7}\uFE0F Mostra / Copia Trigger Words`,
+        content: `\u{1F3F7}\uFE0F View / Copy Trigger Words`,
         callback: async (_v, _opts, e) => {
           try {
             const resp = await api9.fetchApi(`/stoiqo/lora_info?name=${encodeURIComponent(lora.name)}`);
@@ -4887,21 +4887,21 @@ var StoiqoLoraStackWidget = class {
                 navigator.clipboard.writeText(trigStr).catch(() => {
                 });
               }
-              alert(`Trigger words per '${baseName2(lora.name)}':
+              alert(`Trigger words for '${baseName2(lora.name)}':
 
 ${trigStr}
 
-(Copiate negli appunti!)`);
+(Copied to clipboard!)`);
             } else {
-              alert(`Nessuna trigger word trovata nei metadati o sidecar per '${baseName2(lora.name)}'.`);
+              alert(`No trigger words found in metadata or sidecars for '${baseName2(lora.name)}'.`);
             }
           } catch (err) {
-            alert(`Errore lettura metadati per '${baseName2(lora.name)}'.`);
+            alert(`Error reading metadata for '${baseName2(lora.name)}'.`);
           }
         }
       },
       {
-        content: `\u2715 Rimuovi`,
+        content: `\u2715 Remove`,
         callback: () => {
           this.loras.splice(idx, 1);
           this.sync();
@@ -4915,7 +4915,7 @@ ${trigStr}
     const LG = window.LiteGraph;
     if (!LG || !LG.ContextMenu) return;
     if (!list.length) {
-      new LG.ContextMenu([{ content: "Nessun LoRA trovato in models/loras", disabled: true }], { event });
+      new LG.ContextMenu([{ content: "No LoRAs found in models/loras", disabled: true }], { event });
       return;
     }
     const choose = (v) => {
@@ -5414,7 +5414,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
       if (historyList.length === 0) {
         ctx.font = "9px Inter, italic";
         ctx.fillStyle = "#64748b";
-        ctx.fillText("Nessun seed generato nella sessione", startChipsX, row2Y);
+        ctx.fillText("No seeds generated in current session", startChipsX, row2Y);
       } else {
         const displayItems = historyList.slice(-5);
         displayItems.forEach((item, idx) => {
@@ -5595,7 +5595,7 @@ function getVal(node, name) {
 }
 var NODE_UX_SPECS = {
   StoiqoPromptGeneratorNode: {
-    label: "Impostazioni LLM & Multi-Image",
+    label: "LLM & Multi-Image Settings",
     advanced: [
       "preset",
       "fusion_mode",
@@ -5625,7 +5625,7 @@ var NODE_UX_SPECS = {
     }
   },
   StoiqoDatasetWriterNode: {
-    label: "Opzioni Dataset, Tag & Deduplica",
+    label: "Dataset, Tag & Deduplication Options",
     advanced: [
       "blacklist_tags",
       "tag_separator",
@@ -5647,7 +5647,7 @@ var NODE_UX_SPECS = {
     }
   },
   StoiqoSmartFolderImageIterator: {
-    label: "Filtri Cartella & Opzioni Batch",
+    label: "Folder Filters & Batch Options",
     advanced: [
       "loop_folder",
       "recursive",
@@ -5663,7 +5663,7 @@ var NODE_UX_SPECS = {
     }
   },
   StoiqoSeedControllerNode: {
-    label: "Opzioni Varianza Seed & Multiplo VAE",
+    label: "Seed Variance & VAE Multiple Options",
     advanced: [
       "multiple_of",
       "variance_strength",
@@ -5676,7 +5676,7 @@ var NODE_UX_SPECS = {
     }
   },
   StoiqoTurboSamplerNode: {
-    label: "Opzioni Sampler & Denoise",
+    label: "Sampler & Denoise Options",
     advanced: [
       "sampler_name",
       "scheduler",
@@ -5684,7 +5684,7 @@ var NODE_UX_SPECS = {
     ]
   },
   StoiqoWatermarkNode: {
-    label: "Opzioni Bordi, Chroma Key & Colore Testo",
+    label: "Border, Chroma Key & Text Color Options",
     advanced: [
       "margin_percent",
       "text_color",
@@ -5698,7 +5698,7 @@ var NODE_UX_SPECS = {
     }
   },
   StoiqoTextConcatenateNode: {
-    label: "Template, Prefisso/Suffisso & Pulizia Tag",
+    label: "Template, Prefix/Suffix & Tag Sanitization",
     advanced: [
       "template",
       "prefix",
@@ -5710,7 +5710,7 @@ var NODE_UX_SPECS = {
     ]
   },
   StoiqoMusicPromptEngineNode: {
-    label: "Impostazioni Producer AI & Sampling",
+    label: "AI Producer & Sampling Settings",
     advanced: [
       "system_prompt",
       "custom_system_prompt",
@@ -5725,7 +5725,7 @@ var NODE_UX_SPECS = {
     }
   },
   StoiqoCharacterMemoryNode: {
-    label: "Opzioni Lorebook, Vincoli & Salvataggio JSON",
+    label: "Lorebook Options, Constraints & JSON Export",
     advanced: [
       "injection_mode",
       "personality_vibe",
@@ -5736,7 +5736,7 @@ var NODE_UX_SPECS = {
     ]
   },
   StoiqoSpatialCropperNode: {
-    label: "Coordinate Manuali & Opzioni Maschera",
+    label: "Manual Coordinates & Mask Options",
     advanced: [
       "manual_bbox",
       "invert_mask",
@@ -5745,7 +5745,7 @@ var NODE_UX_SPECS = {
     ]
   },
   StoiqoInpaintStitcherNode: {
-    label: "Opzioni BBox, Padding & Beauty Polish",
+    label: "BBox Options, Padding & Beauty Polish",
     advanced: [
       "bbox_info",
       "crop_padding_percent",
@@ -5757,7 +5757,7 @@ var NODE_UX_SPECS = {
     }
   },
   StoiqoFrequencySeparationNode: {
-    label: "Opzioni High-Pass & Soft-Knee Limiter",
+    label: "High-Pass Options & Soft-Knee Limiter",
     advanced: [
       "texture_boost",
       "high_pass_mode",
@@ -5766,7 +5766,7 @@ var NODE_UX_SPECS = {
     ]
   },
   StoiqoProImageSaverNode: {
-    label: "Cartella, Metadati & Privacy",
+    label: "Folder, Metadata & Privacy Options",
     advanced: [
       "quality",
       "subfolder",
@@ -5776,7 +5776,7 @@ var NODE_UX_SPECS = {
     ]
   },
   StoiqoVideoSaverNode: {
-    label: "Qualit\xE0, Cartella & Sidecar Video",
+    label: "Quality, Folder & Video Sidecars",
     advanced: [
       "quality",
       "subfolder",
@@ -5785,7 +5785,7 @@ var NODE_UX_SPECS = {
     ]
   },
   StoiqoAudioSaverNode: {
-    label: "Tag ID3, Testo & Metadati Audio",
+    label: "ID3 Tags, Lyrics & Audio Metadata",
     advanced: [
       "subfolder",
       "genre",
@@ -5797,7 +5797,7 @@ var NODE_UX_SPECS = {
   },
   StoiqoImageCompareNode: {
     alwaysHidden: ["initial_mode"],
-    label: "Opzioni Heatmap & Soglia Maschera Diff",
+    label: "Heatmap Options & Diff Mask Threshold",
     advanced: [
       "heatmap_colormap",
       "diff_gain",
@@ -5805,12 +5805,12 @@ var NODE_UX_SPECS = {
     ]
   },
   StoiqoImageLoaderNode: {
-    label: "Opzioni Aspect Ratio Batch",
+    label: "Batch Aspect Ratio Options",
     alwaysHidden: ["active_focus"],
     advanced: ["fit_mode"]
   },
   StoiqoVideoEnhancerNode: {
-    label: "Opzioni Deflicker & Curva Motion",
+    label: "Deflicker Options & Motion Curve",
     advanced: [
       "window_size",
       "luminance_tolerance",
@@ -5920,7 +5920,7 @@ var StoiqoSettingsDrawerWidget = class {
     ctx.fillStyle = expanded ? "#58b0ff" : "#98a2b3";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    const label = this.spec.label || "Impostazioni Avanzate";
+    const label = this.spec.label || "Advanced Settings";
     ctx.fillText(`\u2699  ${label}`, barX + 10, barY + barH / 2);
     const advList = this.spec.advanced || [];
     const count = advList.length;
@@ -5933,7 +5933,7 @@ var StoiqoSettingsDrawerWidget = class {
         }
       }
     }
-    const rightText = expanded ? "Nascondi \u25B4" : `Mostra (${count}) \u25BE`;
+    const rightText = expanded ? "Hide \u25B4" : `Show (${count}) \u25BE`;
     ctx.font = "500 9.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     ctx.fillStyle = expanded ? "#58b0ff" : "#667085";
     ctx.textAlign = "right";
@@ -5942,7 +5942,7 @@ var StoiqoSettingsDrawerWidget = class {
       const rightW = ctx.measureText(rightText).width;
       ctx.font = "600 9.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
       ctx.fillStyle = "#ff9f0a";
-      ctx.fillText(`\u25CF ${modCount} mod.`, barX + barW - 10 - rightW - 8, barY + barH / 2);
+      ctx.fillText(`\u25CF ${modCount} edited`, barX + barW - 10 - rightW - 8, barY + barH / 2);
     }
     ctx.restore();
   }

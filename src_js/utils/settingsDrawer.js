@@ -29,7 +29,7 @@ function getVal(node, name) {
  */
 export const NODE_UX_SPECS = {
     StoiqoPromptGeneratorNode: {
-        label: "Impostazioni LLM & Multi-Image",
+        label: "LLM & Multi-Image Settings",
         advanced: [
             "preset",
             "fusion_mode",
@@ -60,7 +60,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoDatasetWriterNode: {
-        label: "Opzioni Dataset, Tag & Deduplica",
+        label: "Dataset, Tag & Deduplication Options",
         advanced: [
             "blacklist_tags",
             "tag_separator",
@@ -83,7 +83,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoSmartFolderImageIterator: {
-        label: "Filtri Cartella & Opzioni Batch",
+        label: "Folder Filters & Batch Options",
         advanced: [
             "loop_folder",
             "recursive",
@@ -100,7 +100,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoSeedControllerNode: {
-        label: "Opzioni Varianza Seed & Multiplo VAE",
+        label: "Seed Variance & VAE Multiple Options",
         advanced: [
             "multiple_of",
             "variance_strength",
@@ -114,7 +114,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoTurboSamplerNode: {
-        label: "Opzioni Sampler & Denoise",
+        label: "Sampler & Denoise Options",
         advanced: [
             "sampler_name",
             "scheduler",
@@ -123,7 +123,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoWatermarkNode: {
-        label: "Opzioni Bordi, Chroma Key & Colore Testo",
+        label: "Border, Chroma Key & Text Color Options",
         advanced: [
             "margin_percent",
             "text_color",
@@ -138,7 +138,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoTextConcatenateNode: {
-        label: "Template, Prefisso/Suffisso & Pulizia Tag",
+        label: "Template, Prefix/Suffix & Tag Sanitization",
         advanced: [
             "template",
             "prefix",
@@ -151,7 +151,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoMusicPromptEngineNode: {
-        label: "Impostazioni Producer AI & Sampling",
+        label: "AI Producer & Sampling Settings",
         advanced: [
             "system_prompt",
             "custom_system_prompt",
@@ -167,7 +167,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoCharacterMemoryNode: {
-        label: "Opzioni Lorebook, Vincoli & Salvataggio JSON",
+        label: "Lorebook Options, Constraints & JSON Export",
         advanced: [
             "injection_mode",
             "personality_vibe",
@@ -179,7 +179,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoSpatialCropperNode: {
-        label: "Coordinate Manuali & Opzioni Maschera",
+        label: "Manual Coordinates & Mask Options",
         advanced: [
             "manual_bbox",
             "invert_mask",
@@ -189,7 +189,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoInpaintStitcherNode: {
-        label: "Opzioni BBox, Padding & Beauty Polish",
+        label: "BBox Options, Padding & Beauty Polish",
         advanced: [
             "bbox_info",
             "crop_padding_percent",
@@ -202,7 +202,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoFrequencySeparationNode: {
-        label: "Opzioni High-Pass & Soft-Knee Limiter",
+        label: "High-Pass Options & Soft-Knee Limiter",
         advanced: [
             "texture_boost",
             "high_pass_mode",
@@ -212,7 +212,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoProImageSaverNode: {
-        label: "Cartella, Metadati & Privacy",
+        label: "Folder, Metadata & Privacy Options",
         advanced: [
             "quality",
             "subfolder",
@@ -223,7 +223,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoVideoSaverNode: {
-        label: "Qualità, Cartella & Sidecar Video",
+        label: "Quality, Folder & Video Sidecars",
         advanced: [
             "quality",
             "subfolder",
@@ -233,7 +233,7 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoAudioSaverNode: {
-        label: "Tag ID3, Testo & Metadati Audio",
+        label: "ID3 Tags, Lyrics & Audio Metadata",
         advanced: [
             "subfolder",
             "genre",
@@ -246,7 +246,7 @@ export const NODE_UX_SPECS = {
 
     StoiqoImageCompareNode: {
         alwaysHidden: ["initial_mode"],
-        label: "Opzioni Heatmap & Soglia Maschera Diff",
+        label: "Heatmap Options & Diff Mask Threshold",
         advanced: [
             "heatmap_colormap",
             "diff_gain",
@@ -255,13 +255,13 @@ export const NODE_UX_SPECS = {
     },
 
     StoiqoImageLoaderNode: {
-        label: "Opzioni Aspect Ratio Batch",
+        label: "Batch Aspect Ratio Options",
         alwaysHidden: ["active_focus"],
         advanced: ["fit_mode"],
     },
 
     StoiqoVideoEnhancerNode: {
-        label: "Opzioni Deflicker & Curva Motion",
+        label: "Deflicker Options & Motion Curve",
         advanced: [
             "window_size",
             "luminance_tolerance",
@@ -375,7 +375,7 @@ class StoiqoSettingsDrawerWidget {
         ctx.fillStyle = expanded ? "#58b0ff" : "#98a2b3";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
-        const label = this.spec.label || "Impostazioni Avanzate";
+        const label = this.spec.label || "Advanced Settings";
         ctx.fillText(`⚙  ${label}`, barX + 10, barY + barH / 2);
 
         const advList = this.spec.advanced || [];
@@ -390,7 +390,7 @@ class StoiqoSettingsDrawerWidget {
             }
         }
 
-        const rightText = expanded ? "Nascondi ▴" : `Mostra (${count}) ▾`;
+        const rightText = expanded ? "Hide ▴" : `Show (${count}) ▾`;
         ctx.font = "500 9.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
         ctx.fillStyle = expanded ? "#58b0ff" : "#667085";
         ctx.textAlign = "right";
@@ -400,7 +400,7 @@ class StoiqoSettingsDrawerWidget {
             const rightW = ctx.measureText(rightText).width;
             ctx.font = "600 9.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
             ctx.fillStyle = "#ff9f0a";
-            ctx.fillText(`● ${modCount} mod.`, barX + barW - 10 - rightW - 8, barY + barH / 2);
+            ctx.fillText(`● ${modCount} edited`, barX + barW - 10 - rightW - 8, barY + barH / 2);
         }
         ctx.restore();
     }

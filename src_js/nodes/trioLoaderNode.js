@@ -240,13 +240,13 @@ export function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
                 ctx.textAlign = "center";
                 const isNone = !activeRaw || activeRaw === "none";
                 const emptyMsg = isNone
-                    ? `[Slot ${this.activeFocus}: Nessuna immagine selezionata]`
-                    : `[Slot ${this.activeFocus}: Caricamento in corso...]`;
+                    ? `[Slot ${this.activeFocus}: No image selected]`
+                    : `[Slot ${this.activeFocus}: Loading image...]`;
                 ctx.fillText(emptyMsg, pad + availableWidth / 2, heroY + heroHeight / 2 - 8);
 
                 ctx.font = "10px Inter, system-ui, sans-serif";
                 ctx.fillStyle = "#334155";
-                ctx.fillText("Seleziona un'immagine dal menu sopra per visualizzarla", pad + availableWidth / 2, heroY + heroHeight / 2 + 12);
+                ctx.fillText("Select an image from the dropdown above to preview", pad + availableWidth / 2, heroY + heroHeight / 2 + 12);
                 ctx.textAlign = "left";
             }
 

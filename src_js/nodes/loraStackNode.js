@@ -24,7 +24,7 @@ async function fetchLoraList(force = false) {
         const data = await resp.json();
         _loraListCache = Array.isArray(data.loras) ? data.loras : [];
     } catch (err) {
-        console.warn("[STOIQO LoRA Stack] Impossibile leggere la lista LoRA:", err);
+        console.warn("[STOIQO LoRA Stack] Unable to load LoRA list:", err);
         _loraListCache = [];
     }
     return _loraListCache;
@@ -150,9 +150,9 @@ class StoiqoLoraStackWidget {
         ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
         ctx.textAlign = "left";
         ctx.fillStyle = "#94a3b8";
-        ctx.fillText(`LoRA Stack · ${activeCount}/${this.loras.length} attivi`, x0 + 2, y + HEAD_H / 2);
+        ctx.fillText(`LoRA Stack · ${activeCount}/${this.loras.length} active`, x0 + 2, y + HEAD_H / 2);
 
-        const allLabel = activeCount > 0 ? "Disattiva tutti" : "Attiva tutti";
+        const allLabel = activeCount > 0 ? "Disable all" : "Enable all";
         ctx.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
         const allW = ctx.measureText(allLabel).width + 16;
         const allX = x0 + w - allW;
@@ -179,7 +179,7 @@ class StoiqoLoraStackWidget {
             ctx.font = "italic 11px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
             ctx.fillStyle = "#64748b";
             ctx.textAlign = "center";
-            ctx.fillText("Nessun LoRA — premi “+ Aggiungi LoRA”", x0 + w / 2, y + ROW_H / 2);
+            ctx.fillText("No LoRAs — click \"+ Add LoRA\"", x0 + w / 2, y + ROW_H / 2);
             y += ROW_H;
         } else {
             this.loras.forEach((lora, idx) => {
@@ -428,7 +428,7 @@ class StoiqoLoraStackWidget {
                 },
             },
             {
-                content: `🧱 Filtro Blocchi (${lora.block_filter || "All Blocks"})`,
+                content: `🧱 Block Filter (${lora.block_filter || "All Blocks"})`,
                 has_submenu: true,
                 callback: (_v, _opts, e, menu) => {
                     const filters = [
@@ -457,7 +457,7 @@ class StoiqoLoraStackWidget {
                 },
             },
             {
-                content: `🏷️ Mostra / Copia Trigger Words`,
+                content: `🏷️ View / Copy Trigger Words`,
                 callback: async (_v, _opts, e) => {
                     try {
                         const resp = await api.fetchApi(`/stoiqo/lora_info?name=${encodeURIComponent(lora.name)}`);
@@ -468,17 +468,17 @@ class StoiqoLoraStackWidget {
                             if (navigator.clipboard) {
                                 navigator.clipboard.writeText(trigStr).catch(() => {});
                             }
-                            alert(`Trigger words per '${baseName(lora.name)}':\n\n${trigStr}\n\n(Copiate negli appunti!)`);
+                            alert(`Trigger words for '${baseName(lora.name)}':\n\n${trigStr}\n\n(Copied to clipboard!)`);
                         } else {
-                            alert(`Nessuna trigger word trovata nei metadati o sidecar per '${baseName(lora.name)}'.`);
+                            alert(`No trigger words found in metadata or sidecars for '${baseName(lora.name)}'.`);
                         }
                     } catch (err) {
-                        alert(`Errore lettura metadati per '${baseName(lora.name)}'.`);
+                        alert(`Error reading metadata for '${baseName(lora.name)}'.`);
                     }
                 },
             },
             {
-                content: `✕ Rimuovi`,
+                content: `✕ Remove`,
                 callback: () => {
                     this.loras.splice(idx, 1);
                     this.sync();
@@ -495,7 +495,7 @@ class StoiqoLoraStackWidget {
         if (!LG || !LG.ContextMenu) return;
 
         if (!list.length) {
-            new LG.ContextMenu([{ content: "Nessun LoRA trovato in models/loras", disabled: true }], { event });
+            new LG.ContextMenu([{ content: "No LoRAs found in models/loras", disabled: true }], { event });
             return;
         }
 

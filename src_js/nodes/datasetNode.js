@@ -50,7 +50,7 @@ export function setupDatasetNode(nodeType, nodeData, app) {
                             node.setDirtyCanvas(true, true);
                         }
                     } catch (err) {
-                        console.error("[STOIQO Dataset Toolkit] Errore selezione cartella:", err);
+                        console.error("[STOIQO Dataset Toolkit] Folder selection error:", err);
                     }
                 });
                 browseBtn.serialize = false;

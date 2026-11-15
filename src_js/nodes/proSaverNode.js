@@ -108,11 +108,11 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
                 ctx.fillStyle = "#4a5568";
                 ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
                 ctx.textAlign = "center";
-                ctx.fillText("READY / IN ATTESA DI GENERAZIONE", cardX + cardW / 2, cardY + 50);
+                ctx.fillText("READY / AWAITING GENERATION", cardX + cardW / 2, cardY + 50);
 
                 ctx.fillStyle = "#2d3748";
                 ctx.font = "10px monospace";
-                ctx.fillText("I file salvati e i metadati appariranno qui", cardX + cardW / 2, cardY + 74);
+                ctx.fillText("Saved files and metadata will appear here", cardX + cardW / 2, cardY + 74);
                 ctx.restore();
                 return;
             }
@@ -126,16 +126,16 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
                 ctx.fillStyle = "#f59e0b"; // Amber / Gold for Privacy Mode
                 ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
                 ctx.textAlign = "left";
-                ctx.fillText("✓ SALVATO • 🛡️ PRIVACY (ZERO EXIF)", cardX + 12, badgeY);
+                ctx.fillText("✓ SAVED • 🛡️ PRIVACY (ZERO EXIF)", cardX + 12, badgeY);
             } else {
                 ctx.fillStyle = "#10b981"; // Emerald green
                 ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
                 ctx.textAlign = "left";
-                ctx.fillText("✓ SALVATO", cardX + 12, badgeY);
+                ctx.fillText("✓ SAVED", cardX + 12, badgeY);
             }
 
             // Format & Size Badges
-            const tagText = `${info.format || "IMG"} • ${info.width}x${info.height} • ${info.size_str || ""}${batchCount > 1 ? ` (+${batchCount - 1} altri)` : ""}`;
+            const tagText = `${info.format || "IMG"} • ${info.width}x${info.height} • ${info.size_str || ""}${batchCount > 1 ? ` (+${batchCount - 1} more)` : ""}`;
             ctx.fillStyle = "#00e5ff"; // Cyan highlight
             ctx.font = "bold 10px monospace";
             ctx.textAlign = "right";

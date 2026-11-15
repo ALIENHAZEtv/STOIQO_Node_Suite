@@ -169,14 +169,14 @@ class StoiqoPromptGeneratorNode:
                     p_types,
                     {
                         "default": "Detailed Narrative (Long)" if "Detailed Narrative (Long)" in p_types else p_types[0],
-                        "tooltip": "Formato strutturale di output per il prompt generato.",
+                        "tooltip": "Structural output format for the generated prompt.",
                     },
                 ),
                 "prompt_style": (
                     a_styles,
                     {
                         "default": "Auto-Detect / Preserve Original" if "Auto-Detect / Preserve Original" in a_styles else a_styles[0],
-                        "tooltip": "Stile estetico e archetipo visivo da applicare.",
+                        "tooltip": "Aesthetic style and visual archetype to apply.",
                     },
                 ),
                 "custom_modifications": (
@@ -184,8 +184,8 @@ class StoiqoPromptGeneratorNode:
                     {
                         "multiline": True,
                         "default": "",
-                        "placeholder": "Modifiche e istruzioni di regia (es. renderlo più dark, pioggia battente, luce al neon, abito da sera)...",
-                        "tooltip": "Istruzioni di regia e modifiche aggiuntive da applicare al soggetto.",
+                        "placeholder": "Director instructions and artistic modifiers (e.g. darker mood, pouring rain, neon reflections, evening gown)...",
+                        "tooltip": "Director instructions and artistic modifiers applied to the subject.",
                     },
                 ),
                 "seed": (
@@ -195,7 +195,7 @@ class StoiqoPromptGeneratorNode:
                         "min": 0,
                         "max": 0xFFFFFFFFFFFFFFFF,
                         "control_after_generate": True,
-                        "tooltip": "Seed per generazioni riproducibili o randomizzabili.",
+                        "tooltip": "Random seed for reproducible prompt ideation.",
                     },
                 ),
             },
@@ -204,46 +204,46 @@ class StoiqoPromptGeneratorNode:
                     "STRING",
                     {
                         "forceInput": True,
-                        "tooltip": "Soggetto / prompt di partenza in formato testuale (collegabile da Primitive, Text Node o stringa).",
+                        "tooltip": "Input text or rough prompt to refine (connectable from Primitive or Text nodes).",
                     },
                 ),
                 "image_input": (
                     "IMAGE",
                     {
-                        "tooltip": "Soggetto / riferimento visivo in formato immagine o batch (supporta anche batch multi-immagine da Image Loader).",
+                        "tooltip": "Input reference image or image batch (supports multi-slot batch from Image Loader).",
                     },
                 ),
                 "model": (
                     "*",
                     {
-                        "tooltip": "Modello cognitivo VLM o CLIP da Universal Model Loader.",
+                        "tooltip": "Cognitive VLM or CLIP model from Universal Model Loader.",
                     },
                 ),
                 "character": (
                     "*",
                     {
-                        "tooltip": "Modulo opzionale [STOIQO] Character Memory Bank (Lorebook & DNA visivo del personaggio).",
+                        "tooltip": "Optional Character Memory Bank connection (Lorebook & visual character DNA).",
                     },
                 ),
                 "preset": (
                     cls.PRESETS,
                     {
                         "default": cls.PRESETS[0],
-                        "tooltip": "Preset di calibrazione per il comportamento di sintesi LLM/VLM.",
+                        "tooltip": "Calibrated inference preset controlling LLM/VLM sampling behavior.",
                     },
                 ),
                 "fusion_mode": (
                     cls.FUSION_MODES,
                     {
                         "default": cls.FUSION_MODES[0],
-                        "tooltip": "Strategia di ragionamento multimodale quando image_input contiene più immagini.",
+                        "tooltip": "Multimodal reasoning strategy when image_input contains multiple frames.",
                     },
                 ),
                 "system_prompt": (
                     cls.SYSTEM_PERSONAS,
                     {
                         "default": cls.SYSTEM_PERSONAS[0],
-                        "tooltip": "Ruolo cognitivo o AI persona che guida la costruzione del prompt.",
+                        "tooltip": "Cognitive role or AI persona guiding prompt construction.",
                     },
                 ),
                 "custom_system_prompt": (
@@ -252,7 +252,7 @@ class StoiqoPromptGeneratorNode:
                         "multiline": True,
                         "default": "",
                         "placeholder": "Custom system instructions (active when system_prompt is 'Custom')...",
-                        "tooltip": "Istruzioni di sistema custom passate direttamente al VLM/LLM.",
+                        "tooltip": "Custom system prompt sent directly to the VLM/LLM.",
                     },
                 ),
                 "negative_prompt_prefix": (
@@ -260,7 +260,7 @@ class StoiqoPromptGeneratorNode:
                     {
                         "default": "",
                         "placeholder": "e.g. worst quality, low quality, blurry, ",
-                        "tooltip": "Prefisso anteposto automaticamente al negative prompt generato.",
+                        "tooltip": "Prefix prepended automatically to the generated negative prompt.",
                     },
                 ),
                 "temperature": (
@@ -270,7 +270,7 @@ class StoiqoPromptGeneratorNode:
                         "min": 0.0,
                         "max": 2.0,
                         "step": 0.05,
-                        "tooltip": "Creatività e varianza (0.0 = deterministico, 0.65 = bilanciato, >0.9 = creativo).",
+                        "tooltip": "Sampling temperature (0.0 = deterministic, 0.65 = balanced, >0.9 = wild ideation).",
                     },
                 ),
                 "max_new_tokens": (
@@ -280,7 +280,7 @@ class StoiqoPromptGeneratorNode:
                         "min": 64,
                         "max": 4096,
                         "step": 64,
-                        "tooltip": "Budget massimo di token per il prompt generato.",
+                        "tooltip": "Maximum token generation budget for the synthesized prompt.",
                     },
                 ),
                 "top_p": (
@@ -290,7 +290,7 @@ class StoiqoPromptGeneratorNode:
                         "min": 0.0,
                         "max": 1.0,
                         "step": 0.05,
-                        "tooltip": "Soglia di probabilità per Nucleus Sampling.",
+                        "tooltip": "Nucleus sampling probability threshold.",
                     },
                 ),
                 "top_k": (

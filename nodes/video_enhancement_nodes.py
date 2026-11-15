@@ -45,14 +45,14 @@ class StoiqoVideoEnhancerNode:
                     "BOOLEAN",
                     {
                         "default": True,
-                        "tooltip": "Stabilizza le fluttuazioni di luminanza inter-frame (effetto strobo tipico dei video AI).",
+                        "tooltip": "Stabilizes inter-frame luminance fluctuations (flickering/strobing common in AI video).",
                     },
                 ),
                 "fps_multiplier": (
                     cls.FPS_MULTIPLIERS,
                     {
                         "default": "2x (Double FPS)",
-                        "tooltip": "Moltiplicatore del frame rate: 1x mantiene i frame originali, 2x raddoppia gli FPS, 4x quadruplica gli FPS.",
+                        "tooltip": "Frame rate multiplier: 1x keeps original frames, 2x doubles FPS, 4x quadruples FPS.",
                     },
                 ),
             },
@@ -64,7 +64,7 @@ class StoiqoVideoEnhancerNode:
                         "min": 3,
                         "max": 15,
                         "step": 2,
-                        "tooltip": "Finestra temporale scorrevole (in frame) per il calcolo della luminanza media.",
+                        "tooltip": "Sliding temporal window (in frames) for rolling average luminance computation.",
                     },
                 ),
                 "luminance_tolerance": (
@@ -74,7 +74,7 @@ class StoiqoVideoEnhancerNode:
                         "min": 0.01,
                         "max": 0.30,
                         "step": 0.01,
-                        "tooltip": "Tolleranza massima di correzione esposizione per singolo frame.",
+                        "tooltip": "Maximum per-frame exposure correction tolerance threshold.",
                     },
                 ),
                 "stabilization_strength": (
@@ -84,7 +84,7 @@ class StoiqoVideoEnhancerNode:
                         "min": 0.10,
                         "max": 1.0,
                         "step": 0.05,
-                        "tooltip": "Intensità di stabilizzazione temporale della luminanza.",
+                        "tooltip": "Temporal luminance stabilization blend intensity.",
                     },
                 ),
                 "motion_smoothness": (
@@ -94,14 +94,14 @@ class StoiqoVideoEnhancerNode:
                         "min": 0.2,
                         "max": 2.0,
                         "step": 0.1,
-                        "tooltip": "Esponente di morbidezza della curva di interpolazione tra frame consecutivi.",
+                        "tooltip": "Interpolation curve smoothness exponent between adjacent frames.",
                     },
                 ),
                 "blend_curve": (
                     cls.BLEND_CURVES,
                     {
                         "default": "cosine_smooth",
-                        "tooltip": "Curva matematica di blending inter-frame (cosine_smooth = curva a S naturale).",
+                        "tooltip": "Mathematical inter-frame blending curve (cosine_smooth = natural S-curve).",
                     },
                 ),
             },
