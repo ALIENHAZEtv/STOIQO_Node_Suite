@@ -542,6 +542,13 @@ export function sanitizeNodeWidgetValues(node, info) {
             }
         }
 
+        if (w.name === "text_watermark") {
+            if (w.value === "Normal (Alpha)" || w.value === "Normal" || w.value === "Screen" || w.value === "Multiply") {
+                w.value = "STOIQO";
+                if (w.inputEl) w.inputEl.value = "STOIQO";
+            }
+        }
+
         // 1. Combo validation
         if (w.type === "combo" && w.options && Array.isArray(w.options.values)) {
             if (!w.options.values.includes(w.value)) {
@@ -595,6 +602,8 @@ export function sanitizeNodeWidgetValues(node, info) {
             if (w.name === "max_new_tokens" && (num < 64 || num > 4096)) num = 1024;
             if (w.name === "top_k" && (num < 1 || num > 100)) num = 50;
             if (w.name === "quality" && (num < 1 || num > 100)) num = 90;
+            if (w.name === "opacity" && num <= 0.05) num = 0.85;
+            if (w.name === "custom_scale" && num < 0.01) num = 0.125;
 
             if (w.options) {
                 if (w.options.min !== undefined && num < w.options.min) {

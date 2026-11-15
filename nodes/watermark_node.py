@@ -10,9 +10,12 @@ Supports:
 """
 
 import json
+import logging
 import numpy as np
 import torch
 import torch.nn.functional as F
+
+logger = logging.getLogger("STOIQO")
 
 try:
     from ..core.telemetry import NodeTelemetryTimer, inject_telemetry
@@ -242,6 +245,15 @@ class StoiqoWatermarkNode:
         # Ensure base_image is 4D [B, H, W, C]
         if base_image.ndim == 3:
             base_image = base_image.unsqueeze(0)
+
+        # Defense-in-depth: guard against corrupted legacy widget states where opacity was set to 0.02
+        try:
+            opacity_val = float(opacity)
+            if 0.0 < opacity_val <= 0.05:
+                logger.warning(f"[STOIQO] Watermark opacity ({opacity_val}) was near-invisible, auto-adjusting to 0.85.")
+                opacity = 0.85
+        except (ValueError, TypeError):
+            opacity = 0.85
 
         B_base, H_base, W_base, C_base = base_image.shape
 
