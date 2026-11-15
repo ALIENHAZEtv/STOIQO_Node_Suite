@@ -1,7 +1,7 @@
 /**
  * [STOIQO] Progressive Disclosure (`⚙` Settings Drawer) & Dynamic Conditional Visibility
  * Keeps all ComfyUI nodes compact on the canvas by hiding advanced parameters behind
- * an interactive `⚙ Impostazioni Avanzate` toggle bar and evaluating conditional rules.
+ * an interactive `⚙ Advanced Settings` toggle bar and evaluating conditional rules.
  */
 
 const DRAWER_WIDGET_NAME = "_stoiqo_settings_drawer";

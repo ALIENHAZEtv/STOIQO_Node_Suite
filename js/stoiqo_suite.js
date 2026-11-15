@@ -724,7 +724,7 @@ var ModelStackWidget = class {
       });
     }
     rootFiles.forEach((n) => items.push({ content: baseName(n), value: n }));
-    new LG.ContextMenu(items, { event: ev, title: "Modello", callback: onPick });
+    new LG.ContextMenu(items, { event: ev, title: "Model", callback: onPick });
   }
   pickFrom(ev, title, options, current, onChoose) {
     const LG = window.LiteGraph;
@@ -770,8 +770,8 @@ var ModelStackWidget = class {
         }, e)
       },
       {
-        content: `Percorso / API: ${model.custom_path || "\u2014"}`,
-        callback: (_v, _o, e) => app2.canvas.prompt("Percorso cartella o endpoint API", model.custom_path, (val) => {
+        content: `Custom Path / API: ${model.custom_path || "\u2014"}`,
+        callback: (_v, _o, e) => app2.canvas.prompt("Folder path or API endpoint", model.custom_path, (val) => {
           model.custom_path = String(val || "").trim();
           this.sync();
         }, e)
@@ -2217,7 +2217,7 @@ function setupDatasetNode(nodeType, nodeData, app11) {
       const outputDirWidget = node.widgets.find((w) => w.name === "output_dir");
       const hasBrowseBtn = node.widgets.some((w) => w._isStoiqoBrowse);
       if (outputDirWidget && !hasBrowseBtn) {
-        const browseBtn = node.addWidget("button", "\u{1F4C1} Sfoglia Cartella Output", null, async () => {
+        const browseBtn = node.addWidget("button", "\u{1F4C1} Browse Output Folder", null, async () => {
           try {
             const resp = await api5.fetchApi("/stoiqo/browse_folder", {
               method: "POST",
@@ -4825,7 +4825,7 @@ var StoiqoLoraStackWidget = class {
     }
     const items = [
       {
-        content: `\u{1F50D} Cambia LoRA...`,
+        content: `\u{1F50D} Change LoRA...`,
         callback: (v, opts, e) => {
           this.pickLora(e, (picked) => {
             lora.name = picked;
@@ -4834,7 +4834,7 @@ var StoiqoLoraStackWidget = class {
         }
       },
       {
-        content: `\u2696\uFE0F Modifica CLIP Strength (${(lora.strength_clip ?? lora.strength).toFixed(2)})`,
+        content: `\u2696\uFE0F Edit CLIP Strength (${(lora.strength_clip ?? lora.strength).toFixed(2)})`,
         callback: (_v, _opts, e) => {
           app8.canvas.prompt("CLIP Strength", lora.strength_clip ?? lora.strength, (val) => {
             const num = parseFloat(val);

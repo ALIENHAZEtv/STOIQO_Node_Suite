@@ -380,7 +380,7 @@ class ModelStackWidget {
         }
         rootFiles.forEach(n => items.push({ content: baseName(n), value: n }));
 
-        new LG.ContextMenu(items, { event: ev, title: "Modello", callback: onPick });
+        new LG.ContextMenu(items, { event: ev, title: "Model", callback: onPick });
     }
 
     pickFrom(ev, title, options, current, onChoose) {
@@ -418,8 +418,8 @@ class ModelStackWidget {
                 }, e),
             },
             {
-                content: `Percorso / API: ${model.custom_path || "—"}`,
-                callback: (_v, _o, e) => app.canvas.prompt("Percorso cartella o endpoint API", model.custom_path, (val) => {
+                content: `Custom Path / API: ${model.custom_path || "—"}`,
+                callback: (_v, _o, e) => app.canvas.prompt("Folder path or API endpoint", model.custom_path, (val) => {
                     model.custom_path = String(val || "").trim();
                     this.sync();
                 }, e),

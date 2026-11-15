@@ -223,7 +223,7 @@ class StoiqoUniversalModelLoaderNode:
             stack_entries = parse_model_stack(model_stack)
             active_models = [m for m in stack_entries if m.get("enabled", True)]
 
-            # Se ci sono modelli nello stack attivo, usiamo il primo modello attivo
+            # If there are active models in the stack, use the first active model
             if active_models:
                 target_m = active_models[0]
                 eff_model_name = target_m.get("name", model_name)

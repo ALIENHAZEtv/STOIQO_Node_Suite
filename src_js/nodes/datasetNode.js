@@ -35,7 +35,7 @@ export function setupDatasetNode(nodeType, nodeData, app) {
             const outputDirWidget = node.widgets.find(w => w.name === "output_dir");
             const hasBrowseBtn = node.widgets.some(w => w._isStoiqoBrowse);
             if (outputDirWidget && !hasBrowseBtn) {
-                const browseBtn = node.addWidget("button", "📁 Sfoglia Cartella Output", null, async () => {
+                const browseBtn = node.addWidget("button", "📁 Browse Output Folder", null, async () => {
                     try {
                         const resp = await api.fetchApi("/stoiqo/browse_folder", {
                             method: "POST",

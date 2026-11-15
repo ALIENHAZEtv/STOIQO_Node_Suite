@@ -300,7 +300,7 @@ class StoiqoPromptGeneratorNode:
                         "min": 1,
                         "max": 100,
                         "step": 1,
-                        "tooltip": "Cutoff Top-K sul vocabolario.",
+                        "tooltip": "Top-K vocabulary sampling cutoff.",
                     },
                 ),
                 "repetition_penalty": (
@@ -310,7 +310,7 @@ class StoiqoPromptGeneratorNode:
                         "min": 1.0,
                         "max": 2.0,
                         "step": 0.05,
-                        "tooltip": "Penalità applicata ai token ripetuti.",
+                        "tooltip": "Penalty applied to repeated tokens to prevent repetitive loops.",
                     },
                 ),
             },

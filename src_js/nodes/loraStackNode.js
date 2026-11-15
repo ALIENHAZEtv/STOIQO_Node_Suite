@@ -407,7 +407,7 @@ class StoiqoLoraStackWidget {
 
         const items = [
             {
-                content: `🔍 Cambia LoRA...`,
+                content: `🔍 Change LoRA...`,
                 callback: (v, opts, e) => {
                     this.pickLora(e, (picked) => {
                         lora.name = picked;
@@ -416,7 +416,7 @@ class StoiqoLoraStackWidget {
                 },
             },
             {
-                content: `⚖️ Modifica CLIP Strength (${(lora.strength_clip ?? lora.strength).toFixed(2)})`,
+                content: `⚖️ Edit CLIP Strength (${(lora.strength_clip ?? lora.strength).toFixed(2)})`,
                 callback: (_v, _opts, e) => {
                     app.canvas.prompt("CLIP Strength", lora.strength_clip ?? lora.strength, (val) => {
                         const num = parseFloat(val);
