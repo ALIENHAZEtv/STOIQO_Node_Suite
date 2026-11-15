@@ -117,6 +117,21 @@ for module_name, classes in _NODE_DEFINITIONS:
         else:
             logger.warning(f"[STOIQO] Notice: Class '{cls_name}' not found in '{module_name}'")
 
+# 3. Backwards Compatibility Aliases for Legacy Workflows
+_LEGACY_ALIASES = {
+    "StoiqoVisualDiffNode": ("StoiqoImageCompareNode", "[STOIQO] Visual Compare Slider & Zoom (Legacy Alias)"),
+    "StoiqoTemporalDeflickerNode": ("StoiqoVideoEnhancerNode", "[STOIQO] Video Deflicker & Frame Interpolator (Legacy Alias)"),
+    "StoiqoFrameInterpolateNode": ("StoiqoVideoEnhancerNode", "[STOIQO] Video Deflicker & Frame Interpolator (Legacy Alias)"),
+    "StoiqoTripleImageLoaderNode": ("StoiqoImageLoaderNode", "[STOIQO] Image Loader (Legacy Alias)"),
+    "StoiqoResolutionNode": ("StoiqoSeedControllerNode", "[STOIQO] Seed & Resolution Controller (Legacy Alias)"),
+}
+
+for legacy_name, (target_name, legacy_display) in _LEGACY_ALIASES.items():
+    if target_name in NODE_CLASS_MAPPINGS and legacy_name not in NODE_CLASS_MAPPINGS:
+        NODE_CLASS_MAPPINGS[legacy_name] = NODE_CLASS_MAPPINGS[target_name]
+        NODE_DISPLAY_NAME_MAPPINGS[legacy_name] = legacy_display
+        globals()[legacy_name] = NODE_CLASS_MAPPINGS[target_name]
+
 __all__ = [
     "NODE_CLASS_MAPPINGS",
     "NODE_DISPLAY_NAME_MAPPINGS",

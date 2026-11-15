@@ -70,10 +70,10 @@ class StoiqoVideoSaverNode:
     ]
 
     SIDECAR_OPTIONS = [
+        "None",
         "Both (.json + .txt)",
         "JSON Metadata (.json)",
         "TXT Prompt (.txt)",
-        "None",
     ]
 
     def __init__(self):
@@ -178,7 +178,7 @@ class StoiqoVideoSaverNode:
         quality=85,
         subfolder="StoiqoVideos/%date%",
         motion_prompt="",
-        sidecar_metadata="Both (.json + .txt)",
+        sidecar_metadata="None",
         prompt=None,
         extra_pnginfo=None,
         unique_id=None,

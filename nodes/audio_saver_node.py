@@ -211,10 +211,10 @@ class StoiqoAudioSaverNode:
     ]
 
     SIDECAR_OPTIONS = [
+        "None",
         "Both (.txt lyrics + .json)",
         "TXT Lyrics (.txt)",
         "JSON Metadata (.json)",
-        "None",
     ]
 
     def __init__(self):
@@ -327,7 +327,7 @@ class StoiqoAudioSaverNode:
         style="",
         genre="",
         bpm=120,
-        sidecar_metadata="Both (.txt lyrics + .json)",
+        sidecar_metadata="None",
         prompt=None,
         extra_pnginfo=None,
         unique_id=None,

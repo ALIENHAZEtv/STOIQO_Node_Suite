@@ -1588,12 +1588,12 @@
         "StoiqoAudio/%date%",
         "Cosmic Voyage",
         120,
-        "Both (.txt lyrics + .json)"
+        "None"
       ]
     },
     {
       "id": 25,
-      "type": "StoiqoTemporalDeflickerNode",
+      "type": "StoiqoVideoEnhancerNode",
       "pos": [
         120,
         2780
@@ -1629,7 +1629,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "StoiqoTemporalDeflickerNode"
+        "Node name for S&R": "StoiqoVideoEnhancerNode"
       },
       "widgets_values": [
         5,
@@ -1639,7 +1639,7 @@
     },
     {
       "id": 26,
-      "type": "StoiqoFrameInterpolateNode",
+      "type": "StoiqoVideoEnhancerNode",
       "pos": [
         580,
         2780
@@ -1681,7 +1681,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "StoiqoFrameInterpolateNode"
+        "Node name for S&R": "StoiqoVideoEnhancerNode"
       },
       "widgets_values": [
         "2x (Double FPS)",
@@ -1757,7 +1757,7 @@
         85,
         "StoiqoVideos/%date%",
         "",
-        "Both (.json + .txt)"
+        "None"
       ]
     },
     {
@@ -1885,7 +1885,7 @@
     },
     {
       "id": 30,
-      "type": "StoiqoTripleImageLoaderNode",
+      "type": "StoiqoImageLoaderNode",
       "pos": [
         2140,
         2780
@@ -1927,7 +1927,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "StoiqoTripleImageLoaderNode"
+        "Node name for S&R": "StoiqoImageLoaderNode"
       },
       "widgets_values": [
         "hero.png",
@@ -1938,7 +1938,7 @@
     },
     {
       "id": 31,
-      "type": "StoiqoVisualDiffNode",
+      "type": "StoiqoImageCompareNode",
       "pos": [
         2140,
         3200
@@ -1989,7 +1989,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "StoiqoVisualDiffNode"
+        "Node name for S&R": "StoiqoImageCompareNode"
       },
       "widgets_values": [
         "Heatmap Difference",
@@ -2244,10 +2244,18 @@
         90,
         "StoiqoCreations/%date%",
         "None",
-        "",
-        "",
-        true
-      ]
+        true,
+        false
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "%date%_render_%counter%",
+        "format": "PNG (Lossless)",
+        "quality": 90,
+        "subfolder": "StoiqoCreations/%date%",
+        "sidecar_metadata": "None",
+        "save_workflow": true,
+        "privacy_mode": false
+      }
     }
   ],
   "links": [
