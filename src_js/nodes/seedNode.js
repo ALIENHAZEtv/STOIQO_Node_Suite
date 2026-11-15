@@ -23,6 +23,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
             this.type = "custom";
             this.name = "_stoiqo_seed_history_hud";
             this.value = {};
+            this.serialize = false;
             this.options = { serialize: false };
             this.isStoiqoHUD = true;
             this.height = 70;

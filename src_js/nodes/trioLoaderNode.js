@@ -66,6 +66,7 @@ export function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
             this.type = "custom";
             this.name = "_stoiqo_trio_gallery";
             this.value = {};
+            this.serialize = false;
             this.options = { serialize: false };
             this.node = node;
 

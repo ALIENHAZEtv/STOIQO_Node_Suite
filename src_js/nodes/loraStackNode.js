@@ -61,6 +61,7 @@ class StoiqoLoraStackWidget {
         this.name = "_stoiqo_lora_stack";
         this.node = node;
         this.store = storeWidget;
+        this.serialize = false;
         this.options = { serialize: false };
         this.loras = [];
         this.hits = [];

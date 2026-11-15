@@ -36,6 +36,7 @@ export class StoiqoSectionDividerWidget {
         this.type = "custom";
         this.name = `_stoiqo_divider_${sectionNum}`;
         this.value = {};
+        this.serialize = false;
         this.options = { serialize: false };
         this.sectionNum = sectionNum;
         this.sectionTitle = sectionTitle;

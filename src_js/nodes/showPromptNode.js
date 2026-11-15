@@ -103,6 +103,7 @@ function createPromptViewerWidget(node) {
     const widget = {
         type: "STOIQO_PROMPT_VIEWER",
         name: "prompt_viewer_hud",
+        serialize: false,
         options: { serialize: false },
         _feedbackText: null,
         _feedbackAllText: null,
@@ -351,6 +352,7 @@ export function setupShowPromptNode(nodeType, nodeData, app) {
 
             if (textWidget) {
                 textWidget.name = "display_text";
+                textWidget.serialize = false;
                 textWidget.options = textWidget.options || {};
                 textWidget.options.serialize = false;
 

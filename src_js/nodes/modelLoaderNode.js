@@ -102,6 +102,7 @@ class ModelStackWidget {
         this.name    = "_stoiqo_model_stack";
         this.node    = node;
         this.store   = storeWidget;
+        this.serialize = false;
         this.options = { serialize: false };
         this.models  = [];
         this.hits    = [];

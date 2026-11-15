@@ -99,6 +99,7 @@ function createPromptViewerWidget(node) {
   const widget = {
     type: "STOIQO_PROMPT_VIEWER",
     name: "prompt_viewer_hud",
+    serialize: false,
     options: { serialize: false },
     _feedbackText: null,
     _feedbackAllText: null,
@@ -293,6 +294,7 @@ function setupShowPromptNode(nodeType, nodeData, app11) {
       }
       if (textWidget) {
         textWidget.name = "display_text";
+        textWidget.serialize = false;
         textWidget.options = textWidget.options || {};
         textWidget.options.serialize = false;
         const styleInput = (el) => {
@@ -465,6 +467,7 @@ var ModelStackWidget = class {
     this.name = "_stoiqo_model_stack";
     this.node = node;
     this.store = storeWidget;
+    this.serialize = false;
     this.options = { serialize: false };
     this.models = [];
     this.hits = [];
@@ -880,6 +883,7 @@ var StoiqoSectionDividerWidget = class {
     this.type = "custom";
     this.name = `_stoiqo_divider_${sectionNum}`;
     this.value = {};
+    this.serialize = false;
     this.options = { serialize: false };
     this.sectionNum = sectionNum;
     this.sectionTitle = sectionTitle;
@@ -1122,6 +1126,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         this.type = "custom";
         this.name = "_stoiqo_compare_canvas";
         this.value = [];
+        this.serialize = false;
         this.options = { serialize: false };
         this.node = node;
         this.imgA = null;
@@ -2048,6 +2053,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         this.type = "custom";
         this.name = "_stoiqo_res_hud";
         this.value = {};
+        this.serialize = false;
         this.options = { serialize: false };
         this.isStoiqoHUD = true;
         this.height = 44;
@@ -2349,6 +2355,7 @@ function setupIteratorNode(nodeType, nodeData, app11) {
           { serialize: false }
         );
         browseBtn._isStoiqoBrowse = true;
+        browseBtn.serialize = false;
         browseBtn.options = { serialize: false };
         const pathIdx = node.widgets.findIndex((w) => w.name === "folder_path");
         if (pathIdx !== -1) {
@@ -2381,6 +2388,7 @@ function setupIteratorNode(nodeType, nodeData, app11) {
           { serialize: false }
         );
         refreshBtn._isStoiqoRefresh = true;
+        refreshBtn.serialize = false;
         refreshBtn.options = { serialize: false };
         const browseIdx = node.widgets.indexOf(browseBtn);
         if (browseIdx !== -1) {
@@ -2508,6 +2516,7 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
       this.type = "custom";
       this.name = "_stoiqo_trio_gallery";
       this.value = {};
+      this.serialize = false;
       this.options = { serialize: false };
       this.node = node;
       this.activeFocus = 1;
@@ -2800,6 +2809,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       this.type = "custom";
       this.name = "_stoiqo_token_hud";
       this.value = {};
+      this.serialize = false;
       this.options = { serialize: false };
       this.node = node;
       this.stats = { words: 0, chars: 0, tokens: 0 };
@@ -3145,6 +3155,7 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
       this.type = "custom";
       this.name = "_stoiqo_saver_hud";
       this.value = {};
+      this.serialize = false;
       this.options = { serialize: false };
       this.node = node;
       this.lastSaveInfo = null;
@@ -3550,6 +3561,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
       );
       if (trackInfoDisplay) {
         trackInfoDisplay.name = "preview_track_info";
+        trackInfoDisplay.serialize = false;
         trackInfoDisplay.options = trackInfoDisplay.options || {};
         trackInfoDisplay.options.serialize = false;
         trackInfoDisplay.computeSize = function(width) {
@@ -3578,6 +3590,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
       }
       if (styleDisplay) {
         styleDisplay.name = "preview_style";
+        styleDisplay.serialize = false;
         styleDisplay.options = styleDisplay.options || {};
         styleDisplay.options.serialize = false;
         styleDisplay.computeSize = function(width) {
@@ -3636,6 +3649,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
       }
       if (lyricsDisplay) {
         lyricsDisplay.name = "preview_lyrics";
+        lyricsDisplay.serialize = false;
         lyricsDisplay.options = lyricsDisplay.options || {};
         lyricsDisplay.options.serialize = false;
         lyricsDisplay.computeSize = function(width) {
@@ -3694,6 +3708,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
         { serialize: false }
       );
       copyStyleBtn._isMusicCopyStyle = true;
+      copyStyleBtn.serialize = false;
       copyStyleBtn.options = { serialize: false };
     }
     let copyLyricsBtn = node.widgets.find((w) => w._isMusicCopyLyrics);
@@ -3719,6 +3734,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
         { serialize: false }
       );
       copyLyricsBtn._isMusicCopyLyrics = true;
+      copyLyricsBtn.serialize = false;
       copyLyricsBtn.options = { serialize: false };
     }
     let copyMetricsBtn = node.widgets.find((w) => w._isMusicCopyMetrics);
@@ -3766,6 +3782,7 @@ Summary: ${lastInfo.metric_summary}
         { serialize: false }
       );
       copyMetricsBtn._isMusicCopyMetrics = true;
+      copyMetricsBtn.serialize = false;
       copyMetricsBtn.options = { serialize: false };
     }
     if (typeof node.computeSize === "function") {
@@ -3923,6 +3940,7 @@ function setupPipelineNodes(nodeType, nodeData, appInstance) {
           },
           { multiline: true }
         );
+        tw.serialize = false;
         tw.options = { serialize: false };
         tw.computeSize = function(width) {
           return [width, 100];
@@ -4148,6 +4166,7 @@ function createAudioPlayerWidget(node, audioData) {
       serialize: false,
       hideOnZoom: false
     });
+    widget.serialize = false;
     widget.computeSize = function(width) {
       return [width, 68];
     };
@@ -4389,6 +4408,7 @@ function createVideoPlayerWidget(node, videoData) {
       serialize: false,
       hideOnZoom: false
     });
+    widget.serialize = false;
     widget.computeSize = function(width) {
       return [width, 275];
     };
@@ -4463,6 +4483,7 @@ var StoiqoLoraStackWidget = class {
     this.name = "_stoiqo_lora_stack";
     this.node = node;
     this.store = storeWidget;
+    this.serialize = false;
     this.options = { serialize: false };
     this.loras = [];
     this.hits = [];
@@ -5064,6 +5085,7 @@ var StoiqoPromptHUDWidget = class {
     this.type = "custom";
     this.name = "_stoiqo_mode_hud";
     this.value = {};
+    this.serialize = false;
     this.options = { serialize: false };
     this.isStoiqoHUD = true;
     this.height = 36;
@@ -5225,6 +5247,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
       this.type = "custom";
       this.name = "_stoiqo_seed_history_hud";
       this.value = {};
+      this.serialize = false;
       this.options = { serialize: false };
       this.isStoiqoHUD = true;
       this.height = 70;
@@ -5845,6 +5868,7 @@ var StoiqoSettingsDrawerWidget = class {
     this.name = DRAWER_WIDGET_NAME;
     this.node = node;
     this.spec = spec;
+    this.serialize = false;
     this.options = { serialize: false };
     this.lastClick = 0;
     this.hitBox = null;
@@ -6007,6 +6031,41 @@ function applyNodeUXSpec(node, spec) {
   }
   refreshUX(true);
 }
+function sanitizeNodeWidgetValues(node) {
+  if (!node || !node.widgets) return;
+  for (const w of node.widgets) {
+    if (!w || w.name === DRAWER_WIDGET_NAME || w.serialize === false) continue;
+    if (w.type === "combo" && w.options && Array.isArray(w.options.values)) {
+      if (!w.options.values.includes(w.value)) {
+        const def = w.options.default !== void 0 && w.options.values.includes(w.options.default) ? w.options.default : w._stoiqoDefaultVal !== void 0 && w.options.values.includes(w._stoiqoDefaultVal) ? w._stoiqoDefaultVal : w.options.values[0];
+        w.value = def;
+        if (w.inputEl) w.inputEl.value = String(def);
+      }
+    }
+    if (w.type === "number" || w.options && (w.options.min !== void 0 || w.options.max !== void 0 || w.options.step !== void 0)) {
+      let num = Number(w.value);
+      const isInt = w.options && w.options.step && Number.isInteger(w.options.step) && (w.options.round === void 0 || w.options.round === 0);
+      if (typeof w.value !== "number" || isNaN(num)) {
+        num = w.options && w.options.default !== void 0 ? Number(w.options.default) : w._stoiqoDefaultVal !== void 0 ? Number(w._stoiqoDefaultVal) : 0;
+      }
+      if (w.options) {
+        if (w.options.min !== void 0 && num < w.options.min) {
+          num = w.options.default !== void 0 && w.options.default >= w.options.min ? w.options.default : w.options.min;
+        }
+        if (w.options.max !== void 0 && num > w.options.max) {
+          num = w.options.default !== void 0 && w.options.default <= w.options.max ? w.options.default : w.options.max;
+        }
+      }
+      w.value = isInt ? Math.round(num) : num;
+      if (w.inputEl) w.inputEl.value = String(w.value);
+    }
+    if (w.type === "toggle") {
+      if (typeof w.value !== "boolean") {
+        w.value = w.options && w.options.default !== void 0 ? Boolean(w.options.default) : Boolean(w.value);
+      }
+    }
+  }
+}
 function setupSettingsDrawers(nodeType, nodeData) {
   const spec = NODE_UX_SPECS[nodeData.name];
   if (!spec) return;
@@ -6021,13 +6080,14 @@ function setupSettingsDrawers(nodeType, nodeData) {
         }
       }
     }
-    setTimeout(() => applyNodeUXSpec(node, spec), 0);
+    applyNodeUXSpec(node, spec);
   };
   const origConfigure = nodeType.prototype.onConfigure;
   nodeType.prototype.onConfigure = function() {
     if (origConfigure) origConfigure.apply(this, arguments);
     const node = this;
-    setTimeout(() => applyNodeUXSpec(node, spec), 0);
+    applyNodeUXSpec(node, spec);
+    sanitizeNodeWidgetValues(node);
   };
 }
 
@@ -6037,6 +6097,11 @@ app10.registerExtension({
   async beforeRegisterNodeDef(nodeType, nodeData, app11) {
     if (nodeData.category === "STOIQO" || nodeData.name && nodeData.name.startsWith("Stoiqo")) {
       setupTelemetryBadge(nodeType, nodeData, app11);
+      const origConfigure = nodeType.prototype.onConfigure;
+      nodeType.prototype.onConfigure = function() {
+        if (origConfigure) origConfigure.apply(this, arguments);
+        sanitizeNodeWidgetValues(this);
+      };
     }
     setupShowPromptNode(nodeType, nodeData, app11);
     setupModelLoaderNode(nodeType, nodeData, app11);

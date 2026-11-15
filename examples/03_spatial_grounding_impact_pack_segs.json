@@ -4,7 +4,7 @@
   "nodes": [
     {
       "id": 1,
-      "type": "StoiqoVLMModelLoaderNode",
+      "type": "StoiqoUniversalModelLoaderNode",
       "pos": [40, 100],
       "size": [380, 260],
       "flags": {},
@@ -12,14 +12,17 @@
       "mode": 0,
       "inputs": [],
       "outputs": [
-        { "name": "stoiqo_model", "type": "STOIQO_MODEL", "links": [1], "slot_index": 0 }
+        { "name": "model", "type": "*", "links": [1], "slot_index": 0 }
       ],
-      "properties": { "Node name for S&R": "StoiqoVLMModelLoaderNode" },
+      "properties": { "Node name for S&R": "StoiqoUniversalModelLoaderNode" },
       "widgets_values": [
-        "12-16 GB VRAM  -  Qwen2.5-VL-7B  (4bit, ~5 GB active)",
-        "",
+        "[VLM] Qwen2.5-VL-7B-Instruct (4-bit NF4 Recommended)",
+        "auto",
         "4bit - NF4 (Recommended - Low VRAM)",
-        "sdpa (PyTorch Native - Recommended)",
+        "sdpa",
+        "None (Standard / SD1.5 / SDXL / Krea 2)",
+        3.0,
+        "",
         true
       ]
     },

@@ -22,6 +22,7 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
             this.type = "custom";
             this.name = "_stoiqo_saver_hud";
             this.value = {};
+            this.serialize = false;
             this.options = { serialize: false };
             this.node = node;
 

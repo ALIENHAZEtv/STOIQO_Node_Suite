@@ -84,6 +84,7 @@ export class StoiqoPromptHUDWidget {
         this.type = "custom";
         this.name = "_stoiqo_mode_hud";
         this.value = {};
+        this.serialize = false;
         this.options = { serialize: false };
         this.isStoiqoHUD = true;
         this.height = 36;

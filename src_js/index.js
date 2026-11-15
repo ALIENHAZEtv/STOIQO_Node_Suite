@@ -13,13 +13,19 @@ import { setupLoraStackNode } from "./nodes/loraStackNode.js";
 import { setupPromptGeneratorNode } from "./nodes/promptGeneratorNode.js";
 import { setupSeedNode } from "./nodes/seedNode.js";
 import { setupTelemetryBadge } from "./utils/telemetry.js";
-import { setupSettingsDrawers } from "./utils/settingsDrawer.js";
+import { setupSettingsDrawers, sanitizeNodeWidgetValues } from "./utils/settingsDrawer.js";
 
 app.registerExtension({
     name: "Stoiqo.PromptGeneratorEngine.Dividers",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if (nodeData.category === "STOIQO" || (nodeData.name && nodeData.name.startsWith("Stoiqo"))) {
             setupTelemetryBadge(nodeType, nodeData, app);
+
+            const origConfigure = nodeType.prototype.onConfigure;
+            nodeType.prototype.onConfigure = function () {
+                if (origConfigure) origConfigure.apply(this, arguments);
+                sanitizeNodeWidgetValues(this);
+            };
         }
 
         setupShowPromptNode(nodeType, nodeData, app);

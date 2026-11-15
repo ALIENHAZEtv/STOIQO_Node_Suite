@@ -117,6 +117,7 @@ export function setupPipelineNodes(nodeType, nodeData, appInstance) {
                     function() {},
                     { multiline: true }
                 );
+                tw.serialize = false;
                 tw.options = { serialize: false };
                 tw.computeSize = function(width) {
                     return [width, 100];
@@ -368,6 +369,7 @@ function createAudioPlayerWidget(node, audioData) {
             serialize: false,
             hideOnZoom: false,
         });
+        widget.serialize = false;
         widget.computeSize = function(width) {
             return [width, 68];
         };
@@ -651,6 +653,7 @@ function createVideoPlayerWidget(node, videoData) {
             serialize: false,
             hideOnZoom: false,
         });
+        widget.serialize = false;
         widget.computeSize = function(width) {
             return [width, 275];
         };

@@ -179,6 +179,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
             );
             if (trackInfoDisplay) {
                 trackInfoDisplay.name = "preview_track_info";
+                trackInfoDisplay.serialize = false;
                 trackInfoDisplay.options = trackInfoDisplay.options || {};
                 trackInfoDisplay.options.serialize = false;
                 trackInfoDisplay.computeSize = function(width) { return [width, 24]; };
@@ -206,6 +207,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
 
             if (styleDisplay) {
                 styleDisplay.name = "preview_style";
+                styleDisplay.serialize = false;
                 styleDisplay.options = styleDisplay.options || {};
                 styleDisplay.options.serialize = false;
                 styleDisplay.computeSize = function(width) { return [width, 64]; };
@@ -261,6 +263,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
 
             if (lyricsDisplay) {
                 lyricsDisplay.name = "preview_lyrics";
+                lyricsDisplay.serialize = false;
                 lyricsDisplay.options = lyricsDisplay.options || {};
                 lyricsDisplay.options.serialize = false;
                 lyricsDisplay.computeSize = function(width) { return [width, 110]; };
@@ -313,6 +316,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
                 { serialize: false }
             );
             copyStyleBtn._isMusicCopyStyle = true;
+            copyStyleBtn.serialize = false;
             copyStyleBtn.options = { serialize: false };
         }
 
@@ -336,6 +340,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
                 { serialize: false }
             );
             copyLyricsBtn._isMusicCopyLyrics = true;
+            copyLyricsBtn.serialize = false;
             copyLyricsBtn.options = { serialize: false };
         }
 
@@ -377,6 +382,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
                 { serialize: false }
             );
             copyMetricsBtn._isMusicCopyMetrics = true;
+            copyMetricsBtn.serialize = false;
             copyMetricsBtn.options = { serialize: false };
         }
 

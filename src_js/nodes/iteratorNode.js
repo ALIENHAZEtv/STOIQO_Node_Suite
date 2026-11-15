@@ -146,6 +146,7 @@ export function setupIteratorNode(nodeType, nodeData, app) {
                     { serialize: false }
                 );
                 browseBtn._isStoiqoBrowse = true;
+                browseBtn.serialize = false;
                 browseBtn.options = { serialize: false };
 
                 const pathIdx = node.widgets.findIndex(w => w.name === "folder_path");
@@ -181,6 +182,7 @@ export function setupIteratorNode(nodeType, nodeData, app) {
                     { serialize: false }
                 );
                 refreshBtn._isStoiqoRefresh = true;
+                refreshBtn.serialize = false;
                 refreshBtn.options = { serialize: false };
 
                 const browseIdx = node.widgets.indexOf(browseBtn);

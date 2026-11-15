@@ -38,6 +38,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                     this.type = "custom";
                     this.name = "_stoiqo_compare_canvas";
                     this.value = [];
+                    this.serialize = false;
                     this.options = { serialize: false };
                     this.node = node;
                     this.imgA = null;
@@ -1157,6 +1158,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                     this.type = "custom";
                     this.name = "_stoiqo_res_hud";
                     this.value = {};
+                    this.serialize = false;
                     this.options = { serialize: false };
                     this.isStoiqoHUD = true;
                     this.height = 44;

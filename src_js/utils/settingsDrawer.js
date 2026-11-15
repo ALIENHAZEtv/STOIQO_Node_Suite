@@ -321,6 +321,7 @@ class StoiqoSettingsDrawerWidget {
         this.name = DRAWER_WIDGET_NAME;
         this.node = node;
         this.spec = spec;
+        this.serialize = false;
         this.options = { serialize: false };
         this.lastClick = 0;
         this.hitBox = null;
@@ -506,6 +507,54 @@ export function applyNodeUXSpec(node, spec) {
     refreshUX(true);
 }
 
+export function sanitizeNodeWidgetValues(node) {
+    if (!node || !node.widgets) return;
+    for (const w of node.widgets) {
+        if (!w || w.name === DRAWER_WIDGET_NAME || w.serialize === false) continue;
+
+        // 1. Combo validation
+        if (w.type === "combo" && w.options && Array.isArray(w.options.values)) {
+            if (!w.options.values.includes(w.value)) {
+                const def = (w.options.default !== undefined && w.options.values.includes(w.options.default))
+                    ? w.options.default
+                    : (w._stoiqoDefaultVal !== undefined && w.options.values.includes(w._stoiqoDefaultVal)
+                        ? w._stoiqoDefaultVal
+                        : w.options.values[0]);
+                w.value = def;
+                if (w.inputEl) w.inputEl.value = String(def);
+            }
+        }
+
+        // 2. Numeric validation (FLOAT / INT)
+        if (w.type === "number" || (w.options && (w.options.min !== undefined || w.options.max !== undefined || w.options.step !== undefined))) {
+            let num = Number(w.value);
+            const isInt = w.options && w.options.step && Number.isInteger(w.options.step) && (w.options.round === undefined || w.options.round === 0);
+            if (typeof w.value !== "number" || isNaN(num)) {
+                num = (w.options && w.options.default !== undefined)
+                    ? Number(w.options.default)
+                    : (w._stoiqoDefaultVal !== undefined ? Number(w._stoiqoDefaultVal) : 0);
+            }
+            if (w.options) {
+                if (w.options.min !== undefined && num < w.options.min) {
+                    num = (w.options.default !== undefined && w.options.default >= w.options.min) ? w.options.default : w.options.min;
+                }
+                if (w.options.max !== undefined && num > w.options.max) {
+                    num = (w.options.default !== undefined && w.options.default <= w.options.max) ? w.options.default : w.options.max;
+                }
+            }
+            w.value = isInt ? Math.round(num) : num;
+            if (w.inputEl) w.inputEl.value = String(w.value);
+        }
+
+        // 3. Boolean / Toggle validation
+        if (w.type === "toggle") {
+            if (typeof w.value !== "boolean") {
+                w.value = (w.options && w.options.default !== undefined) ? Boolean(w.options.default) : Boolean(w.value);
+            }
+        }
+    }
+}
+
 export function setupSettingsDrawers(nodeType, nodeData) {
     const spec = NODE_UX_SPECS[nodeData.name];
     if (!spec) return;
@@ -521,13 +570,14 @@ export function setupSettingsDrawers(nodeType, nodeData) {
                 }
             }
         }
-        setTimeout(() => applyNodeUXSpec(node, spec), 0);
+        applyNodeUXSpec(node, spec);
     };
 
     const origConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function () {
         if (origConfigure) origConfigure.apply(this, arguments);
         const node = this;
-        setTimeout(() => applyNodeUXSpec(node, spec), 0);
+        applyNodeUXSpec(node, spec);
+        sanitizeNodeWidgetValues(node);
     };
 }

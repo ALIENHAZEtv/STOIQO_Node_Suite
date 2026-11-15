@@ -28,6 +28,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
             this.type = "custom";
             this.name = "_stoiqo_token_hud";
             this.value = {};
+            this.serialize = false;
             this.options = { serialize: false };
             this.node = node;
             this.stats = { words: 0, chars: 0, tokens: 0 };
