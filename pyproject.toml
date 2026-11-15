@@ -1,6 +1,6 @@
 [project]
 name = "stoiqo-node-suite"
-version = "1.0.0"
+version = "2.0.0"
 description = "A production-ready ComfyUI custom node suite for Visual & Music Prompt Generation and Creative Utilities powered by Vision-Language Models."
 readme = "README.md"
 license = { file = "LICENSE" }
