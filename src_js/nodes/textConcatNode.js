@@ -69,7 +69,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
             }
 
             ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
-            ctx.fillStyle = "#38bdf8";
+            ctx.fillStyle = "#2997ff";
             ctx.textAlign = "left";
             ctx.fillText("📊 STATS", pad + 8, posY + 15);
 
@@ -188,7 +188,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
                 const canAdd = visibleCount < MAX_SLOTS;
                 node._stoiqoAddBtn.name = canAdd
                     ? `[+] Aggiungi Box Testo (${visibleCount}/${MAX_SLOTS})`
-                    : `[✓] Massimo ${MAX_SLOTS} Box Raggiunto`;
+                    : `[✓] Maximum ${MAX_SLOTS} Boxes Reached`;
             }
 
             // Update Remove button visibility
@@ -235,8 +235,8 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
                 const btnH = 24;
 
                 ctx.save();
-                ctx.fillStyle = canAdd ? "rgba(168, 85, 247, 0.20)" : "rgba(255, 255, 255, 0.05)";
-                ctx.strokeStyle = canAdd ? "#a855f7" : "rgba(255, 255, 255, 0.12)";
+                ctx.fillStyle = canAdd ? "rgba(41, 151, 255, 0.20)" : "rgba(255, 255, 255, 0.05)";
+                ctx.strokeStyle = canAdd ? "#2997ff" : "rgba(255, 255, 255, 0.12)";
                 ctx.lineWidth = 1.2;
 
                 if (ctx.roundRect) {
@@ -407,8 +407,8 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
                         w.value = val;
                         if (w.inputEl) {
                             w.inputEl.value = val;
-                            w.inputEl.style.borderColor = "#a855f7";
-                            w.inputEl.style.backgroundColor = "rgba(168, 85, 247, 0.08)";
+                            w.inputEl.style.borderColor = "#2997ff";
+                            w.inputEl.style.backgroundColor = "rgba(41, 151, 255, 0.08)";
                         }
                     }
                 }

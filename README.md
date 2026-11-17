@@ -5,10 +5,11 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-brightgreen.svg)](https://www.python.org/downloads/)
 [![ComfyUI-Manager](https://img.shields.io/badge/ComfyUI--Manager-Registered-purple.svg)](https://github.com/ltdrdata/ComfyUI-Manager)
 [![Nodes: 21 Sovereign](https://img.shields.io/badge/Nodes-21%20Sovereign-emerald.svg)](#the-21-sovereign-nodes)
+[![Tests: 151 Passing](https://img.shields.io/badge/Tests-151%20Passing-brightgreen.svg)](#-validation--test-suite)
 
 Production-ready, unified ComfyUI custom node suite for **Visual & Multimodal Prompt Generation, DiT Model Routing, High-Precision Forensics, Music Composition, Video Stabilization, and Lossless Metadata-Embedded Media Export**.
 
-Streamlined from early experimental prototypes into **21 hardened sovereign nodes**, the suite delivers professional performance across 6 architectural domains with zero third-party UI friction.
+Streamlined from early experimental prototypes into **21 hardened sovereign nodes**, the suite delivers professional performance across 6 architectural domains with zero third-party UI friction and 100% strict English-only UI standards.
 
 ---
 
@@ -16,6 +17,9 @@ Streamlined from early experimental prototypes into **21 hardened sovereign node
 
 | Capability | Engineering Highlights |
 |---|---|
+| **3-Layer Modular Prompt Engine** | Structured hierarchy decoupling Cognitive AI Persona (Layer 1), Structural Format (Layer 2), Aesthetic Style (Layer 3), and Director Modifications for surgical ideation control. |
+| **Drop-in File Extensibility** | Add custom personas, styles, or output formats on the fly simply by dropping Markdown files with YAML frontmatter into `core/image/` directories. Zero Python/JS code edits needed. |
+| **Progressive Disclosure (`⚙` Drawer)** | Keeps canvas nodes clean and compact. Advanced sampling parameters, multimodal fusion modes, and seed companion controls are tucked behind an interactive drawer with dynamic height adjustment. |
 | **The 21 Sovereign Architecture** | Replaces fragmented legacy nodes with 21 focused, high-throughput modules covering diffusion, VLM, audio, video, and forensics. |
 | **Sovereign Metadata Embedding** | Default `sidecar_metadata: "None"`. Full ComfyUI workflow JSON, seeds, prompts, and model hashes are embedded losslessly into PNG chunks, MP4 containers, or MP3 ID3 tags without polluting disk with `.txt` and `.json` sidecars. |
 | **Frontend Auto-Healing Sanitizer** | Integrated `sanitizeNodeWidgetValues` and `beforeQueue` interceptor that auto-repairs corrupted browser states (e.g. invalid subfolders or shifted combos) before validation. |
@@ -23,7 +27,91 @@ Streamlined from early experimental prototypes into **21 hardened sovereign node
 | **Live WebSocket Token Streaming** | Real-time typewriter token streaming on the canvas via `TextIteratorStreamer` with direct user abort handling. |
 | **Interactive Visual Forensics** | Split-slider curtain with synchronized 1:1 pan & zoom, scientific false-color thermal heatmaps (Turbo, Inferno, Jet), binary change masks, and SSIM/PSNR calculation in pure PyTorch. |
 | **Seamless Backward Compatibility** | Built-in legacy alias mapping (`StoiqoVisualDiffNode`, `StoiqoTemporalDeflickerNode`, `StoiqoTripleImageLoaderNode`, `StoiqoResolutionNode`) guaranteeing zero breaking changes on older saved workflows. |
-| **Native Dark Theme Integration** | Strict adherence to the Monolith Minimalist Dark system (`#0c0d11`, Titanium Slate, Precision Blue, Status Emerald, Amber, and Crimson Red). Zero unstyled cyberpunk neon. |
+| **Monolith Minimalist Dark Theme** | Strict adherence to the Monolith Minimalist Dark system (`#0c0d11`, Titanium Slate, Precision Blue, Status Emerald, Amber, and Crimson Red). Zero unstyled cyberpunk neon. |
+
+---
+
+## 🎛️ The 3-Layer Modular Prompt Engine
+
+The flagship **`[STOIQO] Prompt Generator`** (`StoiqoPromptGeneratorNode`) features a clean face with 3 stacked dropdowns and a director modification text area:
+
+```
++-------------------------------------------------------------+
+|                [STOIQO] Prompt Generator                    |
++-------------------------------------------------------------+
+|  system_prompt   [ Layer 1: Cognitive AI Persona         ▼ ]|
+|  prompt_type     [ Layer 2: Structural Output Format     ▼ ]|
+|  prompt_style    [ Layer 3: Aesthetic Visual Medium      ▼ ]|
++-------------------------------------------------------------+
+|  custom_modifications:                                      |
+|  "Director instructions, lighting adjustments, mood shifts" |
++-------------------------------------------------------------+
+|  ⚙ Advanced Settings & Sampling                  Show (10) ▾|
++-------------------------------------------------------------+
+|  ● SINGLE IMAGE VISION   Structured Categories • ... ● LINKED|
++-------------------------------------------------------------+
+```
+
+### 1. Layer 1: Cognitive AI Persona (`system_prompt`)
+Guides the fundamental perception protocol and model sampling profile:
+* `Auto-Detect / Balanced`: Context-aware perception router based on connected inputs.
+* `Generative Vision Engine`: High-fidelity single-image scene deconstruction.
+* `Text-to-Prompt Expansion Engine`: Expands short user phrases into rich photographic prompts.
+* `Multi-Image Synthesis Engine`: Cross-referential visual reasoning across batches.
+* `Cinematic & Video Director`: Scene pacing, anamorphic lighting, and spatial camera choreography.
+* `Dataset & LoRA Annotator`: Factual tagging and captioning with zero hallucinations.
+* `Minimalist & Literal`: Concise, direct, and unbloated descriptive prompt.
+* `SeedVR2 Upscale Guide`: Precision prompts for hi-res diffusion enhancement.
+* `Custom (Manual Override)`: Full custom instructions via `custom_system_prompt`.
+
+### 2. Layer 2: Structural Output Format (`prompt_type`)
+Enforces strict syntactic framing on the generated prompt:
+* `Detailed Narrative`: Fluid prose with camera, subject, atmosphere, and render details.
+* `Structured Categories`: Distinct headers (`Subject`, `Environment`, `Lighting`, `Style`).
+* `Short Summary`: Punchy 1-2 sentence core visual description.
+* `Tags & Keywords`: Comma-separated weighted concept tags.
+* `Booru Tags (Danbooru)`: Standardized anime/illustration tag list with rating tokens.
+* `Cinematic & Video Script`: Shot-by-shot cinematic framing and temporal action beats.
+
+### 3. Layer 3: Aesthetic Style & Visual Medium (`prompt_style`)
+Injects lighting setups, medium signatures, and chromatic rendering:
+* `Auto-Detect / Preserve Original`: Preserves input reference medium without override.
+* `Photorealistic (Modern Digital RAW)`: Hasselblad/Sony sensor, natural micro-contrast.
+* `Analog Film (35mm Vintage Stock)`: Kodak Portra / Cinestill 800T, organic grain and halation.
+* `Cinematic Still (Anamorphic Movie)`: Panavision lenses, cinematic color grading, letterbox.
+* `Studio Portrait & Editorial Fashion`: Profoto softboxes, rembrandt lighting, editorial skin.
+* `Anime & Manga (2D Cel-shaded)`: Hand-drawn lineart, vibrant cel shading, anime aesthetic.
+* `Comic Book & Graphic Novel`: Dark ink linework, halftone dot patterns, dynamic ink wash.
+* `Pencil Sketch & Charcoal Drawing`: Cross-hatching graphite, smudged charcoal, textured paper.
+* `3D Digital Render & CGI (PBR)`: Octane / Unreal Engine 5, raytraced reflections and subsurface scattering.
+* `Digital Concept Art & Illustration`: Speedpaint brushes, matte painting, dynamic keys.
+* `Oil Painting & Classical Fine Art`: Thick impasto brushwork, chiaroscuro, cracked canvas patina.
+
+---
+
+## 📁 Drop-in File Extensibility (`core/image/`)
+
+Adding new personas, formats, or styles requires **zero code modifications**. Simply add a `.md` Markdown file with YAML frontmatter in the corresponding directory:
+
+```
+core/image/
+├── personas/      # Cognitive persona prompts (.md)
+├── types/         # Structural format templates (.md)
+└── styles/        # Artistic style definitions (.md)
+```
+
+### Example: Adding a New Style (`core/image/styles/cyberpunk_noir.md`)
+```markdown
+---
+name: "Cyberpunk Noir (Rain & Neon)"
+description: "Dystopian rain-slicked streetscapes with neon reflections and heavy shadows."
+aliases:
+  - "cyberpunk"
+  - "neon noir"
+---
+Cyberpunk noir visual style, drenched in pouring rain, reflective wet asphalt pavements, glowing neon signs in vivid cyan and magenta, atmospheric steam rising from street grates, high-contrast chiaroscuro shadows, anamorphic lens flares, dystopian architectural backdrop.
+```
+Upon restart, `Cyberpunk Noir (Rain & Neon)` automatically populates in the `prompt_style` dropdown!
 
 ---
 
@@ -98,12 +186,12 @@ The [`examples/`](file:///y:/Project_ExCathedra/SideProject/ComfyUI_CustomNodes/
 
 ## 🧪 Validation & Test Suite
 
-The suite is hardened with a comprehensive test suite validating tensor geometry, HTTP/WebSocket endpoints, and widget sanitization:
+The suite is hardened with a comprehensive test suite validating tensor geometry, HTTP/WebSocket endpoints, widget sanitization, and YAML schema compliance:
 
 ```bash
 pytest tests/ -v
 ```
-*Current status: **150 passed**, 1 skipped.*
+*Current status: **151 passed**, 1 skipped (0 failures).*
 
 ---
 

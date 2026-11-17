@@ -6,13 +6,15 @@
 
 const DRAWER_WIDGET_NAME = "_stoiqo_settings_drawer";
 
-const PROMPT_PRESET_VALUES = {
-    "Balanced Synthesizer (Recommended)": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.90, top_k: 50, repetition_penalty: 1.15 },
-    "Maximum Creativity (Wild Ideation)": { temperature: 0.95, max_new_tokens: 1536, top_p: 0.95, top_k: 80, repetition_penalty: 1.10 },
-    "Scientific / Accurate Visual Description": { temperature: 0.20, max_new_tokens: 768, top_p: 0.80, top_k: 30, repetition_penalty: 1.20 },
-    "Synthetic Captioning for LoRA / Training": { temperature: 0.35, max_new_tokens: 512, top_p: 0.85, top_k: 40, repetition_penalty: 1.15 },
-    "Deterministic / Exact Logic (Greedy)": { temperature: 0.0, max_new_tokens: 512, top_p: 0.0, top_k: 1, repetition_penalty: 1.20 },
-    "Cinematic Storyteller": { temperature: 0.75, max_new_tokens: 1280, top_p: 0.92, top_k: 60, repetition_penalty: 1.12 },
+const PERSONA_SAMPLING_VALUES = {
+    "Auto-Detect / Balanced": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.90, top_k: 50, repetition_penalty: 1.15 },
+    "Generative Vision Engine": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.90, top_k: 50, repetition_penalty: 1.15 },
+    "Text-to-Prompt Expansion Engine": { temperature: 0.70, max_new_tokens: 1024, top_p: 0.90, top_k: 60, repetition_penalty: 1.15 },
+    "Multi-Image Synthesis Engine": { temperature: 0.60, max_new_tokens: 1024, top_p: 0.90, top_k: 50, repetition_penalty: 1.15 },
+    "Cinematic & Video Director": { temperature: 0.75, max_new_tokens: 1280, top_p: 0.92, top_k: 60, repetition_penalty: 1.12 },
+    "Dataset & LoRA Annotator": { temperature: 0.35, max_new_tokens: 512, top_p: 0.85, top_k: 40, repetition_penalty: 1.15 },
+    "Minimalist & Literal": { temperature: 0.20, max_new_tokens: 384, top_p: 0.75, top_k: 25, repetition_penalty: 1.20 },
+    "SeedVR2 Upscale Guide": { temperature: 0.25, max_new_tokens: 640, top_p: 0.80, top_k: 30, repetition_penalty: 1.20 },
 };
 
 function getVal(node, name) {
@@ -29,11 +31,10 @@ function getVal(node, name) {
  */
 export const NODE_UX_SPECS = {
     StoiqoPromptGeneratorNode: {
-        label: "LLM & Multi-Image Settings",
+        label: "Advanced Settings & Sampling",
         advanced: [
-            "preset",
+            "seed",
             "fusion_mode",
-            "system_prompt",
             "custom_system_prompt",
             "negative_prompt_prefix",
             "temperature",
@@ -46,8 +47,8 @@ export const NODE_UX_SPECS = {
             custom_system_prompt: (node) => String(getVal(node, "system_prompt") || "").includes("Custom"),
         },
         onWidgetChange: (node, name, val) => {
-            if (name === "preset" && PROMPT_PRESET_VALUES[val]) {
-                const pv = PROMPT_PRESET_VALUES[val];
+            if (name === "system_prompt" && PERSONA_SAMPLING_VALUES[val]) {
+                const pv = PERSONA_SAMPLING_VALUES[val];
                 for (const [k, v] of Object.entries(pv)) {
                     const tw = node.widgets?.find(w => w.name === k);
                     if (tw) {
@@ -428,25 +429,58 @@ class StoiqoSettingsDrawerWidget {
 export function applyNodeUXSpec(node, spec) {
     if (!node || !node.widgets || !spec) return;
 
+    // 0. Remove any unwanted legacy synthesized_prompt widget on StoiqoPromptGeneratorNode
+    const synIdx = node.widgets.findIndex(w => w && w.name === "synthesized_prompt");
+    if (synIdx !== -1) {
+        const tw = node.widgets[synIdx];
+        if (tw.inputEl && tw.inputEl.parentNode) {
+            tw.inputEl.parentNode.removeChild(tw.inputEl);
+        }
+        node.widgets.splice(synIdx, 1);
+    }
+
     // 1. Deduplicate any extra drawer widgets
     const existingDrawers = node.widgets.filter(w => w.name === DRAWER_WIDGET_NAME);
     for (const extra of existingDrawers.slice(1)) {
         node.widgets.splice(node.widgets.indexOf(extra), 1);
     }
 
-    // 2. Ensure drawer widget exists if node has advanced settings
-    let drawer = node.widgets.find(w => w.name === DRAWER_WIDGET_NAME);
-    if (!drawer && spec.advanced && spec.advanced.length > 0) {
-        drawer = new StoiqoSettingsDrawerWidget(node, spec);
-        const firstAdvIdx = node.widgets.findIndex(w => spec.advanced.includes(w.name));
-        if (firstAdvIdx !== -1) {
-            node.widgets.splice(firstAdvIdx, 0, drawer);
-        } else {
-            node.widgets.push(drawer);
+    const advSet = new Set(spec.advanced || []);
+    if (advSet.has("seed")) {
+        advSet.add("control_after_generate");
+        advSet.add("control_mode");
+    }
+
+    // Force English label for seed companion widgets to override ComfyUI Italian i18n
+    for (const w of node.widgets) {
+        if (!w) continue;
+        if (w.name === "control_after_generate" || w.name === "control_mode") {
+            w.label = "Control After Generate";
         }
     }
 
-    const advSet = new Set(spec.advanced || []);
+    // 2. Ensure drawer widget exists if node has advanced settings
+    let drawer = node.widgets.find(w => w.name === DRAWER_WIDGET_NAME);
+    if (spec.advanced && spec.advanced.length > 0) {
+        if (!drawer) {
+            drawer = new StoiqoSettingsDrawerWidget(node, spec);
+            const firstAdvIdx = node.widgets.findIndex(w => advSet.has(w.name));
+            if (firstAdvIdx !== -1) {
+                node.widgets.splice(firstAdvIdx, 0, drawer);
+            } else {
+                node.widgets.push(drawer);
+            }
+        } else {
+            // Keep drawer positioned right before the first advanced widget
+            const currentDrawerIdx = node.widgets.indexOf(drawer);
+            const firstAdvIdx = node.widgets.findIndex(w => w !== drawer && advSet.has(w.name));
+            if (firstAdvIdx !== -1 && currentDrawerIdx > firstAdvIdx) {
+                node.widgets.splice(currentDrawerIdx, 1);
+                node.widgets.splice(firstAdvIdx, 0, drawer);
+            }
+        }
+    }
+
     const alwaysHiddenSet = new Set(spec.alwaysHidden || []);
     const conditions = spec.conditions || {};
 
@@ -456,6 +490,10 @@ export function applyNodeUXSpec(node, spec) {
 
         for (const w of node.widgets) {
             if (!w || w.name === DRAWER_WIDGET_NAME) continue;
+
+            if (w.name === "control_after_generate" || w.name === "control_mode") {
+                w.label = "Control After Generate";
+            }
 
             if (alwaysHiddenSet.has(w.name)) {
                 setWidgetVisibility(w, false);
@@ -534,13 +572,6 @@ export function sanitizeNodeWidgetValues(node, info) {
             }
         }
 
-        if (w.name === "sidecar_metadata") {
-            const valid = ["None", "Both (.json + .txt)", "JSON (.json)", "TXT Caption (.txt)"];
-            if (!valid.includes(w.value)) {
-                w.value = "None";
-                if (w.inputEl) w.inputEl.value = "None";
-            }
-        }
 
         if (w.name === "text_watermark") {
             if (w.value === "Normal (Alpha)" || w.value === "Normal" || w.value === "Screen" || w.value === "Multiply") {
@@ -562,7 +593,6 @@ export function sanitizeNodeWidgetValues(node, info) {
                 if (w.name === "sampler_name" && w.options.values.includes("euler")) def = "euler";
                 if (w.name === "scheduler" && w.options.values.includes("beta")) def = "beta";
                 if (w.name === "sidecar_metadata" && w.options.values.includes("None")) def = "None";
-                if (w.name === "preset" && w.options.values.includes("Balanced Synthesizer (Recommended)")) def = "Balanced Synthesizer (Recommended)";
                 if (w.name === "fusion_mode" && w.options.values.includes("Auto (Fuse 2-4 images, Batch if >4)")) def = "Auto (Fuse 2-4 images, Batch if >4)";
                 if (w.name === "system_prompt" && w.options.values.includes("Auto-Detect / Balanced")) def = "Auto-Detect / Balanced";
                 if (w.name === "deduplicate_tags" && w.options.values.includes("None")) def = "None";
@@ -599,7 +629,7 @@ export function sanitizeNodeWidgetValues(node, info) {
             if (w.name === "variance_strength" && num > 1.0) num = 0.0;
             if (w.name === "top_p" && num > 1.0) num = 0.90;
             if (w.name === "repetition_penalty" && (num < 1.0 || num > 2.0)) num = 1.15;
-            if (w.name === "max_new_tokens" && (num < 64 || num > 4096)) num = 1024;
+            if (w.name === "max_new_tokens" && (num < 128 || num > 4096)) num = 1024;
             if (w.name === "top_k" && (num < 1 || num > 100)) num = 50;
             if (w.name === "quality" && (num < 1 || num > 100)) num = 90;
             if (w.name === "opacity" && num <= 0.05) num = 0.85;

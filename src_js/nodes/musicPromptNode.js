@@ -19,13 +19,13 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
     const MIN_NODE_WIDTH = 480;
 
     const SECTIONS = [
-        { targetWidget: "idea", num: "1", title: "CONCEPT & CORE THEME", color: "#f43f5e" },
-        { targetWidget: "system_prompt", num: "2", title: "PRODUCER PERSONA & AI AGENT", color: "#ec4899" },
-        { targetWidget: "genre", num: "3", title: "GENRE & ACOUSTICS", color: "#a855f7" },
-        { targetWidget: "vocal_type", num: "4", title: "VOCALS & LANGUAGE", color: "#38bdf8" },
+        { targetWidget: "idea", num: "1", title: "CONCEPT & CORE THEME", color: "#ff453a" },
+        { targetWidget: "system_prompt", num: "2", title: "PRODUCER PERSONA & AI AGENT", color: "#ff9f0a" },
+        { targetWidget: "genre", num: "3", title: "GENRE & ACOUSTICS", color: "#2997ff" },
+        { targetWidget: "vocal_type", num: "4", title: "VOCALS & LANGUAGE", color: "#58b0ff" },
         { targetWidget: "structure", num: "5", title: "STRUCTURE & TEMPO", color: "#eab308" },
-        { targetWidget: "custom_lyrics", num: "6", title: "CUSTOM LYRICS & DIRECTIVES (OPTIONAL)", color: "#818cf8" },
-        { targetWidget: "seed", num: "7", title: "GENERATION & SAMPLING", color: "#10b981" },
+        { targetWidget: "custom_lyrics", num: "6", title: "CUSTOM LYRICS & DIRECTIVES (OPTIONAL)", color: "#ff9f0a" },
+        { targetWidget: "seed", num: "7", title: "GENERATION & SAMPLING", color: "#30d158" },
     ];
 
     const MULTILINE_HEIGHTS = {
@@ -167,7 +167,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
         // 4. Ensure Live Preview Widgets Exist (Style & Lyrics HUD)
         let trackInfoDisplay = node.widgets.find(w => w.name === "preview_track_info");
         if (!trackInfoDisplay) {
-            const trackDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: TRACK TELEMETRY & STYLE", "#06b6d4");
+            const trackDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: TRACK TELEMETRY & STYLE", "#2997ff");
             node.widgets.push(trackDivider);
 
             trackInfoDisplay = node.addWidget(
@@ -221,7 +221,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
                     el.style.minHeight = "64px";
                     el.style.fontSize = "11px";
                     el.style.lineHeight = "1.4";
-                    el.style.color = "#38bdf8";
+                    el.style.color = "#58b0ff";
                     el.style.background = "rgba(15, 23, 42, 0.65)";
                     el.style.fontFamily = "monospace, -apple-system, sans-serif";
                 };
@@ -241,7 +241,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
 
         let lyricsDisplay = node.widgets.find(w => w.name === "preview_lyrics");
         if (!lyricsDisplay) {
-            const lyricsDivider = new StoiqoSectionDividerWidget("9", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ec4899");
+            const lyricsDivider = new StoiqoSectionDividerWidget("9", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ff9f0a");
             node.widgets.push(lyricsDivider);
 
             if (typeof ComfyWidgets !== "undefined" && ComfyWidgets["STRING"]) {
@@ -300,7 +300,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
         if (!copyStyleBtn) {
             copyStyleBtn = node.addWidget(
                 "button",
-                "📋 Copia Style (YuE2 Descriptor)",
+                "📋 Copy Style (YuE2 Descriptor)",
                 null,
                 function() {
                     const sw = node.widgets?.find(w => w.name === "preview_style");
@@ -308,7 +308,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
                     if (val && navigator.clipboard) {
                         navigator.clipboard.writeText(String(val));
                         const orig = this.name;
-                        this.name = "✓ Style Copiato!";
+                        this.name = "✓ Style Copied!";
                         node.setDirtyCanvas(true);
                         setTimeout(() => { this.name = orig; node.setDirtyCanvas(true); }, 1800);
                     }
@@ -324,7 +324,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
         if (!copyLyricsBtn) {
             copyLyricsBtn = node.addWidget(
                 "button",
-                "📋 Copia Lyrics (YuE2 Stanza)",
+                "📋 Copy Lyrics (YuE2 Stanza)",
                 null,
                 function() {
                     const lw = node.widgets?.find(w => w.name === "preview_lyrics");
@@ -332,7 +332,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
                     if (val && navigator.clipboard) {
                         navigator.clipboard.writeText(String(val));
                         const orig = this.name;
-                        this.name = "✓ Lyrics Copiate!";
+                        this.name = "✓ Lyrics Copied!";
                         node.setDirtyCanvas(true);
                         setTimeout(() => { this.name = orig; node.setDirtyCanvas(true); }, 1800);
                     }
@@ -348,7 +348,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
         if (!copyMetricsBtn) {
             copyMetricsBtn = node.addWidget(
                 "button",
-                "📐 Copia Analisi Metrica Sillabica",
+                "📐 Copy Syllabic Metric Analysis",
                 null,
                 function() {
                     const lastInfo = node._lastMusicInfo;
@@ -374,7 +374,7 @@ export function setupMusicPromptNode(nodeType, nodeData, app) {
                     if (report && navigator.clipboard) {
                         navigator.clipboard.writeText(report);
                         const orig = this.name;
-                        this.name = "✓ Metrica Copiata!";
+                        this.name = "✓ Metrics Copied!";
                         node.setDirtyCanvas(true);
                         setTimeout(() => { this.name = orig; node.setDirtyCanvas(true); }, 1800);
                     }

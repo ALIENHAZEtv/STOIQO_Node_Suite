@@ -40,12 +40,17 @@ export function setupDatasetNode(nodeType, nodeData, app) {
                         const resp = await api.fetchApi("/stoiqo/browse_folder", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ initial_dir: outputDirWidget.value || "" }),
                         });
                         const data = await resp.json();
-                        if (data && data.status === "ok" && data.folder_path) {
-                            outputDirWidget.value = data.folder_path;
+                        const selected = data && (data.path || data.folder_path);
+                        if (data && data.status === "ok" && selected) {
+                            outputDirWidget.value = selected;
+                            if (outputDirWidget.inputEl) {
+                                outputDirWidget.inputEl.value = selected;
+                            }
                             if (outputDirWidget.callback) {
-                                outputDirWidget.callback(data.folder_path);
+                                outputDirWidget.callback(selected);
                             }
                             node.setDirtyCanvas(true, true);
                         }

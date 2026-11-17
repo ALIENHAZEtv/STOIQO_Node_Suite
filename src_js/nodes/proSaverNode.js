@@ -136,7 +136,7 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
 
             // Format & Size Badges
             const tagText = `${info.format || "IMG"} • ${info.width}x${info.height} • ${info.size_str || ""}${batchCount > 1 ? ` (+${batchCount - 1} more)` : ""}`;
-            ctx.fillStyle = "#00e5ff"; // Cyan highlight
+            ctx.fillStyle = "#2997ff"; // Precision Blue highlight
             ctx.font = "bold 10px monospace";
             ctx.textAlign = "right";
             ctx.fillText(tagText, cardX + cardW - 12, badgeY);
@@ -177,25 +177,25 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
             const buttons = [
                 {
                     id: "copy_path",
-                    text: this.copiedButton === "copy_path" ? "✓ COPIATO" : "📋 PATH",
+                    text: this.copiedButton === "copy_path" ? "✓ COPIED" : "📋 PATH",
                     active: this.copiedButton === "copy_path",
                     actionText: info.filepath,
                 },
                 {
                     id: "copy_name",
-                    text: this.copiedButton === "copy_name" ? "✓ COPIATO" : "📄 NOME",
+                    text: this.copiedButton === "copy_name" ? "✓ COPIED" : "📄 NAME",
                     active: this.copiedButton === "copy_name",
                     actionText: info.filename,
                 },
                 {
                     id: "copy_folder",
-                    text: this.copiedButton === "copy_folder" ? "✓ COPIATO" : "📁 DIR",
+                    text: this.copiedButton === "copy_folder" ? "✓ COPIED" : "📁 DIR",
                     active: this.copiedButton === "copy_folder",
                     actionText: folderDir,
                 },
                 {
                     id: "open_folder",
-                    text: this.copiedButton === "open_folder" ? "✓ APERTA" : "📂 APRI",
+                    text: this.copiedButton === "open_folder" ? "✓ OPENED" : "📂 OPEN",
                     active: this.copiedButton === "open_folder",
                     actionText: folderDir,
                 },
@@ -228,6 +228,13 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
             });
 
             ctx.restore();
+        }
+
+        mouse(event, pos, node) {
+            if (event && (event.type === "pointerdown" || event.type === "mousedown")) {
+                return this.onMouseDown(event, pos);
+            }
+            return false;
         }
 
         onMouseDown(event, localPos) {
@@ -274,6 +281,19 @@ export function setupProSaverNode(nodeType, nodeData, appInstance) {
             node.addCustomWidget(hud);
         }
         node._stoiqo_saver_hud = hud;
+        if (!node._stoiqoMouseHooked) {
+            node._stoiqoMouseHooked = true;
+            const origOnMouseDown = node.onMouseDown;
+            node.onMouseDown = function (e, localPos, graphCanvas) {
+                if (this._stoiqo_saver_hud && this._stoiqo_saver_hud.onMouseDown(e, localPos)) {
+                    return true;
+                }
+                if (origOnMouseDown) {
+                    return origOnMouseDown.apply(this, arguments);
+                }
+                return false;
+            };
+        }
     }
 
     const onNodeCreated = nodeType.prototype.onNodeCreated;

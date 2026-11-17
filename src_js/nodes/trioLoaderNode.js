@@ -213,8 +213,8 @@ export function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
                 ctx.restore();
 
                 // Top-Left Badge: SLOT HERO
-                const slotColors = ["#a855f7", "#38bdf8", "#10b981"];
-                const slotColor = slotColors[activeIdx] || "#a855f7";
+                const slotColors = ["#2997ff", "#58b0ff", "#30d158"];
+                const slotColor = slotColors[activeIdx] || "#2997ff";
 
                 ctx.fillStyle = "rgba(12, 15, 23, 0.88)";
                 this._roundRect(ctx, pad + 8, heroY + 8, 86, 22, 4, true, false);
@@ -230,7 +230,7 @@ export function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
                     const tw = ctx.measureText(resStr).width;
                     ctx.fillStyle = "rgba(12, 15, 23, 0.88)";
                     this._roundRect(ctx, pad + availableWidth - tw - 18, heroY + 8, tw + 12, 22, 4, true, false);
-                    ctx.fillStyle = "#38bdf8";
+                    ctx.fillStyle = "#58b0ff";
                     ctx.fillText(resStr, pad + availableWidth - tw - 12, heroY + 23);
                 }
             } else {
@@ -268,8 +268,8 @@ export function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
                 const rawName = this.rawValues[i];
 
                 // Card background & Active Glow
-                ctx.fillStyle = isFocused ? "#1a162b" : "#0d111a";
-                ctx.strokeStyle = isFocused ? "#c084fc" : "#242d42";
+                ctx.fillStyle = isFocused ? "#141923" : "#0d111a";
+                ctx.strokeStyle = isFocused ? "#58b0ff" : "#242d42";
                 ctx.lineWidth = isFocused ? 2 : 1;
                 this._roundRect(ctx, tx, ty, thumbWidth, thumbHeight, 6, true, true);
 
@@ -301,7 +301,7 @@ export function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
                 }
 
                 // Bottom Slot Label & Indicator
-                ctx.fillStyle = isFocused ? "#c084fc" : "#64748b";
+                ctx.fillStyle = isFocused ? "#58b0ff" : "#64748b";
                 ctx.font = isFocused ? "bold 10px Inter, system-ui, sans-serif" : "10px Inter, system-ui, sans-serif";
                 ctx.textAlign = "center";
                 const slotLabels = ["1: Main", "2: Sec", "3: Ref"];
@@ -346,12 +346,14 @@ export function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
         this.widgets = this.widgets || [];
 
         // Visual header divider (deduplicated)
-        const existingDivs = this.widgets.filter(w => w.name === "divider_1");
+        const existingDivs = this.widgets.filter(
+            w => w.name === "_stoiqo_divider_1" || w.name === "divider_1" || w.isStoiqoDivider
+        );
         for (const extra of existingDivs.slice(1)) {
             this.widgets.splice(this.widgets.indexOf(extra), 1);
         }
         if (existingDivs.length === 0) {
-            this.addCustomWidget(new StoiqoSectionDividerWidget(1, "MULTI-IMAGE TRIO LOADER", "#a855f7"));
+            this.addCustomWidget(new StoiqoSectionDividerWidget(1, "MULTI-IMAGE TRIO LOADER", "#2997ff"));
         }
 
         // Interactive Gallery Widget (deduplicated)

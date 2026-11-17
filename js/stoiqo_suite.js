@@ -143,9 +143,9 @@ function createPromptViewerWidget(node) {
           ctx,
           badgeRect,
           badgeLabel,
-          node2._viewAll ? "rgba(124, 58, 237, 0.25)" : "rgba(30, 41, 59, 0.6)",
-          node2._viewAll ? "rgba(167, 139, 250, 0.45)" : "rgba(148, 163, 184, 0.25)",
-          node2._viewAll ? "#c084fc" : "#94a3b8"
+          node2._viewAll ? "rgba(41, 151, 255, 0.25)" : "rgba(30, 41, 59, 0.6)",
+          node2._viewAll ? "rgba(41, 151, 255, 0.45)" : "rgba(148, 163, 184, 0.25)",
+          node2._viewAll ? "#2997ff" : "#94a3b8"
         );
         const nextRect = { x: padX + 146, y: rowY, w: 26, h: 22 };
         this._rects.next = nextRect;
@@ -947,7 +947,7 @@ var StoiqoSectionDividerWidget = class {
       const dp = currentDownloadProgress;
       const isDone = dp.status === "complete" || dp.percent >= 100;
       const dlLabel = isDone ? "\u2713 Model Ready" : `\u2B07 DL ${dp.percent}% (${dp.downloaded_str || ""})`;
-      const dlColor = isDone ? "#22c55e" : "#38bdf8";
+      const dlColor = isDone ? "#30d158" : "#2997ff";
       ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
       const dlMetrics = ctx.measureText(dlLabel);
       const dlBadgeW = Math.ceil(dlMetrics.width) + 16;
@@ -1090,7 +1090,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
       };
       if (app11.canvas && app11.canvas.canvas && !node._stoiqoWheelAttached) {
         node._stoiqoWheelAttached = true;
-        app11.canvas.canvas.addEventListener("wheel", (e) => {
+        node._stoiqoWheelHandler = (e) => {
           if (!node.cmpWidget || !app11.canvas) return;
           const canvasPos = app11.canvas.convertEventToCanvasOffset ? app11.canvas.convertEventToCanvasOffset(e) : [e.canvasX, e.canvasY];
           const localX = canvasPos[0] - node.pos[0];
@@ -1103,11 +1103,12 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
               return false;
             }
           }
-        }, { capture: true, passive: false });
+        };
+        app11.canvas.canvas.addEventListener("wheel", node._stoiqoWheelHandler, { capture: true, passive: false });
       }
       if (!node._stoiqoSpaceAttached) {
         node._stoiqoSpaceAttached = true;
-        window.addEventListener("keydown", (e) => {
+        node._stoiqoSpaceHandler = (e) => {
           if (e.code === "Space" && !e.repeat && !e.target.matches("input, textarea, select")) {
             if (!node.cmpWidget || !node.cmpWidget.isHoveringViewport) return;
             node.cmpWidget.toggleShowB = !node.cmpWidget.toggleShowB;
@@ -1115,7 +1116,8 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             e.preventDefault();
             e.stopPropagation();
           }
-        }, { capture: true });
+        };
+        window.addEventListener("keydown", node._stoiqoSpaceHandler, { capture: true });
       }
       node.setDirtyCanvas(true, true);
     };
@@ -1329,13 +1331,13 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.fillRect(vX, barY, vW, barH);
         }
         const modes = [
-          { key: "hover_slide", label: "\u26A1 Hover (rgthree)", activeColor: "#38bdf8" },
+          { key: "hover_slide", label: "\u26A1 Hover (rgthree)", activeColor: "#2997ff" },
           { key: "split", label: "\u2194 Drag Split", activeColor: "#2dd4bf" },
-          { key: "toggle", label: this.mode === "toggle" ? this.toggleShowB ? "\u{1F441} B (Click A)" : "\u{1F441} A (Click B)" : "\u{1F441} Toggle (Space)", activeColor: "#f59e0b" },
-          { key: "side", label: "\u25EB Side-by-Side", activeColor: "#10b981" },
+          { key: "toggle", label: this.mode === "toggle" ? this.toggleShowB ? "\u{1F441} B (Click A)" : "\u{1F441} A (Click B)" : "\u{1F441} Toggle (Space)", activeColor: "#ff9f0a" },
+          { key: "side", label: "\u25EB Side-by-Side", activeColor: "#30d158" },
           { key: "diff_heat", label: "\u{1F525} Diff Heatmap", activeColor: "#ff453a" },
-          { key: "only_a", label: "Solo A", activeColor: "#93c5fd" },
-          { key: "only_b", label: "Solo B", activeColor: "#c084fc" }
+          { key: "only_a", label: "Solo A", activeColor: "#58b0ff" },
+          { key: "only_b", label: "Solo B", activeColor: "#ff9f0a" }
         ];
         let btnX = vX + 6;
         ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
@@ -1408,7 +1410,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         const zoomLabel = `\u{1F50D} ${zoomPct}%`;
         const zTextW = ctx.measureText(zoomLabel).width;
         const zX = rX - zTextW - 12;
-        ctx.fillStyle = this.zoom > 1.01 ? "#38bdf8" : "#64748b";
+        ctx.fillStyle = this.zoom > 1.01 ? "#2997ff" : "#64748b";
         ctx.fillText(zoomLabel, zX, rY + 9);
         let currentTopY = barY + barH + 4;
         const hasMultiFrames = this.availableA && this.availableA.length > 1 || this.availableB && this.availableB.length > 1;
@@ -1425,7 +1427,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           let chipX = vX + 8;
           ctx.font = "bold 9px monospace";
           ctx.textBaseline = "middle";
-          ctx.fillStyle = "#38bdf8";
+          ctx.fillStyle = "#2997ff";
           ctx.fillText("Side A:", chipX, currentTopY + chipBarH / 2);
           chipX += ctx.measureText("Side A:").width + 6;
           this.availableA.forEach((item, idx) => {
@@ -1434,8 +1436,8 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             const cW = ctx.measureText(name).width + 8;
             const cH = 16;
             const cY = currentTopY + 3;
-            ctx.fillStyle = isSel ? "#0284c7" : "rgba(255, 255, 255, 0.08)";
-            ctx.strokeStyle = isSel ? "#38bdf8" : "rgba(255, 255, 255, 0.15)";
+            ctx.fillStyle = isSel ? "#1d4ed8" : "rgba(255, 255, 255, 0.08)";
+            ctx.strokeStyle = isSel ? "#2997ff" : "rgba(255, 255, 255, 0.15)";
             if (ctx.roundRect) {
               ctx.beginPath();
               ctx.roundRect(chipX, cY, cW, cH, 3);
@@ -1461,7 +1463,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             chipX += cW + 4;
           });
           chipX += 10;
-          ctx.fillStyle = "#c084fc";
+          ctx.fillStyle = "#ff9f0a";
           ctx.fillText("Side B:", chipX, currentTopY + chipBarH / 2);
           chipX += ctx.measureText("Side B:").width + 6;
           this.availableB.forEach((item, idx) => {
@@ -1470,8 +1472,8 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             const cW = ctx.measureText(name).width + 8;
             const cH = 16;
             const cY = currentTopY + 3;
-            ctx.fillStyle = isSel ? "#9333ea" : "rgba(255, 255, 255, 0.08)";
-            ctx.strokeStyle = isSel ? "#c084fc" : "rgba(255, 255, 255, 0.15)";
+            ctx.fillStyle = isSel ? "#b45309" : "rgba(255, 255, 255, 0.08)";
+            ctx.strokeStyle = isSel ? "#ff9f0a" : "rgba(255, 255, 255, 0.15)";
             if (ctx.roundRect) {
               ctx.beginPath();
               ctx.roundRect(chipX, cY, cW, cH, 3);
@@ -1686,7 +1688,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           const tText = showB ? `\u{1F441} B: ${this.labelB} (${natWB}\xD7${natHB}) \u2022 Click / Space for A` : `\u{1F441} A: ${this.labelA} (${natWA}\xD7${natHA}) \u2022 Click / Space for B`;
           const tW = ctx.measureText(tText).width + 16;
           ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
-          ctx.strokeStyle = showB ? "#c084fc" : "#38bdf8";
+          ctx.strokeStyle = showB ? "#ff9f0a" : "#2997ff";
           ctx.lineWidth = 1;
           if (ctx.roundRect) {
             ctx.beginPath();
@@ -1697,7 +1699,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             ctx.fillRect(vp.x + 8, vp.y + 8, tW, 20);
             ctx.strokeRect(vp.x + 8, vp.y + 8, tW, 20);
           }
-          ctx.fillStyle = showB ? "#c084fc" : "#38bdf8";
+          ctx.fillStyle = showB ? "#ff9f0a" : "#2997ff";
           ctx.fillText(tText, vp.x + 16, vp.y + 18);
         } else {
           if (this.mode !== "only_b" && this.mode !== "diff_heat") {
@@ -1705,7 +1707,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             const lAW = ctx.measureText(labelAText).width + 14;
             ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
             ctx.fillRect(vp.x + 8, vp.y + 8, lAW, 18);
-            ctx.fillStyle = "#38bdf8";
+            ctx.fillStyle = "#2997ff";
             ctx.fillText(labelAText, vp.x + 14, vp.y + 17);
           } else if (this.mode === "diff_heat") {
             const m = this.metricsData || {};
@@ -1734,7 +1736,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
             const lBW = ctx.measureText(labelBText).width + 14;
             ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
             ctx.fillRect(vp.x + vp.w - lBW - 8, vp.y + 8, lBW, 18);
-            ctx.fillStyle = "#c084fc";
+            ctx.fillStyle = "#ff9f0a";
             ctx.fillText(labelBText, vp.x + vp.w - lBW - 2, vp.y + 17);
           }
         }
@@ -1918,6 +1920,19 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
       if (cachedImages && Array.isArray(cachedImages) && cachedImages.length > 0 && this.cmpWidget) {
         this.cmpWidget.setImages(cachedImages);
       }
+    };
+    const origCmpRemoved = nodeType.prototype.onRemoved;
+    nodeType.prototype.onRemoved = function() {
+      if (app11.canvas && app11.canvas.canvas && this._stoiqoWheelHandler) {
+        app11.canvas.canvas.removeEventListener("wheel", this._stoiqoWheelHandler, { capture: true, passive: false });
+        this._stoiqoWheelHandler = null;
+      }
+      if (this._stoiqoSpaceHandler) {
+        window.removeEventListener("keydown", this._stoiqoSpaceHandler, { capture: true });
+        this._stoiqoSpaceHandler = null;
+      }
+      this.cmpWidget = null;
+      if (origCmpRemoved) origCmpRemoved.apply(this, arguments);
     };
     const origCmpDrawBg = nodeType.prototype.onDrawBackground;
     nodeType.prototype.onDrawBackground = function(ctx) {
@@ -2118,7 +2133,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         if (isMatchImage) {
           const imgSlot = node.inputs ? node.inputs.find((i) => i.name === "image") : null;
           if (!imgSlot || imgSlot.link === null) {
-            note = "\u26A0\uFE0F Nessuna Immagine (fallback 1024\xD71024)";
+            note = "\u26A0\uFE0F No Image (fallback 1024\xD71024)";
             w = 1024;
             h = 1024;
           } else {
@@ -2165,7 +2180,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           ctx.fillRect(margin, y, cardW, cardH);
           ctx.strokeRect(margin, y, cardW, cardH);
         }
-        ctx.fillStyle = "#38bdf8";
+        ctx.fillStyle = "#2997ff";
         if (ctx.roundRect) {
           ctx.beginPath();
           ctx.roundRect(margin, y, 4, cardH, [6, 0, 0, 6]);
@@ -2221,13 +2236,18 @@ function setupDatasetNode(nodeType, nodeData, app11) {
           try {
             const resp = await api5.fetchApi("/stoiqo/browse_folder", {
               method: "POST",
-              headers: { "Content-Type": "application/json" }
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ initial_dir: outputDirWidget.value || "" })
             });
             const data = await resp.json();
-            if (data && data.status === "ok" && data.folder_path) {
-              outputDirWidget.value = data.folder_path;
+            const selected = data && (data.path || data.folder_path);
+            if (data && data.status === "ok" && selected) {
+              outputDirWidget.value = selected;
+              if (outputDirWidget.inputEl) {
+                outputDirWidget.inputEl.value = selected;
+              }
               if (outputDirWidget.callback) {
-                outputDirWidget.callback(data.folder_path);
+                outputDirWidget.callback(selected);
               }
               node.setDirtyCanvas(true, true);
             }
@@ -2634,8 +2654,8 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
         const drawY = heroY + (heroHeight - drawH) / 2;
         ctx.drawImage(activeImg, drawX, drawY, drawW, drawH);
         ctx.restore();
-        const slotColors = ["#a855f7", "#38bdf8", "#10b981"];
-        const slotColor = slotColors[activeIdx] || "#a855f7";
+        const slotColors = ["#2997ff", "#58b0ff", "#30d158"];
+        const slotColor = slotColors[activeIdx] || "#2997ff";
         ctx.fillStyle = "rgba(12, 15, 23, 0.88)";
         this._roundRect(ctx, pad + 8, heroY + 8, 86, 22, 4, true, false);
         ctx.fillStyle = slotColor;
@@ -2648,7 +2668,7 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
           const tw = ctx.measureText(resStr).width;
           ctx.fillStyle = "rgba(12, 15, 23, 0.88)";
           this._roundRect(ctx, pad + availableWidth - tw - 18, heroY + 8, tw + 12, 22, 4, true, false);
-          ctx.fillStyle = "#38bdf8";
+          ctx.fillStyle = "#58b0ff";
           ctx.fillText(resStr, pad + availableWidth - tw - 12, heroY + 23);
         }
       } else {
@@ -2675,8 +2695,8 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
         const isFocused = this.activeFocus === i + 1;
         const thumbImg = this.images[i];
         const rawName = this.rawValues[i];
-        ctx.fillStyle = isFocused ? "#1a162b" : "#0d111a";
-        ctx.strokeStyle = isFocused ? "#c084fc" : "#242d42";
+        ctx.fillStyle = isFocused ? "#141923" : "#0d111a";
+        ctx.strokeStyle = isFocused ? "#58b0ff" : "#242d42";
         ctx.lineWidth = isFocused ? 2 : 1;
         this._roundRect(ctx, tx, ty, thumbWidth, thumbHeight, 6, true, true);
         if (thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
@@ -2702,7 +2722,7 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
           ctx.fillText(rawName === "none" || !rawName ? "(Vuoto)" : "...", tx + thumbWidth / 2, ty + (thumbHeight - 24) / 2 + 3);
           ctx.textAlign = "left";
         }
-        ctx.fillStyle = isFocused ? "#c084fc" : "#64748b";
+        ctx.fillStyle = isFocused ? "#58b0ff" : "#64748b";
         ctx.font = isFocused ? "bold 10px Inter, system-ui, sans-serif" : "10px Inter, system-ui, sans-serif";
         ctx.textAlign = "center";
         const slotLabels = ["1: Main", "2: Sec", "3: Ref"];
@@ -2738,12 +2758,14 @@ function setupTrioLoaderNode(nodeType, nodeData, appInstance) {
     if (this.size[0] < MIN_WIDTH3) this.size[0] = MIN_WIDTH3;
     if (this.size[1] < MIN_HEIGHT) this.size[1] = MIN_HEIGHT;
     this.widgets = this.widgets || [];
-    const existingDivs = this.widgets.filter((w) => w.name === "divider_1");
+    const existingDivs = this.widgets.filter(
+      (w) => w.name === "_stoiqo_divider_1" || w.name === "divider_1" || w.isStoiqoDivider
+    );
     for (const extra of existingDivs.slice(1)) {
       this.widgets.splice(this.widgets.indexOf(extra), 1);
     }
     if (existingDivs.length === 0) {
-      this.addCustomWidget(new StoiqoSectionDividerWidget(1, "MULTI-IMAGE TRIO LOADER", "#a855f7"));
+      this.addCustomWidget(new StoiqoSectionDividerWidget(1, "MULTI-IMAGE TRIO LOADER", "#2997ff"));
     }
     const existingGals = this.widgets.filter((w) => w.name === "_stoiqo_trio_gallery");
     for (const extra of existingGals.slice(1)) {
@@ -2843,7 +2865,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
         ctx.strokeRect(pad, posY, boxW, boxH);
       }
       ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
-      ctx.fillStyle = "#38bdf8";
+      ctx.fillStyle = "#2997ff";
       ctx.textAlign = "left";
       ctx.fillText("\u{1F4CA} STATS", pad + 8, posY + 15);
       ctx.font = "9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
@@ -2946,7 +2968,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       }
       if (node._stoiqoAddBtn) {
         const canAdd = visibleCount < MAX_SLOTS;
-        node._stoiqoAddBtn.name = canAdd ? `[+] Aggiungi Box Testo (${visibleCount}/${MAX_SLOTS})` : `[\u2713] Massimo ${MAX_SLOTS} Box Raggiunto`;
+        node._stoiqoAddBtn.name = canAdd ? `[+] Aggiungi Box Testo (${visibleCount}/${MAX_SLOTS})` : `[\u2713] Maximum ${MAX_SLOTS} Boxes Reached`;
       }
       if (node._stoiqoRemBtn) {
         const canRemove = visibleCount > 2;
@@ -2986,8 +3008,8 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
         const btnW = width - pad * 2;
         const btnH = 24;
         ctx.save();
-        ctx.fillStyle = canAdd ? "rgba(168, 85, 247, 0.20)" : "rgba(255, 255, 255, 0.05)";
-        ctx.strokeStyle = canAdd ? "#a855f7" : "rgba(255, 255, 255, 0.12)";
+        ctx.fillStyle = canAdd ? "rgba(41, 151, 255, 0.20)" : "rgba(255, 255, 255, 0.05)";
+        ctx.strokeStyle = canAdd ? "#2997ff" : "rgba(255, 255, 255, 0.12)";
         ctx.lineWidth = 1.2;
         if (ctx.roundRect) {
           ctx.beginPath();
@@ -3131,8 +3153,8 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
             w.value = val;
             if (w.inputEl) {
               w.inputEl.value = val;
-              w.inputEl.style.borderColor = "#a855f7";
-              w.inputEl.style.backgroundColor = "rgba(168, 85, 247, 0.08)";
+              w.inputEl.style.borderColor = "#2997ff";
+              w.inputEl.style.backgroundColor = "rgba(41, 151, 255, 0.08)";
             }
           }
         }
@@ -3249,7 +3271,7 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
         ctx.fillText("\u2713 SAVED", cardX + 12, badgeY);
       }
       const tagText = `${info.format || "IMG"} \u2022 ${info.width}x${info.height} \u2022 ${info.size_str || ""}${batchCount > 1 ? ` (+${batchCount - 1} more)` : ""}`;
-      ctx.fillStyle = "#00e5ff";
+      ctx.fillStyle = "#2997ff";
       ctx.font = "bold 10px monospace";
       ctx.textAlign = "right";
       ctx.fillText(tagText, cardX + cardW - 12, badgeY);
@@ -3281,25 +3303,25 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
       const buttons = [
         {
           id: "copy_path",
-          text: this.copiedButton === "copy_path" ? "\u2713 COPIATO" : "\u{1F4CB} PATH",
+          text: this.copiedButton === "copy_path" ? "\u2713 COPIED" : "\u{1F4CB} PATH",
           active: this.copiedButton === "copy_path",
           actionText: info.filepath
         },
         {
           id: "copy_name",
-          text: this.copiedButton === "copy_name" ? "\u2713 COPIATO" : "\u{1F4C4} NOME",
+          text: this.copiedButton === "copy_name" ? "\u2713 COPIED" : "\u{1F4C4} NAME",
           active: this.copiedButton === "copy_name",
           actionText: info.filename
         },
         {
           id: "copy_folder",
-          text: this.copiedButton === "copy_folder" ? "\u2713 COPIATO" : "\u{1F4C1} DIR",
+          text: this.copiedButton === "copy_folder" ? "\u2713 COPIED" : "\u{1F4C1} DIR",
           active: this.copiedButton === "copy_folder",
           actionText: folderDir
         },
         {
           id: "open_folder",
-          text: this.copiedButton === "open_folder" ? "\u2713 APERTA" : "\u{1F4C2} APRI",
+          text: this.copiedButton === "open_folder" ? "\u2713 OPENED" : "\u{1F4C2} OPEN",
           active: this.copiedButton === "open_folder",
           actionText: folderDir
         }
@@ -3325,6 +3347,12 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
         ctx.fillText(btn.text, bX + btnW / 2, btnY + 16);
       });
       ctx.restore();
+    }
+    mouse(event, pos, node) {
+      if (event && (event.type === "pointerdown" || event.type === "mousedown")) {
+        return this.onMouseDown(event, pos);
+      }
+      return false;
     }
     onMouseDown(event, localPos) {
       const x = localPos[0];
@@ -3368,6 +3396,19 @@ function setupProSaverNode(nodeType, nodeData, appInstance) {
       node.addCustomWidget(hud);
     }
     node._stoiqo_saver_hud = hud;
+    if (!node._stoiqoMouseHooked) {
+      node._stoiqoMouseHooked = true;
+      const origOnMouseDown = node.onMouseDown;
+      node.onMouseDown = function(e, localPos, graphCanvas) {
+        if (this._stoiqo_saver_hud && this._stoiqo_saver_hud.onMouseDown(e, localPos)) {
+          return true;
+        }
+        if (origOnMouseDown) {
+          return origOnMouseDown.apply(this, arguments);
+        }
+        return false;
+      };
+    }
   }
   const onNodeCreated = nodeType.prototype.onNodeCreated;
   nodeType.prototype.onNodeCreated = function() {
@@ -3422,13 +3463,13 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
   if (!musicTargetNames.includes(nodeData.name)) return;
   const MIN_NODE_WIDTH = 480;
   const SECTIONS = [
-    { targetWidget: "idea", num: "1", title: "CONCEPT & CORE THEME", color: "#f43f5e" },
-    { targetWidget: "system_prompt", num: "2", title: "PRODUCER PERSONA & AI AGENT", color: "#ec4899" },
-    { targetWidget: "genre", num: "3", title: "GENRE & ACOUSTICS", color: "#a855f7" },
-    { targetWidget: "vocal_type", num: "4", title: "VOCALS & LANGUAGE", color: "#38bdf8" },
+    { targetWidget: "idea", num: "1", title: "CONCEPT & CORE THEME", color: "#ff453a" },
+    { targetWidget: "system_prompt", num: "2", title: "PRODUCER PERSONA & AI AGENT", color: "#ff9f0a" },
+    { targetWidget: "genre", num: "3", title: "GENRE & ACOUSTICS", color: "#2997ff" },
+    { targetWidget: "vocal_type", num: "4", title: "VOCALS & LANGUAGE", color: "#58b0ff" },
     { targetWidget: "structure", num: "5", title: "STRUCTURE & TEMPO", color: "#eab308" },
-    { targetWidget: "custom_lyrics", num: "6", title: "CUSTOM LYRICS & DIRECTIVES (OPTIONAL)", color: "#818cf8" },
-    { targetWidget: "seed", num: "7", title: "GENERATION & SAMPLING", color: "#10b981" }
+    { targetWidget: "custom_lyrics", num: "6", title: "CUSTOM LYRICS & DIRECTIVES (OPTIONAL)", color: "#ff9f0a" },
+    { targetWidget: "seed", num: "7", title: "GENERATION & SAMPLING", color: "#30d158" }
   ];
   const MULTILINE_HEIGHTS = {
     "idea": 76,
@@ -3549,7 +3590,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     node.widgets = node.widgets.filter((w) => !w.isStoiqoDivider);
     let trackInfoDisplay = node.widgets.find((w) => w.name === "preview_track_info");
     if (!trackInfoDisplay) {
-      const trackDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: TRACK TELEMETRY & STYLE", "#06b6d4");
+      const trackDivider = new StoiqoSectionDividerWidget("8", "YUE2 OUTPUT: TRACK TELEMETRY & STYLE", "#2997ff");
       node.widgets.push(trackDivider);
       trackInfoDisplay = node.addWidget(
         "text",
@@ -3605,7 +3646,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
           el.style.minHeight = "64px";
           el.style.fontSize = "11px";
           el.style.lineHeight = "1.4";
-          el.style.color = "#38bdf8";
+          el.style.color = "#58b0ff";
           el.style.background = "rgba(15, 23, 42, 0.65)";
           el.style.fontFamily = "monospace, -apple-system, sans-serif";
         };
@@ -3628,7 +3669,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     }
     let lyricsDisplay = node.widgets.find((w) => w.name === "preview_lyrics");
     if (!lyricsDisplay) {
-      const lyricsDivider = new StoiqoSectionDividerWidget("9", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ec4899");
+      const lyricsDivider = new StoiqoSectionDividerWidget("9", "YUE2 OUTPUT: STRUCTURED LYRICS", "#ff9f0a");
       node.widgets.push(lyricsDivider);
       if (typeof ComfyWidgets4 !== "undefined" && ComfyWidgets4["STRING"]) {
         lyricsDisplay = ComfyWidgets4["STRING"](
@@ -3689,7 +3730,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     if (!copyStyleBtn) {
       copyStyleBtn = node.addWidget(
         "button",
-        "\u{1F4CB} Copia Style (YuE2 Descriptor)",
+        "\u{1F4CB} Copy Style (YuE2 Descriptor)",
         null,
         function() {
           const sw = node.widgets?.find((w) => w.name === "preview_style");
@@ -3697,7 +3738,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
           if (val && navigator.clipboard) {
             navigator.clipboard.writeText(String(val));
             const orig = this.name;
-            this.name = "\u2713 Style Copiato!";
+            this.name = "\u2713 Style Copied!";
             node.setDirtyCanvas(true);
             setTimeout(() => {
               this.name = orig;
@@ -3715,7 +3756,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     if (!copyLyricsBtn) {
       copyLyricsBtn = node.addWidget(
         "button",
-        "\u{1F4CB} Copia Lyrics (YuE2 Stanza)",
+        "\u{1F4CB} Copy Lyrics (YuE2 Stanza)",
         null,
         function() {
           const lw = node.widgets?.find((w) => w.name === "preview_lyrics");
@@ -3723,7 +3764,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
           if (val && navigator.clipboard) {
             navigator.clipboard.writeText(String(val));
             const orig = this.name;
-            this.name = "\u2713 Lyrics Copiate!";
+            this.name = "\u2713 Lyrics Copied!";
             node.setDirtyCanvas(true);
             setTimeout(() => {
               this.name = orig;
@@ -3741,7 +3782,7 @@ function setupMusicPromptNode(nodeType, nodeData, app11) {
     if (!copyMetricsBtn) {
       copyMetricsBtn = node.addWidget(
         "button",
-        "\u{1F4D0} Copia Analisi Metrica Sillabica",
+        "\u{1F4D0} Copy Syllabic Metric Analysis",
         null,
         function() {
           const lastInfo = node._lastMusicInfo;
@@ -3771,7 +3812,7 @@ Summary: ${lastInfo.metric_summary}
           if (report && navigator.clipboard) {
             navigator.clipboard.writeText(report);
             const orig = this.name;
-            this.name = "\u2713 Metrica Copiata!";
+            this.name = "\u2713 Metrics Copied!";
             node.setDirtyCanvas(true);
             setTimeout(() => {
               this.name = orig;
@@ -3930,47 +3971,13 @@ function setupPipelineNodes(nodeType, nodeData, appInstance) {
       }
     }
     if (nodeName === "StoiqoPromptGeneratorNode") {
-      let tw = node.widgets.find((w) => w.name === "synthesized_prompt");
-      if (!tw) {
-        tw = node.addWidget(
-          "customtext",
-          "synthesized_prompt",
-          "",
-          function() {
-          },
-          { multiline: true }
-        );
-        tw.serialize = false;
-        tw.options = { serialize: false };
-        tw.computeSize = function(width) {
-          return [width, 100];
-        };
-        const styleTw = (el) => {
-          if (!el) return;
-          el.readOnly = true;
-          el.placeholder = "Prompt stream output...";
-          el.style.boxSizing = "border-box";
-          el.style.fontSize = "11.5px";
-          el.style.lineHeight = "1.45";
-          el.style.fontFamily = "monospace, -apple-system, sans-serif";
-          el.style.opacity = "0.92";
-        };
-        if (tw.inputEl) {
-          styleTw(tw.inputEl);
-        } else {
-          let rawEl = null;
-          Object.defineProperty(tw, "inputEl", {
-            configurable: true,
-            enumerable: true,
-            get() {
-              return rawEl;
-            },
-            set(v) {
-              rawEl = v;
-              styleTw(v);
-            }
-          });
+      const synIdx = node.widgets.findIndex((w) => w && w.name === "synthesized_prompt");
+      if (synIdx !== -1) {
+        const tw = node.widgets[synIdx];
+        if (tw.inputEl && tw.inputEl.parentNode) {
+          tw.inputEl.parentNode.removeChild(tw.inputEl);
         }
+        node.widgets.splice(synIdx, 1);
       }
     }
     if (nodeName === "StoiqoStyleDirectivesNode") {
@@ -4048,6 +4055,18 @@ function setupPipelineNodes(nodeType, nodeData, appInstance) {
         createAudioPlayerWidget(this, message.audio[0]);
       }
     };
+    const origOnRemoved = nodeType.prototype.onRemoved;
+    nodeType.prototype.onRemoved = function() {
+      const w = this.widgets?.find((x) => x.name === "audio_player");
+      if (w && w.element) {
+        const a = w.element.querySelector("audio");
+        if (a) {
+          a.pause();
+          a.src = "";
+        }
+      }
+      if (origOnRemoved) origOnRemoved.apply(this, arguments);
+    };
   }
   if (nodeName === "StoiqoVideoSaverNode") {
     const origOnExecuted = nodeType.prototype.onExecuted;
@@ -4057,6 +4076,15 @@ function setupPipelineNodes(nodeType, nodeData, appInstance) {
       if (vData) {
         createVideoPlayerWidget(this, vData);
       }
+    };
+    const origOnRemoved = nodeType.prototype.onRemoved;
+    nodeType.prototype.onRemoved = function() {
+      const w = this.widgets?.find((x) => x.name === "video_player");
+      if (w && w.videoEl) {
+        w.videoEl.pause();
+        w.videoEl.src = "";
+      }
+      if (origOnRemoved) origOnRemoved.apply(this, arguments);
     };
   }
 }
@@ -4071,7 +4099,7 @@ function createAudioPlayerWidget(node, audioData) {
     container.style.gap = "6px";
     container.style.padding = "8px 10px";
     container.style.background = "linear-gradient(135deg, rgba(18, 20, 29, 0.95), rgba(10, 12, 18, 0.98))";
-    container.style.border = "1px solid rgba(0, 229, 255, 0.25)";
+    container.style.border = "1px solid rgba(41, 151, 255, 0.25)";
     container.style.borderRadius = "8px";
     container.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.4)";
     container.style.fontFamily = "system-ui, -apple-system, sans-serif";
@@ -4086,7 +4114,7 @@ function createAudioPlayerWidget(node, audioData) {
     header.style.alignItems = "center";
     header.style.fontSize = "11px";
     header.style.fontWeight = "600";
-    header.style.color = "#00e5ff";
+    header.style.color = "#2997ff";
     const titleEl = document.createElement("span");
     titleEl.textContent = audioData?.filename || "YuE2 / Suno Track Preview";
     titleEl.style.overflow = "hidden";
@@ -4105,7 +4133,7 @@ function createAudioPlayerWidget(node, audioData) {
     controls.style.gap = "8px";
     const playBtn = document.createElement("button");
     playBtn.type = "button";
-    playBtn.style.background = "linear-gradient(135deg, #00e5ff, #7928ca)";
+    playBtn.style.background = "#2997ff";
     playBtn.style.border = "none";
     playBtn.style.borderRadius = "50%";
     playBtn.style.width = "28px";
@@ -4123,7 +4151,7 @@ function createAudioPlayerWidget(node, audioData) {
     progress.max = "100";
     progress.value = "0";
     progress.style.flex = "1";
-    progress.style.accentColor = "#00e5ff";
+    progress.style.accentColor = "#2997ff";
     progress.style.cursor = "pointer";
     progress.style.height = "4px";
     controls.appendChild(playBtn);
@@ -4191,7 +4219,7 @@ function createVideoPlayerWidget(node, videoData) {
     container.style.gap = "6px";
     container.style.padding = "8px 10px";
     container.style.background = "linear-gradient(135deg, rgba(16, 20, 30, 0.96), rgba(8, 10, 16, 0.98))";
-    container.style.border = "1px solid rgba(0, 229, 255, 0.3)";
+    container.style.border = "1px solid rgba(41, 151, 255, 0.3)";
     container.style.borderRadius = "8px";
     container.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.5)";
     container.style.fontFamily = "system-ui, -apple-system, sans-serif";
@@ -4216,7 +4244,7 @@ function createVideoPlayerWidget(node, videoData) {
     header.style.alignItems = "center";
     header.style.fontSize = "11px";
     header.style.fontWeight = "600";
-    header.style.color = "#00e5ff";
+    header.style.color = "#2997ff";
     const titleEl = document.createElement("span");
     titleEl.textContent = videoData?.filename || "MiniMax / Wan Video Preview";
     titleEl.style.overflow = "hidden";
@@ -4236,7 +4264,7 @@ function createVideoPlayerWidget(node, videoData) {
     progress.max = "1000";
     progress.value = "0";
     progress.style.width = "100%";
-    progress.style.accentColor = "#00e5ff";
+    progress.style.accentColor = "#2997ff";
     progress.style.cursor = "pointer";
     progress.style.height = "5px";
     progress.style.margin = "2px 0";
@@ -4264,7 +4292,7 @@ function createVideoPlayerWidget(node, videoData) {
       btn.style.fontSize = "10.5px";
       btn.style.fontFamily = "inherit";
       btn.style.transition = "all 0.15s ease";
-      btn.onmouseenter = () => btn.style.background = "rgba(0, 229, 255, 0.15)";
+      btn.onmouseenter = () => btn.style.background = "rgba(41, 151, 255, 0.15)";
       btn.onmouseleave = () => {
         if (!btn.dataset.active) btn.style.background = "rgba(255, 255, 255, 0.06)";
       };
@@ -4275,7 +4303,7 @@ function createVideoPlayerWidget(node, videoData) {
     const playBtn = document.createElement("button");
     playBtn.type = "button";
     playBtn.title = "Play / Pause";
-    playBtn.style.background = "linear-gradient(135deg, #00e5ff, #7928ca)";
+    playBtn.style.background = "#2997ff";
     playBtn.style.border = "none";
     playBtn.style.borderRadius = "50%";
     playBtn.style.width = "28px";
@@ -4289,9 +4317,9 @@ function createVideoPlayerWidget(node, videoData) {
     playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
     const loopBtn = createBtn("\u{1F501} Loop", "Toggle Continuous Loop");
     loopBtn.dataset.active = "true";
-    loopBtn.style.background = "rgba(0, 229, 255, 0.2)";
-    loopBtn.style.borderColor = "rgba(0, 229, 255, 0.5)";
-    loopBtn.style.color = "#00e5ff";
+    loopBtn.style.background = "rgba(41, 151, 255, 0.2)";
+    loopBtn.style.borderColor = "rgba(41, 151, 255, 0.5)";
+    loopBtn.style.color = "#2997ff";
     leftControls.appendChild(prevFrameBtn);
     leftControls.appendChild(playBtn);
     leftControls.appendChild(nextFrameBtn);
@@ -4360,9 +4388,9 @@ function createVideoPlayerWidget(node, videoData) {
       video.loop = !video.loop;
       if (video.loop) {
         loopBtn.dataset.active = "true";
-        loopBtn.style.background = "rgba(0, 229, 255, 0.2)";
-        loopBtn.style.borderColor = "rgba(0, 229, 255, 0.5)";
-        loopBtn.style.color = "#00e5ff";
+        loopBtn.style.background = "rgba(41, 151, 255, 0.2)";
+        loopBtn.style.borderColor = "rgba(41, 151, 255, 0.5)";
+        loopBtn.style.color = "#2997ff";
       } else {
         delete loopBtn.dataset.active;
         loopBtn.style.background = "rgba(255, 255, 255, 0.06)";
@@ -5031,34 +5059,34 @@ var MODE_CONFIG = {
   "text_expansion": {
     icon: "\u{1F4DD}",
     badgeText: "TEXT EXPANSION",
-    color: "#a78bfa",
-    bg: "rgba(124, 58, 237, 0.16)",
-    border: "rgba(167, 139, 250, 0.50)",
-    dot: "#c084fc"
+    color: "#58b0ff",
+    bg: "rgba(41, 151, 255, 0.16)",
+    border: "rgba(41, 151, 255, 0.50)",
+    dot: "#2997ff"
   },
   "single_image": {
     icon: "\u{1F5BC}\uFE0F",
     badgeText: "SINGLE IMAGE VISION",
-    color: "#34d399",
-    bg: "rgba(16, 185, 129, 0.16)",
-    border: "rgba(52, 211, 153, 0.50)",
-    dot: "#4ade80"
+    color: "#30d158",
+    bg: "rgba(48, 209, 88, 0.16)",
+    border: "rgba(48, 209, 88, 0.50)",
+    dot: "#30d158"
   },
   "multi_fusion": {
     icon: "\u{1F500}",
     badgeText: "MULTI-IMAGE FUSION",
-    color: "#fb923c",
-    bg: "rgba(249, 115, 22, 0.18)",
-    border: "rgba(251, 146, 60, 0.55)",
-    dot: "#f97316"
+    color: "#ff9f0a",
+    bg: "rgba(255, 159, 10, 0.18)",
+    border: "rgba(255, 159, 10, 0.55)",
+    dot: "#ff9f0a"
   },
   "batch_caption": {
     icon: "\u{1F4E6}",
     badgeText: "BATCH CAPTION",
-    color: "#38bdf8",
-    bg: "rgba(56, 189, 248, 0.16)",
-    border: "rgba(56, 189, 248, 0.50)",
-    dot: "#38bdf8"
+    color: "#2997ff",
+    bg: "rgba(41, 151, 255, 0.16)",
+    border: "rgba(41, 151, 255, 0.50)",
+    dot: "#2997ff"
   }
 };
 function drawRoundRect(ctx, x, y, w, h, r) {
@@ -5181,7 +5209,7 @@ var StoiqoPromptHUDWidget = class {
       ctx.fillText(fittedInfo, leftOccupied, startY + barH / 2 + 0.5);
     }
     const statusLabel = isExecuted ? "\u25CF ACTIVE" : hasImageLink ? "\u25CF LINKED" : "\u25CF READY";
-    const statusColor = isExecuted ? "#34d399" : hasImageLink ? "#38bdf8" : "#64748b";
+    const statusColor = isExecuted ? "#30d158" : hasImageLink ? "#2997ff" : "#64748b";
     ctx.font = "bold 8.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
     ctx.fillStyle = statusColor;
     ctx.textAlign = "right";
@@ -5298,7 +5326,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
           document.execCommand("copy");
           document.body.removeChild(ta);
         }
-        this.triggerFlash(flashLabel || "\u2713 COPIATO");
+        this.triggerFlash(flashLabel || "\u2713 COPIED");
       } catch (err) {
         console.error("[STOIQO Seed] Copy failed:", err);
       }
@@ -5315,7 +5343,9 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
     recallSeed(seedVal) {
       if (!this.node || !this.node.widgets) return;
       const seedWidget = this.node.widgets.find((w) => w.name === "seed");
-      const modeWidget = this.node.widgets.find((w) => w.name === "control_mode");
+      const modeWidget = this.node.widgets.find(
+        (w) => w.name === "control_after_generate" || w.name === "control_mode"
+      );
       if (seedWidget) {
         seedWidget.value = Number(seedVal);
         if (seedWidget.callback) seedWidget.callback(seedWidget.value);
@@ -5324,7 +5354,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
         modeWidget.value = "fixed";
         if (modeWidget.callback) modeWidget.callback(modeWidget.value);
       }
-      this.copyToClipboard(seedVal, `\u2713 RIPESCATO ${seedVal} (MODO: FIXED)`);
+      this.copyToClipboard(seedVal, `\u2713 RECALLED ${seedVal} (MODE: FIXED)`);
       this.node.setDirtyCanvas(true, true);
     }
     draw(ctx, node, width, y, height) {
@@ -5338,7 +5368,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
       this.chipRects = [];
       ctx.save();
       ctx.fillStyle = "rgba(18, 20, 26, 0.95)";
-      ctx.strokeStyle = "rgba(168, 85, 247, 0.40)";
+      ctx.strokeStyle = "rgba(41, 151, 255, 0.40)";
       ctx.lineWidth = 1.2;
       if (ctx.roundRect) {
         ctx.beginPath();
@@ -5349,7 +5379,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
         ctx.fillRect(cardX, cardY, cardW, cardH);
         ctx.strokeRect(cardX, cardY, cardW, cardH);
       }
-      ctx.fillStyle = "#a855f7";
+      ctx.fillStyle = "#2997ff";
       if (ctx.roundRect) {
         ctx.beginPath();
         ctx.roundRect(cardX, cardY, 4, cardH, [7, 0, 0, 7]);
@@ -5361,7 +5391,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
       ctx.font = "bold 10px Inter, sans-serif";
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "#c084fc";
+      ctx.fillStyle = "#58b0ff";
       ctx.fillText("\u{1F3B2} SEED:", cardX + 12, row1Y);
       const currentDisplay = this.activeSeed !== null ? String(this.activeSeed) : node.widgets.find((w) => w.name === "seed") ? String(node.widgets.find((w) => w.name === "seed").value) : "0";
       ctx.font = "bold 11px monospace, sans-serif";
@@ -5370,7 +5400,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
       let extraX = cardX + 62 + ctx.measureText(currentDisplay).width + 8;
       if (this.effectiveSeed !== null && this.effectiveSeed !== this.activeSeed) {
         ctx.font = "9px monospace";
-        ctx.fillStyle = "#38bdf8";
+        ctx.fillStyle = "#58b0ff";
         const effTxt = `(Eff: ${this.effectiveSeed})`;
         ctx.fillText(effTxt, extraX, row1Y);
         extraX += ctx.measureText(effTxt).width + 8;
@@ -5385,8 +5415,8 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
       const copyBtnX = cardX + cardW - copyBtnW - 8;
       const copyBtnY = cardY + 8;
       this.buttonRects["copy_active"] = { x: copyBtnX, y: copyBtnY, w: copyBtnW, h: copyBtnH, data: currentDisplay };
-      ctx.fillStyle = this.flashStatus ? "#065f46" : "#2e1065";
-      ctx.strokeStyle = this.flashStatus ? "#10b981" : "#a855f7";
+      ctx.fillStyle = this.flashStatus ? "#12301d" : "#182234";
+      ctx.strokeStyle = this.flashStatus ? "#30d158" : "#2997ff";
       ctx.lineWidth = 1;
       if (ctx.roundRect) {
         ctx.beginPath();
@@ -5399,7 +5429,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
       }
       ctx.font = "bold 9px Inter, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillStyle = this.flashStatus ? "#6ee7b7" : "#e9d5ff";
+      ctx.fillStyle = this.flashStatus ? "#30d158" : "#d8e6f5";
       ctx.fillText(this.flashStatus || "\u{1F4CB} COPIA", copyBtnX + copyBtnW / 2, copyBtnY + copyBtnH / 2 + 0.5);
       const row2Y = cardY + 44;
       ctx.font = "bold 9px Inter, sans-serif";
@@ -5430,8 +5460,8 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
               h: chipH,
               seed: item.seed
             });
-            ctx.fillStyle = "#1e1b4b";
-            ctx.strokeStyle = "#4338ca";
+            ctx.fillStyle = "#121318";
+            ctx.strokeStyle = "rgba(41, 151, 255, 0.35)";
             ctx.lineWidth = 1;
             if (ctx.roundRect) {
               ctx.beginPath();
@@ -5457,7 +5487,7 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
         const y = pos[1];
         for (const [btnId, rect] of Object.entries(this.buttonRects)) {
           if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
-            this.copyToClipboard(rect.data, "\u2713 COPIATO");
+            this.copyToClipboard(rect.data, "\u2713 COPIED");
             return true;
           }
         }
@@ -5561,7 +5591,7 @@ function drawTelemetryBadge(node, ctx) {
   const posX = Math.max(8, nodeWidth - badgeW - 8);
   const posY = -24;
   ctx.fillStyle = "rgba(10, 14, 22, 0.88)";
-  ctx.strokeStyle = "rgba(6, 182, 212, 0.45)";
+  ctx.strokeStyle = "rgba(41, 151, 255, 0.45)";
   ctx.lineWidth = 1;
   if (ctx.roundRect) {
     ctx.beginPath();
@@ -5572,7 +5602,7 @@ function drawTelemetryBadge(node, ctx) {
     ctx.fillRect(posX, posY, badgeW, badgeH);
     ctx.strokeRect(posX, posY, badgeW, badgeH);
   }
-  ctx.fillStyle = "#06b6d4";
+  ctx.fillStyle = "#2997ff";
   ctx.fillText("\u26A1", posX + paddingX, posY + 12);
   ctx.fillStyle = "#cbd5e1";
   ctx.fillText(badgeText, posX + paddingX + iconWidth, posY + 12);
@@ -5581,13 +5611,15 @@ function drawTelemetryBadge(node, ctx) {
 
 // src_js/utils/settingsDrawer.js
 var DRAWER_WIDGET_NAME = "_stoiqo_settings_drawer";
-var PROMPT_PRESET_VALUES = {
-  "Balanced Synthesizer (Recommended)": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 },
-  "Maximum Creativity (Wild Ideation)": { temperature: 0.95, max_new_tokens: 1536, top_p: 0.95, top_k: 80, repetition_penalty: 1.1 },
-  "Scientific / Accurate Visual Description": { temperature: 0.2, max_new_tokens: 768, top_p: 0.8, top_k: 30, repetition_penalty: 1.2 },
-  "Synthetic Captioning for LoRA / Training": { temperature: 0.35, max_new_tokens: 512, top_p: 0.85, top_k: 40, repetition_penalty: 1.15 },
-  "Deterministic / Exact Logic (Greedy)": { temperature: 0, max_new_tokens: 512, top_p: 0, top_k: 1, repetition_penalty: 1.2 },
-  "Cinematic Storyteller": { temperature: 0.75, max_new_tokens: 1280, top_p: 0.92, top_k: 60, repetition_penalty: 1.12 }
+var PERSONA_SAMPLING_VALUES = {
+  "Auto-Detect / Balanced": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 },
+  "Generative Vision Engine": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 },
+  "Text-to-Prompt Expansion Engine": { temperature: 0.7, max_new_tokens: 1024, top_p: 0.9, top_k: 60, repetition_penalty: 1.15 },
+  "Multi-Image Synthesis Engine": { temperature: 0.6, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 },
+  "Cinematic & Video Director": { temperature: 0.75, max_new_tokens: 1280, top_p: 0.92, top_k: 60, repetition_penalty: 1.12 },
+  "Dataset & LoRA Annotator": { temperature: 0.35, max_new_tokens: 512, top_p: 0.85, top_k: 40, repetition_penalty: 1.15 },
+  "Minimalist & Literal": { temperature: 0.2, max_new_tokens: 384, top_p: 0.75, top_k: 25, repetition_penalty: 1.2 },
+  "SeedVR2 Upscale Guide": { temperature: 0.25, max_new_tokens: 640, top_p: 0.8, top_k: 30, repetition_penalty: 1.2 }
 };
 function getVal(node, name) {
   const w = node?.widgets?.find((x) => x.name === name);
@@ -5595,11 +5627,10 @@ function getVal(node, name) {
 }
 var NODE_UX_SPECS = {
   StoiqoPromptGeneratorNode: {
-    label: "LLM & Multi-Image Settings",
+    label: "Advanced Settings & Sampling",
     advanced: [
-      "preset",
+      "seed",
       "fusion_mode",
-      "system_prompt",
       "custom_system_prompt",
       "negative_prompt_prefix",
       "temperature",
@@ -5612,8 +5643,8 @@ var NODE_UX_SPECS = {
       custom_system_prompt: (node) => String(getVal(node, "system_prompt") || "").includes("Custom")
     },
     onWidgetChange: (node, name, val) => {
-      if (name === "preset" && PROMPT_PRESET_VALUES[val]) {
-        const pv = PROMPT_PRESET_VALUES[val];
+      if (name === "system_prompt" && PERSONA_SAMPLING_VALUES[val]) {
+        const pv = PERSONA_SAMPLING_VALUES[val];
         for (const [k, v] of Object.entries(pv)) {
           const tw = node.widgets?.find((w) => w.name === k);
           if (tw) {
@@ -5967,21 +5998,48 @@ var StoiqoSettingsDrawerWidget = class {
 };
 function applyNodeUXSpec(node, spec) {
   if (!node || !node.widgets || !spec) return;
+  const synIdx = node.widgets.findIndex((w) => w && w.name === "synthesized_prompt");
+  if (synIdx !== -1) {
+    const tw = node.widgets[synIdx];
+    if (tw.inputEl && tw.inputEl.parentNode) {
+      tw.inputEl.parentNode.removeChild(tw.inputEl);
+    }
+    node.widgets.splice(synIdx, 1);
+  }
   const existingDrawers = node.widgets.filter((w) => w.name === DRAWER_WIDGET_NAME);
   for (const extra of existingDrawers.slice(1)) {
     node.widgets.splice(node.widgets.indexOf(extra), 1);
   }
-  let drawer = node.widgets.find((w) => w.name === DRAWER_WIDGET_NAME);
-  if (!drawer && spec.advanced && spec.advanced.length > 0) {
-    drawer = new StoiqoSettingsDrawerWidget(node, spec);
-    const firstAdvIdx = node.widgets.findIndex((w) => spec.advanced.includes(w.name));
-    if (firstAdvIdx !== -1) {
-      node.widgets.splice(firstAdvIdx, 0, drawer);
-    } else {
-      node.widgets.push(drawer);
+  const advSet = new Set(spec.advanced || []);
+  if (advSet.has("seed")) {
+    advSet.add("control_after_generate");
+    advSet.add("control_mode");
+  }
+  for (const w of node.widgets) {
+    if (!w) continue;
+    if (w.name === "control_after_generate" || w.name === "control_mode") {
+      w.label = "Control After Generate";
     }
   }
-  const advSet = new Set(spec.advanced || []);
+  let drawer = node.widgets.find((w) => w.name === DRAWER_WIDGET_NAME);
+  if (spec.advanced && spec.advanced.length > 0) {
+    if (!drawer) {
+      drawer = new StoiqoSettingsDrawerWidget(node, spec);
+      const firstAdvIdx = node.widgets.findIndex((w) => advSet.has(w.name));
+      if (firstAdvIdx !== -1) {
+        node.widgets.splice(firstAdvIdx, 0, drawer);
+      } else {
+        node.widgets.push(drawer);
+      }
+    } else {
+      const currentDrawerIdx = node.widgets.indexOf(drawer);
+      const firstAdvIdx = node.widgets.findIndex((w) => w !== drawer && advSet.has(w.name));
+      if (firstAdvIdx !== -1 && currentDrawerIdx > firstAdvIdx) {
+        node.widgets.splice(currentDrawerIdx, 1);
+        node.widgets.splice(firstAdvIdx, 0, drawer);
+      }
+    }
+  }
   const alwaysHiddenSet = new Set(spec.alwaysHidden || []);
   const conditions = spec.conditions || {};
   const refreshUX = (resizeHeight = false) => {
@@ -5989,6 +6047,9 @@ function applyNodeUXSpec(node, spec) {
     const drawerAllowed = !spec.drawerWhen || spec.drawerWhen(node);
     for (const w of node.widgets) {
       if (!w || w.name === DRAWER_WIDGET_NAME) continue;
+      if (w.name === "control_after_generate" || w.name === "control_mode") {
+        w.label = "Control After Generate";
+      }
       if (alwaysHiddenSet.has(w.name)) {
         setWidgetVisibility(w, false);
         continue;
@@ -6051,13 +6112,6 @@ function sanitizeNodeWidgetValues(node, info) {
         if (w.inputEl) w.inputEl.value = w.value;
       }
     }
-    if (w.name === "sidecar_metadata") {
-      const valid = ["None", "Both (.json + .txt)", "JSON (.json)", "TXT Caption (.txt)"];
-      if (!valid.includes(w.value)) {
-        w.value = "None";
-        if (w.inputEl) w.inputEl.value = "None";
-      }
-    }
     if (w.name === "text_watermark") {
       if (w.value === "Normal (Alpha)" || w.value === "Normal" || w.value === "Screen" || w.value === "Multiply") {
         w.value = "STOIQO";
@@ -6070,7 +6124,6 @@ function sanitizeNodeWidgetValues(node, info) {
         if (w.name === "sampler_name" && w.options.values.includes("euler")) def = "euler";
         if (w.name === "scheduler" && w.options.values.includes("beta")) def = "beta";
         if (w.name === "sidecar_metadata" && w.options.values.includes("None")) def = "None";
-        if (w.name === "preset" && w.options.values.includes("Balanced Synthesizer (Recommended)")) def = "Balanced Synthesizer (Recommended)";
         if (w.name === "fusion_mode" && w.options.values.includes("Auto (Fuse 2-4 images, Batch if >4)")) def = "Auto (Fuse 2-4 images, Batch if >4)";
         if (w.name === "system_prompt" && w.options.values.includes("Auto-Detect / Balanced")) def = "Auto-Detect / Balanced";
         if (w.name === "deduplicate_tags" && w.options.values.includes("None")) def = "None";
@@ -6099,7 +6152,7 @@ function sanitizeNodeWidgetValues(node, info) {
       if (w.name === "variance_strength" && num > 1) num = 0;
       if (w.name === "top_p" && num > 1) num = 0.9;
       if (w.name === "repetition_penalty" && (num < 1 || num > 2)) num = 1.15;
-      if (w.name === "max_new_tokens" && (num < 64 || num > 4096)) num = 1024;
+      if (w.name === "max_new_tokens" && (num < 128 || num > 4096)) num = 1024;
       if (w.name === "top_k" && (num < 1 || num > 100)) num = 50;
       if (w.name === "quality" && (num < 1 || num > 100)) num = 90;
       if (w.name === "opacity" && num <= 0.05) num = 0.85;

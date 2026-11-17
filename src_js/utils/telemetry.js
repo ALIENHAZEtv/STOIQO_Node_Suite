@@ -85,7 +85,7 @@ function drawTelemetryBadge(node, ctx) {
 
     // Badge pill background
     ctx.fillStyle = "rgba(10, 14, 22, 0.88)";
-    ctx.strokeStyle = "rgba(6, 182, 212, 0.45)";
+    ctx.strokeStyle = "rgba(41, 151, 255, 0.45)";
     ctx.lineWidth = 1;
 
     if (ctx.roundRect) {
@@ -99,7 +99,7 @@ function drawTelemetryBadge(node, ctx) {
     }
 
     // Lightning bolt icon (⚡)
-    ctx.fillStyle = "#06b6d4";
+    ctx.fillStyle = "#2997ff";
     ctx.fillText("⚡", posX + paddingX, posY + 12);
 
     // Text metrics

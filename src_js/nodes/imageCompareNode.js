@@ -255,13 +255,13 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
 
                     // Mode buttons: Hover (rgthree), Drag Split, Toggle, Side, Diff Heatmap, Solo A, Solo B
                     const modes = [
-                        { key: "hover_slide", label: "⚡ Hover (rgthree)", activeColor: "#38bdf8" },
+                        { key: "hover_slide", label: "⚡ Hover (rgthree)", activeColor: "#2997ff" },
                         { key: "split", label: "↔ Drag Split", activeColor: "#2dd4bf" },
-                        { key: "toggle", label: this.mode === "toggle" ? (this.toggleShowB ? "👁 B (Click A)" : "👁 A (Click B)") : "👁 Toggle (Space)", activeColor: "#f59e0b" },
-                        { key: "side", label: "◫ Side-by-Side", activeColor: "#10b981" },
+                        { key: "toggle", label: this.mode === "toggle" ? (this.toggleShowB ? "👁 B (Click A)" : "👁 A (Click B)") : "👁 Toggle (Space)", activeColor: "#ff9f0a" },
+                        { key: "side", label: "◫ Side-by-Side", activeColor: "#30d158" },
                         { key: "diff_heat", label: "🔥 Diff Heatmap", activeColor: "#ff453a" },
-                        { key: "only_a", label: "Solo A", activeColor: "#93c5fd" },
-                        { key: "only_b", label: "Solo B", activeColor: "#c084fc" },
+                        { key: "only_a", label: "Solo A", activeColor: "#58b0ff" },
+                        { key: "only_b", label: "Solo B", activeColor: "#ff9f0a" },
                     ];
 
                     let btnX = vX + 6;
@@ -346,7 +346,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                     const zoomLabel = `🔍 ${zoomPct}%`;
                     const zTextW = ctx.measureText(zoomLabel).width;
                     const zX = rX - zTextW - 12;
-                    ctx.fillStyle = this.zoom > 1.01 ? "#38bdf8" : "#64748b";
+                    ctx.fillStyle = this.zoom > 1.01 ? "#2997ff" : "#64748b";
                     ctx.fillText(zoomLabel, zX, rY + 9);
 
                     // ── 2. Batch Selector Chips (Multi-Frame Support) ─────────
@@ -369,7 +369,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                         ctx.textBaseline = "middle";
 
                         // Side A label & chips
-                        ctx.fillStyle = "#38bdf8";
+                        ctx.fillStyle = "#2997ff";
                         ctx.fillText("Side A:", chipX, currentTopY + chipBarH / 2);
                         chipX += ctx.measureText("Side A:").width + 6;
 
@@ -380,8 +380,8 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                             const cH = 16;
                             const cY = currentTopY + 3;
 
-                            ctx.fillStyle = isSel ? "#0284c7" : "rgba(255, 255, 255, 0.08)";
-                            ctx.strokeStyle = isSel ? "#38bdf8" : "rgba(255, 255, 255, 0.15)";
+                            ctx.fillStyle = isSel ? "#1d4ed8" : "rgba(255, 255, 255, 0.08)";
+                            ctx.strokeStyle = isSel ? "#2997ff" : "rgba(255, 255, 255, 0.15)";
                             if (ctx.roundRect) {
                                 ctx.beginPath();
                                 ctx.roundRect(chipX, cY, cW, cH, 3);
@@ -408,7 +408,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
 
                         chipX += 10;
                         // Side B label & chips
-                        ctx.fillStyle = "#c084fc";
+                        ctx.fillStyle = "#ff9f0a";
                         ctx.fillText("Side B:", chipX, currentTopY + chipBarH / 2);
                         chipX += ctx.measureText("Side B:").width + 6;
 
@@ -419,8 +419,8 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                             const cH = 16;
                             const cY = currentTopY + 3;
 
-                            ctx.fillStyle = isSel ? "#9333ea" : "rgba(255, 255, 255, 0.08)";
-                            ctx.strokeStyle = isSel ? "#c084fc" : "rgba(255, 255, 255, 0.15)";
+                            ctx.fillStyle = isSel ? "#b45309" : "rgba(255, 255, 255, 0.08)";
+                            ctx.strokeStyle = isSel ? "#ff9f0a" : "rgba(255, 255, 255, 0.15)";
                             if (ctx.roundRect) {
                                 ctx.beginPath();
                                 ctx.roundRect(chipX, cY, cW, cH, 3);
@@ -689,7 +689,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                             : `👁 A: ${this.labelA} (${natWA}×${natHA}) • Click / Space for B`;
                         const tW = ctx.measureText(tText).width + 16;
                         ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
-                        ctx.strokeStyle = showB ? "#c084fc" : "#38bdf8";
+                        ctx.strokeStyle = showB ? "#ff9f0a" : "#2997ff";
                         ctx.lineWidth = 1;
                         if (ctx.roundRect) {
                             ctx.beginPath();
@@ -700,7 +700,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                             ctx.fillRect(vp.x + 8, vp.y + 8, tW, 20);
                             ctx.strokeRect(vp.x + 8, vp.y + 8, tW, 20);
                         }
-                        ctx.fillStyle = showB ? "#c084fc" : "#38bdf8";
+                        ctx.fillStyle = showB ? "#ff9f0a" : "#2997ff";
                         ctx.fillText(tText, vp.x + 16, vp.y + 18);
                     } else {
                         // Label A (Top Left)
@@ -709,7 +709,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                             const lAW = ctx.measureText(labelAText).width + 14;
                             ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
                             ctx.fillRect(vp.x + 8, vp.y + 8, lAW, 18);
-                            ctx.fillStyle = "#38bdf8";
+                            ctx.fillStyle = "#2997ff";
                             ctx.fillText(labelAText, vp.x + 14, vp.y + 17);
                         } else if (this.mode === "diff_heat") {
                             const m = this.metricsData || {};
@@ -740,7 +740,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                             const lBW = ctx.measureText(labelBText).width + 14;
                             ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
                             ctx.fillRect(vp.x + vp.w - lBW - 8, vp.y + 8, lBW, 18);
-                            ctx.fillStyle = "#c084fc";
+                            ctx.fillStyle = "#ff9f0a";
                             ctx.fillText(labelBText, vp.x + vp.w - lBW - 2, vp.y + 17);
                         }
                     }
@@ -1014,7 +1014,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                 // High-priority capture wheel hook on canvas DOM element
                 if (app.canvas && app.canvas.canvas && !node._stoiqoWheelAttached) {
                     node._stoiqoWheelAttached = true;
-                    app.canvas.canvas.addEventListener("wheel", (e) => {
+                    node._stoiqoWheelHandler = (e) => {
                         if (!node.cmpWidget || !app.canvas) return;
                         const canvasPos = app.canvas.convertEventToCanvasOffset ? app.canvas.convertEventToCanvasOffset(e) : [e.canvasX, e.canvasY];
                         const localX = canvasPos[0] - node.pos[0];
@@ -1027,13 +1027,14 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                                 return false;
                             }
                         }
-                    }, { capture: true, passive: false });
+                    };
+                    app.canvas.canvas.addEventListener("wheel", node._stoiqoWheelHandler, { capture: true, passive: false });
                 }
 
                 // Spacebar keyboard shortcut hook to toggle A/B when mouse is over this node
                 if (!node._stoiqoSpaceAttached) {
                     node._stoiqoSpaceAttached = true;
-                    window.addEventListener("keydown", (e) => {
+                    node._stoiqoSpaceHandler = (e) => {
                         if (e.code === "Space" && !e.repeat && !e.target.matches("input, textarea, select")) {
                             if (!node.cmpWidget || !node.cmpWidget.isHoveringViewport) return;
                             node.cmpWidget.toggleShowB = !node.cmpWidget.toggleShowB;
@@ -1041,7 +1042,8 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                             e.preventDefault();
                             e.stopPropagation();
                         }
-                    }, { capture: true });
+                    };
+                    window.addEventListener("keydown", node._stoiqoSpaceHandler, { capture: true });
                 }
 
                 node.setDirtyCanvas(true, true);
@@ -1078,6 +1080,20 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                 if (cachedImages && Array.isArray(cachedImages) && cachedImages.length > 0 && this.cmpWidget) {
                     this.cmpWidget.setImages(cachedImages);
                 }
+            };
+
+            const origCmpRemoved = nodeType.prototype.onRemoved;
+            nodeType.prototype.onRemoved = function() {
+                if (app.canvas && app.canvas.canvas && this._stoiqoWheelHandler) {
+                    app.canvas.canvas.removeEventListener("wheel", this._stoiqoWheelHandler, { capture: true, passive: false });
+                    this._stoiqoWheelHandler = null;
+                }
+                if (this._stoiqoSpaceHandler) {
+                    window.removeEventListener("keydown", this._stoiqoSpaceHandler, { capture: true });
+                    this._stoiqoSpaceHandler = null;
+                }
+                this.cmpWidget = null;
+                if (origCmpRemoved) origCmpRemoved.apply(this, arguments);
             };
 
             // Suppress default LiteGraph background image rendering
@@ -1233,7 +1249,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                     if (isMatchImage) {
                         const imgSlot = node.inputs ? node.inputs.find(i => i.name === "image") : null;
                         if (!imgSlot || imgSlot.link === null) {
-                            note = "⚠️ Nessuna Immagine (fallback 1024×1024)";
+                            note = "⚠️ No Image (fallback 1024×1024)";
                             w = 1024; h = 1024;
                         } else {
                             note = "📷 Auto-match proporzioni immagine";
@@ -1282,7 +1298,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                     }
 
                     // Left accent bar
-                    ctx.fillStyle = "#38bdf8";
+                    ctx.fillStyle = "#2997ff";
                     if (ctx.roundRect) {
                         ctx.beginPath();
                         ctx.roundRect(margin, y, 4, cardH, [6, 0, 0, 6]);

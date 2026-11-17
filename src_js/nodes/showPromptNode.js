@@ -164,9 +164,9 @@ function createPromptViewerWidget(node) {
                     ctx,
                     badgeRect,
                     badgeLabel,
-                    node._viewAll ? "rgba(124, 58, 237, 0.25)" : "rgba(30, 41, 59, 0.6)",
-                    node._viewAll ? "rgba(167, 139, 250, 0.45)" : "rgba(148, 163, 184, 0.25)",
-                    node._viewAll ? "#c084fc" : "#94a3b8"
+                    node._viewAll ? "rgba(41, 151, 255, 0.25)" : "rgba(30, 41, 59, 0.6)",
+                    node._viewAll ? "rgba(41, 151, 255, 0.45)" : "rgba(148, 163, 184, 0.25)",
+                    node._viewAll ? "#2997ff" : "#94a3b8"
                 );
 
                 // Next button

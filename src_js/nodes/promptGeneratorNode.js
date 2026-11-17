@@ -27,34 +27,34 @@ const MODE_CONFIG = {
     "text_expansion": {
         icon: "📝",
         badgeText: "TEXT EXPANSION",
-        color: "#a78bfa",
-        bg: "rgba(124, 58, 237, 0.16)",
-        border: "rgba(167, 139, 250, 0.50)",
-        dot: "#c084fc",
+        color: "#58b0ff",
+        bg: "rgba(41, 151, 255, 0.16)",
+        border: "rgba(41, 151, 255, 0.50)",
+        dot: "#2997ff",
     },
     "single_image": {
         icon: "🖼️",
         badgeText: "SINGLE IMAGE VISION",
-        color: "#34d399",
-        bg: "rgba(16, 185, 129, 0.16)",
-        border: "rgba(52, 211, 153, 0.50)",
-        dot: "#4ade80",
+        color: "#30d158",
+        bg: "rgba(48, 209, 88, 0.16)",
+        border: "rgba(48, 209, 88, 0.50)",
+        dot: "#30d158",
     },
     "multi_fusion": {
         icon: "🔀",
         badgeText: "MULTI-IMAGE FUSION",
-        color: "#fb923c",
-        bg: "rgba(249, 115, 22, 0.18)",
-        border: "rgba(251, 146, 60, 0.55)",
-        dot: "#f97316",
+        color: "#ff9f0a",
+        bg: "rgba(255, 159, 10, 0.18)",
+        border: "rgba(255, 159, 10, 0.55)",
+        dot: "#ff9f0a",
     },
     "batch_caption": {
         icon: "📦",
         badgeText: "BATCH CAPTION",
-        color: "#38bdf8",
-        bg: "rgba(56, 189, 248, 0.16)",
-        border: "rgba(56, 189, 248, 0.50)",
-        dot: "#38bdf8",
+        color: "#2997ff",
+        bg: "rgba(41, 151, 255, 0.16)",
+        border: "rgba(41, 151, 255, 0.50)",
+        dot: "#2997ff",
     },
 };
 
@@ -212,7 +212,7 @@ export class StoiqoPromptHUDWidget {
 
         // 5. Far Right: State Indicator (READY vs ACTIVE)
         const statusLabel = isExecuted ? "● ACTIVE" : (hasImageLink ? "● LINKED" : "● READY");
-        const statusColor = isExecuted ? "#34d399" : (hasImageLink ? "#38bdf8" : "#64748b");
+        const statusColor = isExecuted ? "#30d158" : (hasImageLink ? "#2997ff" : "#64748b");
 
         ctx.font = "bold 8.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
         ctx.fillStyle = statusColor;

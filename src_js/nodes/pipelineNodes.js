@@ -108,41 +108,14 @@ export function setupPipelineNodes(nodeType, nodeData, appInstance) {
         }
 
         if (nodeName === "StoiqoPromptGeneratorNode") {
-            let tw = node.widgets.find(w => w.name === "synthesized_prompt");
-            if (!tw) {
-                tw = node.addWidget(
-                    "customtext",
-                    "synthesized_prompt",
-                    "",
-                    function() {},
-                    { multiline: true }
-                );
-                tw.serialize = false;
-                tw.options = { serialize: false };
-                tw.computeSize = function(width) {
-                    return [width, 100];
-                };
-                const styleTw = (el) => {
-                    if (!el) return;
-                    el.readOnly = true;
-                    el.placeholder = "Prompt stream output...";
-                    el.style.boxSizing = "border-box";
-                    el.style.fontSize = "11.5px";
-                    el.style.lineHeight = "1.45";
-                    el.style.fontFamily = "monospace, -apple-system, sans-serif";
-                    el.style.opacity = "0.92";
-                };
-                if (tw.inputEl) {
-                    styleTw(tw.inputEl);
-                } else {
-                    let rawEl = null;
-                    Object.defineProperty(tw, "inputEl", {
-                        configurable: true,
-                        enumerable: true,
-                        get() { return rawEl; },
-                        set(v) { rawEl = v; styleTw(v); }
-                    });
+            // Strip any legacy synthesized_prompt widget that causes empty space
+            const synIdx = node.widgets.findIndex(w => w && w.name === "synthesized_prompt");
+            if (synIdx !== -1) {
+                const tw = node.widgets[synIdx];
+                if (tw.inputEl && tw.inputEl.parentNode) {
+                    tw.inputEl.parentNode.removeChild(tw.inputEl);
                 }
+                node.widgets.splice(synIdx, 1);
             }
         }
 
@@ -226,6 +199,19 @@ export function setupPipelineNodes(nodeType, nodeData, appInstance) {
                 createAudioPlayerWidget(this, message.audio[0]);
             }
         };
+
+        const origOnRemoved = nodeType.prototype.onRemoved;
+        nodeType.prototype.onRemoved = function() {
+            const w = this.widgets?.find(x => x.name === "audio_player");
+            if (w && w.element) {
+                const a = w.element.querySelector("audio");
+                if (a) {
+                    a.pause();
+                    a.src = "";
+                }
+            }
+            if (origOnRemoved) origOnRemoved.apply(this, arguments);
+        };
     }
 
     if (nodeName === "StoiqoVideoSaverNode") {
@@ -236,6 +222,16 @@ export function setupPipelineNodes(nodeType, nodeData, appInstance) {
             if (vData) {
                 createVideoPlayerWidget(this, vData);
             }
+        };
+
+        const origOnRemoved = nodeType.prototype.onRemoved;
+        nodeType.prototype.onRemoved = function() {
+            const w = this.widgets?.find(x => x.name === "video_player");
+            if (w && w.videoEl) {
+                w.videoEl.pause();
+                w.videoEl.src = "";
+            }
+            if (origOnRemoved) origOnRemoved.apply(this, arguments);
         };
     }
 }
@@ -253,7 +249,7 @@ function createAudioPlayerWidget(node, audioData) {
         container.style.gap = "6px";
         container.style.padding = "8px 10px";
         container.style.background = "linear-gradient(135deg, rgba(18, 20, 29, 0.95), rgba(10, 12, 18, 0.98))";
-        container.style.border = "1px solid rgba(0, 229, 255, 0.25)";
+        container.style.border = "1px solid rgba(41, 151, 255, 0.25)";
         container.style.borderRadius = "8px";
         container.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.4)";
         container.style.fontFamily = "system-ui, -apple-system, sans-serif";
@@ -272,7 +268,7 @@ function createAudioPlayerWidget(node, audioData) {
         header.style.alignItems = "center";
         header.style.fontSize = "11px";
         header.style.fontWeight = "600";
-        header.style.color = "#00e5ff";
+        header.style.color = "#2997ff";
 
         const titleEl = document.createElement("span");
         titleEl.textContent = audioData?.filename || "YuE2 / Suno Track Preview";
@@ -298,7 +294,7 @@ function createAudioPlayerWidget(node, audioData) {
         // Play/Pause button
         const playBtn = document.createElement("button");
         playBtn.type = "button";
-        playBtn.style.background = "linear-gradient(135deg, #00e5ff, #7928ca)";
+        playBtn.style.background = "#2997ff";
         playBtn.style.border = "none";
         playBtn.style.borderRadius = "50%";
         playBtn.style.width = "28px";
@@ -318,7 +314,7 @@ function createAudioPlayerWidget(node, audioData) {
         progress.max = "100";
         progress.value = "0";
         progress.style.flex = "1";
-        progress.style.accentColor = "#00e5ff";
+        progress.style.accentColor = "#2997ff";
         progress.style.cursor = "pointer";
         progress.style.height = "4px";
 
@@ -397,7 +393,7 @@ function createVideoPlayerWidget(node, videoData) {
         container.style.gap = "6px";
         container.style.padding = "8px 10px";
         container.style.background = "linear-gradient(135deg, rgba(16, 20, 30, 0.96), rgba(8, 10, 16, 0.98))";
-        container.style.border = "1px solid rgba(0, 229, 255, 0.3)";
+        container.style.border = "1px solid rgba(41, 151, 255, 0.3)";
         container.style.borderRadius = "8px";
         container.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.5)";
         container.style.fontFamily = "system-ui, -apple-system, sans-serif";
@@ -426,7 +422,7 @@ function createVideoPlayerWidget(node, videoData) {
         header.style.alignItems = "center";
         header.style.fontSize = "11px";
         header.style.fontWeight = "600";
-        header.style.color = "#00e5ff";
+        header.style.color = "#2997ff";
 
         const titleEl = document.createElement("span");
         titleEl.textContent = videoData?.filename || "MiniMax / Wan Video Preview";
@@ -451,7 +447,7 @@ function createVideoPlayerWidget(node, videoData) {
         progress.max = "1000";
         progress.value = "0";
         progress.style.width = "100%";
-        progress.style.accentColor = "#00e5ff";
+        progress.style.accentColor = "#2997ff";
         progress.style.cursor = "pointer";
         progress.style.height = "5px";
         progress.style.margin = "2px 0";
@@ -484,7 +480,7 @@ function createVideoPlayerWidget(node, videoData) {
             btn.style.fontSize = "10.5px";
             btn.style.fontFamily = "inherit";
             btn.style.transition = "all 0.15s ease";
-            btn.onmouseenter = () => btn.style.background = "rgba(0, 229, 255, 0.15)";
+            btn.onmouseenter = () => btn.style.background = "rgba(41, 151, 255, 0.15)";
             btn.onmouseleave = () => {
                 if (!btn.dataset.active) btn.style.background = "rgba(255, 255, 255, 0.06)";
             };
@@ -498,7 +494,7 @@ function createVideoPlayerWidget(node, videoData) {
         const playBtn = document.createElement("button");
         playBtn.type = "button";
         playBtn.title = "Play / Pause";
-        playBtn.style.background = "linear-gradient(135deg, #00e5ff, #7928ca)";
+        playBtn.style.background = "#2997ff";
         playBtn.style.border = "none";
         playBtn.style.borderRadius = "50%";
         playBtn.style.width = "28px";
@@ -513,9 +509,9 @@ function createVideoPlayerWidget(node, videoData) {
 
         const loopBtn = createBtn("🔁 Loop", "Toggle Continuous Loop");
         loopBtn.dataset.active = "true";
-        loopBtn.style.background = "rgba(0, 229, 255, 0.2)";
-        loopBtn.style.borderColor = "rgba(0, 229, 255, 0.5)";
-        loopBtn.style.color = "#00e5ff";
+        loopBtn.style.background = "rgba(41, 151, 255, 0.2)";
+        loopBtn.style.borderColor = "rgba(41, 151, 255, 0.5)";
+        loopBtn.style.color = "#2997ff";
 
         leftControls.appendChild(prevFrameBtn);
         leftControls.appendChild(playBtn);
@@ -598,9 +594,9 @@ function createVideoPlayerWidget(node, videoData) {
             video.loop = !video.loop;
             if (video.loop) {
                 loopBtn.dataset.active = "true";
-                loopBtn.style.background = "rgba(0, 229, 255, 0.2)";
-                loopBtn.style.borderColor = "rgba(0, 229, 255, 0.5)";
-                loopBtn.style.color = "#00e5ff";
+                loopBtn.style.background = "rgba(41, 151, 255, 0.2)";
+                loopBtn.style.borderColor = "rgba(41, 151, 255, 0.5)";
+                loopBtn.style.color = "#2997ff";
             } else {
                 delete loopBtn.dataset.active;
                 loopBtn.style.background = "rgba(255, 255, 255, 0.06)";

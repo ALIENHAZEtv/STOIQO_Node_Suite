@@ -80,7 +80,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
                     document.execCommand("copy");
                     document.body.removeChild(ta);
                 }
-                this.triggerFlash(flashLabel || "✓ COPIATO");
+                this.triggerFlash(flashLabel || "✓ COPIED");
             } catch (err) {
                 console.error("[STOIQO Seed] Copy failed:", err);
             }
@@ -99,7 +99,9 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
         recallSeed(seedVal) {
             if (!this.node || !this.node.widgets) return;
             const seedWidget = this.node.widgets.find(w => w.name === "seed");
-            const modeWidget = this.node.widgets.find(w => w.name === "control_mode");
+            const modeWidget = this.node.widgets.find(
+                w => w.name === "control_after_generate" || w.name === "control_mode"
+            );
 
             if (seedWidget) {
                 seedWidget.value = Number(seedVal);
@@ -110,7 +112,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
                 if (modeWidget.callback) modeWidget.callback(modeWidget.value);
             }
 
-            this.copyToClipboard(seedVal, `✓ RIPESCATO ${seedVal} (MODO: FIXED)`);
+            this.copyToClipboard(seedVal, `✓ RECALLED ${seedVal} (MODE: FIXED)`);
             this.node.setDirtyCanvas(true, true);
         }
 
@@ -130,7 +132,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
 
             // Background Card
             ctx.fillStyle = "rgba(18, 20, 26, 0.95)";
-            ctx.strokeStyle = "rgba(168, 85, 247, 0.40)";
+            ctx.strokeStyle = "rgba(41, 151, 255, 0.40)";
             ctx.lineWidth = 1.2;
 
             if (ctx.roundRect) {
@@ -144,7 +146,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
             }
 
             // Left decorative accent bar
-            ctx.fillStyle = "#a855f7";
+            ctx.fillStyle = "#2997ff";
             if (ctx.roundRect) {
                 ctx.beginPath();
                 ctx.roundRect(cardX, cardY, 4, cardH, [7, 0, 0, 7]);
@@ -158,7 +160,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
             ctx.font = "bold 10px Inter, sans-serif";
             ctx.textAlign = "left";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = "#c084fc"; // Light purple
+            ctx.fillStyle = "#58b0ff"; // Precision Blue highlight
             ctx.fillText("🎲 SEED:", cardX + 12, row1Y);
 
             // Display Seed
@@ -171,7 +173,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
             let extraX = cardX + 62 + ctx.measureText(currentDisplay).width + 8;
             if (this.effectiveSeed !== null && this.effectiveSeed !== this.activeSeed) {
                 ctx.font = "9px monospace";
-                ctx.fillStyle = "#38bdf8";
+                ctx.fillStyle = "#58b0ff";
                 const effTxt = `(Eff: ${this.effectiveSeed})`;
                 ctx.fillText(effTxt, extraX, row1Y);
                 extraX += ctx.measureText(effTxt).width + 8;
@@ -189,8 +191,8 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
             const copyBtnY = cardY + 8;
             this.buttonRects["copy_active"] = { x: copyBtnX, y: copyBtnY, w: copyBtnW, h: copyBtnH, data: currentDisplay };
 
-            ctx.fillStyle = this.flashStatus ? "#065f46" : "#2e1065";
-            ctx.strokeStyle = this.flashStatus ? "#10b981" : "#a855f7";
+            ctx.fillStyle = this.flashStatus ? "#12301d" : "#182234";
+            ctx.strokeStyle = this.flashStatus ? "#30d158" : "#2997ff";
             ctx.lineWidth = 1;
             if (ctx.roundRect) {
                 ctx.beginPath();
@@ -204,7 +206,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
 
             ctx.font = "bold 9px Inter, sans-serif";
             ctx.textAlign = "center";
-            ctx.fillStyle = this.flashStatus ? "#6ee7b7" : "#e9d5ff";
+            ctx.fillStyle = this.flashStatus ? "#30d158" : "#d8e6f5";
             ctx.fillText(this.flashStatus || "📋 COPIA", copyBtnX + copyBtnW / 2, copyBtnY + copyBtnH / 2 + 0.5);
 
             // ── Row 2: Recent History Chips ──
@@ -246,8 +248,8 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
                         });
 
                         // Chip background
-                        ctx.fillStyle = "#1e1b4b";
-                        ctx.strokeStyle = "#4338ca";
+                        ctx.fillStyle = "#121318";
+                        ctx.strokeStyle = "rgba(41, 151, 255, 0.35)";
                         ctx.lineWidth = 1;
                         if (ctx.roundRect) {
                             ctx.beginPath();
@@ -280,7 +282,7 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
                 // 1. Check Copy Button
                 for (const [btnId, rect] of Object.entries(this.buttonRects)) {
                     if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
-                        this.copyToClipboard(rect.data, "✓ COPIATO");
+                        this.copyToClipboard(rect.data, "✓ COPIED");
                         return true;
                     }
                 }

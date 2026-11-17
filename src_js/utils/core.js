@@ -118,7 +118,7 @@ export class StoiqoSectionDividerWidget {
             const dlLabel = isDone
                 ? "✓ Model Ready"
                 : `⬇ DL ${dp.percent}% (${dp.downloaded_str || ""})`;
-            const dlColor = isDone ? "#22c55e" : "#38bdf8";
+            const dlColor = isDone ? "#30d158" : "#2997ff";
 
             ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
             const dlMetrics = ctx.measureText(dlLabel);
