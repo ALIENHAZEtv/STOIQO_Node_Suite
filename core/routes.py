@@ -30,7 +30,11 @@ def register_stoiqo_routes():
                         pass
                     initial_dir = data.get("initial_dir", "")
                     selected_path = await asyncio.to_thread(open_native_folder_dialog, initial_dir)
-                    return web.json_response({"path": selected_path})
+                    return web.json_response({
+                        "status": "ok",
+                        "path": selected_path,
+                        "folder_path": selected_path,
+                    })
 
             if not any(getattr(r, "path", None) == "/stoiqo/open_folder" for r in routes):
                 @routes.post("/stoiqo/open_folder")
@@ -47,6 +51,8 @@ def register_stoiqo_routes():
                     folder_path = data.get("folder_path", "")
                     if folder_path and os.path.exists(folder_path):
                         norm_path = os.path.normpath(folder_path)
+                        if os.path.isfile(norm_path):
+                            norm_path = os.path.dirname(norm_path)
                         if sys.platform == "win32":
                             os.startfile(norm_path)
                         elif sys.platform == "darwin":

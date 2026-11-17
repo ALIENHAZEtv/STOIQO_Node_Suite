@@ -219,7 +219,7 @@ class ModelManager:
         if is_api:
             default_api = os.environ.get("STOIQO_API_URL")
             if not default_api:
-                # Detect ExCathedra Director Ollama port 42030 first, then standard 11434
+                # Sovereign ExCathedra Ollama loopback endpoint on port 42030
                 default_api = "http://127.0.0.1:42030/v1"
             endpoint = str(local_model_path).strip() if local_model_path and str(local_model_path).strip() else default_api
             print(f"[STOIQO] Configured for Universal API Endpoint: {endpoint}")

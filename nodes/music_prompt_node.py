@@ -24,7 +24,7 @@ try:
         clean_user_custom_lyrics,
         clean_user_custom_directives,
     )
-    from ..core import tensor_to_pil, ModelManager
+    from ..core import tensor_to_pil, ModelManager, NodeTelemetryTimer, inject_telemetry
 except (ImportError, ValueError):
     from core.music import (
         GENRE_PRESETS,
@@ -39,7 +39,7 @@ except (ImportError, ValueError):
         clean_user_custom_lyrics,
         clean_user_custom_directives,
     )
-    from core import tensor_to_pil, ModelManager
+    from core import tensor_to_pil, ModelManager, NodeTelemetryTimer, inject_telemetry
 
 
 class StoiqoMusicPromptEngineNode:
@@ -249,6 +249,9 @@ class StoiqoMusicPromptEngineNode:
         extra_pnginfo=None,
         **kwargs,
     ):
+        timer = NodeTelemetryTimer(node_id=unique_id, node_name="MusicPromptEngine")
+        timer.__enter__()
+
         # Graceful compatibility mapping for legacy inputs / connections
         if cover_image is None and "image_inspiration" in kwargs:
             cover_image = kwargs.pop("image_inspiration")
@@ -271,7 +274,7 @@ class StoiqoMusicPromptEngineNode:
         img_pil = None
         if cover_image is not None:
             try:
-                img_pil = tensor_to_pil(cover_image[0:1])
+                img_pil, _ = tensor_to_pil(cover_image[0:1])
                 logger.info("[Music] Multimodal mode enabled: analyzing visual cover artwork...")
             except Exception as e:
                 logger.warning(f"[Music] Warning converting cover image: {e}")
@@ -390,22 +393,28 @@ class StoiqoMusicPromptEngineNode:
             "metrics": parsed.get("metrics", {}),
         }]
 
-        return {
-            "ui": {
-                "music_info": ui_info,
+        stats = timer.get_stats()
+        timer.__exit__(None, None, None)
+
+        return inject_telemetry(
+            {
+                "ui": {
+                    "music_info": ui_info,
+                },
+                "result": (
+                    parsed["style"],
+                    parsed["lyrics"],
+                    parsed["title"],
+                    parsed["abc_planning"],
+                    parsed["mode"],
+                    float(parsed["max_duration"]),
+                    bpm_val,
+                    key_val,
+                    time_sig_val,
+                    gtags_val,
+                    vdesc_val,
+                    int(seed),
+                ),
             },
-            "result": (
-                parsed["style"],
-                parsed["lyrics"],
-                parsed["title"],
-                parsed["abc_planning"],
-                parsed["mode"],
-                float(parsed["max_duration"]),
-                bpm_val,
-                key_val,
-                time_sig_val,
-                gtags_val,
-                vdesc_val,
-                int(seed),
-            ),
-        }
+            stats,
+        )

@@ -26,7 +26,7 @@ except ImportError:
             return tempfile.gettempdir()
         @staticmethod
         def get_output_directory():
-            return "./output"
+            return os.path.join(tempfile.gettempdir(), "stoiqo_test_output")
         @staticmethod
         def get_save_image_path(filename_prefix, output_dir, image_width=0, image_height=0):
             return (output_dir, filename_prefix, 0, "", filename_prefix)

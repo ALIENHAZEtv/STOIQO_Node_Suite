@@ -230,17 +230,21 @@ def get_vlm_model_choices():
     local_qwen3.sort()
     local_others.sort()
 
-    # Online presets (clean keys first)
-    preset_keys = [k for k in MODEL_PRESETS.keys() if not k.startswith("<=")]
+    # Online presets (clean keys first: Qwen3-VL prioritized before other local/online VLMs)
     legacy_keys = [
         k for k in MODEL_PRESETS.keys()
         if k.startswith("<=") or k.startswith("12-16") or k.startswith("24") or k.startswith("48")
     ]
+    legacy_set = set(legacy_keys)
+    preset_keys = [k for k in MODEL_PRESETS.keys() if k not in legacy_set]
+    qwen3_presets = [k for k in preset_keys if "qwen3" in k.lower() or "qwen-3" in k.lower()]
+    other_presets = [k for k in preset_keys if k not in qwen3_presets]
 
     choices = (
         local_qwen3
+        + qwen3_presets
         + local_others
-        + preset_keys
+        + other_presets
         + [API_ENDPOINT_KEY, CUSTOM_MODEL_KEY]
         + legacy_keys
     )

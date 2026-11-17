@@ -123,13 +123,16 @@ class StoiqoVideoEnhancerNode:
         stabilization_strength: float = 0.85,
         unique_id=None,
     ):
-        with NodeTelemetryTimer(node_id=unique_id, node_name="TemporalDeflicker"):
+        with NodeTelemetryTimer(node_id=unique_id, node_name="TemporalDeflicker") as timer:
             if len(images.shape) == 5:
                 images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
 
             n, h, w, c = images.shape
             if n < 3:
-                return (images, json.dumps({"status": "bypassed_insufficient_frames", "frames": n}))
+                return inject_telemetry(
+                    (images, json.dumps({"status": "bypassed_insufficient_frames", "frames": n})),
+                    timer.get_stats(),
+                )
 
             r = images[..., 0]
             g = images[..., 1]
@@ -162,7 +165,7 @@ class StoiqoVideoEnhancerNode:
                 "avg_correction_pct": round(float(torch.abs(gain_ratios - 1.0).mean().item()) * 100, 2),
                 "max_correction_pct": round(float(torch.abs(gain_ratios - 1.0).max().item()) * 100, 2),
             }
-            return (output_frames, json.dumps(metrics, indent=2))
+            return inject_telemetry((output_frames, json.dumps(metrics, indent=2)), timer.get_stats())
 
     def interpolate_frames(
         self,
@@ -172,7 +175,7 @@ class StoiqoVideoEnhancerNode:
         blend_curve: str = "cosine_smooth",
         unique_id=None,
     ):
-        with NodeTelemetryTimer(node_id=unique_id, node_name="FrameInterpolate"):
+        with NodeTelemetryTimer(node_id=unique_id, node_name="FrameInterpolate") as timer:
             if len(images.shape) == 5:
                 images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
 
@@ -185,7 +188,10 @@ class StoiqoVideoEnhancerNode:
                 factor = 1
 
             if n < 2 or factor == 1:
-                return (images, n, json.dumps({"input_frames": n, "output_frames": n, "multiplier": 1}))
+                return inject_telemetry(
+                    (images, n, json.dumps({"input_frames": n, "output_frames": n, "multiplier": 1})),
+                    timer.get_stats(),
+                )
 
             interpolated_list = []
             for i in range(n - 1):
@@ -218,7 +224,7 @@ class StoiqoVideoEnhancerNode:
                 "blend_curve": blend_curve,
                 "motion_smoothness": motion_smoothness,
             }
-            return (result_tensor, total_out, json.dumps(metrics, indent=2))
+            return inject_telemetry((result_tensor, total_out, json.dumps(metrics, indent=2)), timer.get_stats())
 
     def enhance_video(
         self,
@@ -232,7 +238,7 @@ class StoiqoVideoEnhancerNode:
         blend_curve: str = "cosine_smooth",
         unique_id=None,
     ):
-        with NodeTelemetryTimer(node_id=unique_id, node_name="VideoEnhancer"):
+        with NodeTelemetryTimer(node_id=unique_id, node_name="VideoEnhancer") as timer:
             if len(images.shape) == 5:
                 frames = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
             else:
@@ -271,7 +277,7 @@ class StoiqoVideoEnhancerNode:
                 combined_metrics["interpolation"] = {"multiplier": 1, "output_frames": out_count}
 
             combined_metrics["output_frames"] = out_count
-            return (frames, out_count, json.dumps(combined_metrics, indent=2))
+            return inject_telemetry((frames, out_count, json.dumps(combined_metrics, indent=2)), timer.get_stats())
 
 
 # Backward-compatible aliases

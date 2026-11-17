@@ -83,68 +83,87 @@ class StoiqoPromptGeneratorNode:
     multi-image multimodal reasoning, regional composition directives, and standard ComfyUI outputs.
     """
 
-    PRESETS = [
-        "Balanced Synthesizer (Recommended)",
-        "Maximum Creativity (Wild Ideation)",
-        "Scientific / Accurate Visual Description",
-        "Synthetic Captioning for LoRA / Training",
-        "Deterministic / Exact Logic (Greedy)",
-        "Cinematic Storyteller",
-        "Custom (Manual Tuning)",
-    ]
-
-    PRESET_VALUES = {
-        "Balanced Synthesizer (Recommended)": {
+    # Cognitive Persona Sampling Profiles (Single Source of Truth)
+    PERSONA_SAMPLING_DEFAULTS = {
+        "Auto-Detect / Balanced": {
             "temperature": 0.65,
             "max_new_tokens": 1024,
             "top_p": 0.90,
             "top_k": 50,
             "repetition_penalty": 1.15,
         },
-        "Maximum Creativity (Wild Ideation)": {
-            "temperature": 0.95,
-            "max_new_tokens": 1536,
-            "top_p": 0.95,
-            "top_k": 80,
-            "repetition_penalty": 1.10,
-        },
-        "Scientific / Accurate Visual Description": {
-            "temperature": 0.20,
-            "max_new_tokens": 768,
-            "top_p": 0.80,
-            "top_k": 30,
-            "repetition_penalty": 1.20,
-        },
-        "Synthetic Captioning for LoRA / Training": {
-            "temperature": 0.35,
-            "max_new_tokens": 512,
-            "top_p": 0.85,
-            "top_k": 40,
+        "Generative Vision Engine": {
+            "temperature": 0.65,
+            "max_new_tokens": 1024,
+            "top_p": 0.90,
+            "top_k": 50,
             "repetition_penalty": 1.15,
         },
-        "Deterministic / Exact Logic (Greedy)": {
-            "temperature": 0.0,
-            "max_new_tokens": 512,
-            "top_p": 0.0,
-            "top_k": 1,
-            "repetition_penalty": 1.20,
+        "Text-to-Prompt Expansion Engine": {
+            "temperature": 0.70,
+            "max_new_tokens": 1024,
+            "top_p": 0.90,
+            "top_k": 60,
+            "repetition_penalty": 1.15,
         },
-        "Cinematic Storyteller": {
+        "Multi-Image Synthesis Engine": {
+            "temperature": 0.60,
+            "max_new_tokens": 1024,
+            "top_p": 0.90,
+            "top_k": 50,
+            "repetition_penalty": 1.15,
+        },
+        "Cinematic & Video Director": {
             "temperature": 0.75,
             "max_new_tokens": 1280,
             "top_p": 0.92,
             "top_k": 60,
             "repetition_penalty": 1.12,
         },
+        "Dataset & LoRA Annotator": {
+            "temperature": 0.35,
+            "max_new_tokens": 512,
+            "top_p": 0.85,
+            "top_k": 40,
+            "repetition_penalty": 1.15,
+        },
+        "Minimalist & Literal": {
+            "temperature": 0.20,
+            "max_new_tokens": 384,
+            "top_p": 0.75,
+            "top_k": 25,
+            "repetition_penalty": 1.20,
+        },
+        "SeedVR2 Upscale Guide": {
+            "temperature": 0.25,
+            "max_new_tokens": 640,
+            "top_p": 0.80,
+            "top_k": 30,
+            "repetition_penalty": 1.20,
+        },
+        "Custom (Manual Override)": {
+            "temperature": 0.65,
+            "max_new_tokens": 1024,
+            "top_p": 0.90,
+            "top_k": 50,
+            "repetition_penalty": 1.15,
+        },
     }
+
+    # Backward compatibility aliases
+    PRESETS = list(PERSONA_SAMPLING_DEFAULTS.keys())
+    PRESET_VALUES = PERSONA_SAMPLING_DEFAULTS
 
     SYSTEM_PERSONAS = [
         "Auto-Detect / Balanced",
+        "Generative Vision Engine",
         "Text-to-Prompt Expansion Engine",
-        "Generative Captioning (Single Image)",
         "Multi-Image Synthesis Engine",
-        "Visual Prompt Synthesizer",
-        "Custom",
+        "Cinematic & Video Director",
+        "Dataset & LoRA Annotator",
+        "Minimalist & Literal",
+        "SeedVR2 Upscale Guide",
+        "Custom (Manual Override)",
     ]
 
     FUSION_MODES = [
@@ -158,25 +177,44 @@ class StoiqoPromptGeneratorNode:
         "Independent Batch (Caption each image separately for datasets)",
     ]
 
+    FUSION_DIRECTIVES = {
+        "Auto (Fuse 2-4 images, Batch if >4)": "Synthesize a unified, coherent scene merging the key subject elements from Image 1 with the environmental lighting, color harmony, and visual style of the accompanying images.",
+        "Contextual Fusion (Blend Style & Subject)": "Extract the primary subject and character identity from Image 1, and place them entirely within the visual style, lighting setup, and environment of Image 2.",
+        "Comparative Difference (What Changed)": "Analyze the sequential differences between the images: explicitly identify and describe what has changed, moved, or altered between the frames.",
+        "Character & Style Consistency": "Extract and strictly preserve the invariant character facial features, anatomy, hair, and costume across all images into a unified, consistent subject description.",
+        "Sequential Angle / Multi-View": "Combine the multiple viewing angles provided into a complete, 360-degree spatial understanding of the subject and scene geometry.",
+        "Subject + Background Harmonization": "Isolate the foreground subject in Image 1 and harmoniously fuse it into the background environment of Image 2, resolving lighting color temperature and shadow directions.",
+        "Storyboard / Temporal Sequence": "Describe the temporal narrative progression across the image frames as sequential cinematic action beats.",
+        "Independent Batch (Caption each image separately for datasets)": "Caption each image as an independent, standalone description.",
+    }
+
     @classmethod
     def INPUT_TYPES(cls):
-        p_types = PROMPT_TYPES if PROMPT_TYPES else ["Detailed Narrative (Long)"]
+        sys_personas = cls.SYSTEM_PERSONAS if cls.SYSTEM_PERSONAS else ["Auto-Detect / Balanced"]
+        p_types = PROMPT_TYPES if PROMPT_TYPES else ["Detailed Narrative"]
         a_styles = ARTISTIC_STYLES if ARTISTIC_STYLES else ["Auto-Detect / Preserve Original"]
 
         return {
             "required": {
+                "system_prompt": (
+                    sys_personas,
+                    {
+                        "default": "Auto-Detect / Balanced" if "Auto-Detect / Balanced" in sys_personas else sys_personas[0],
+                        "tooltip": "Layer 1: Cognitive AI Persona guiding the perception protocol and sampling defaults.",
+                    },
+                ),
                 "prompt_type": (
                     p_types,
                     {
-                        "default": "Detailed Narrative (Long)" if "Detailed Narrative (Long)" in p_types else p_types[0],
-                        "tooltip": "Structural output format for the generated prompt.",
+                        "default": "Detailed Narrative" if "Detailed Narrative" in p_types else p_types[0],
+                        "tooltip": "Layer 2: Structural output format for the generated prompt.",
                     },
                 ),
                 "prompt_style": (
                     a_styles,
                     {
                         "default": "Auto-Detect / Preserve Original" if "Auto-Detect / Preserve Original" in a_styles else a_styles[0],
-                        "tooltip": "Aesthetic style and visual archetype to apply.",
+                        "tooltip": "Layer 3: Aesthetic style and visual medium to apply.",
                     },
                 ),
                 "custom_modifications": (
@@ -186,16 +224,6 @@ class StoiqoPromptGeneratorNode:
                         "default": "",
                         "placeholder": "Director instructions and artistic modifiers (e.g. darker mood, pouring rain, neon reflections, evening gown)...",
                         "tooltip": "Director instructions and artistic modifiers applied to the subject.",
-                    },
-                ),
-                "seed": (
-                    "INT",
-                    {
-                        "default": 42,
-                        "min": 0,
-                        "max": 0xFFFFFFFFFFFFFFFF,
-                        "control_after_generate": True,
-                        "tooltip": "Random seed for reproducible prompt ideation.",
                     },
                 ),
             },
@@ -225,11 +253,14 @@ class StoiqoPromptGeneratorNode:
                         "tooltip": "Optional Character Memory Bank connection (Lorebook & visual character DNA).",
                     },
                 ),
-                "preset": (
-                    cls.PRESETS,
+                "seed": (
+                    "INT",
                     {
-                        "default": cls.PRESETS[0],
-                        "tooltip": "Calibrated inference preset controlling LLM/VLM sampling behavior.",
+                        "default": 42,
+                        "min": 0,
+                        "max": 0xFFFFFFFFFFFFFFFF,
+                        "control_after_generate": True,
+                        "tooltip": "Random seed for reproducible prompt ideation.",
                     },
                 ),
                 "fusion_mode": (
@@ -237,13 +268,6 @@ class StoiqoPromptGeneratorNode:
                     {
                         "default": cls.FUSION_MODES[0],
                         "tooltip": "Multimodal reasoning strategy when image_input contains multiple frames.",
-                    },
-                ),
-                "system_prompt": (
-                    cls.SYSTEM_PERSONAS,
-                    {
-                        "default": cls.SYSTEM_PERSONAS[0],
-                        "tooltip": "Cognitive role or AI persona guiding prompt construction.",
                     },
                 ),
                 "custom_system_prompt": (
@@ -277,7 +301,7 @@ class StoiqoPromptGeneratorNode:
                     "INT",
                     {
                         "default": 1024,
-                        "min": 64,
+                        "min": 128,
                         "max": 4096,
                         "step": 64,
                         "tooltip": "Maximum token generation budget for the synthesized prompt.",
@@ -345,7 +369,7 @@ class StoiqoPromptGeneratorNode:
 
     def generate_prompt(
         self,
-        prompt_type: str = "Detailed Narrative (Long)",
+        prompt_type: str = "Detailed Narrative",
         prompt_style: str = "Auto-Detect / Preserve Original",
         custom_modifications: str = "",
         seed: int = 42,
@@ -353,7 +377,6 @@ class StoiqoPromptGeneratorNode:
         image_input: torch.Tensor = None,
         model=None,
         character=None,
-        preset: str = "Balanced Synthesizer (Recommended)",
         fusion_mode: str = "Auto (Fuse 2-4 images, Batch if >4)",
         system_prompt: str = "Auto-Detect / Balanced",
         custom_system_prompt: str = "",
@@ -363,6 +386,7 @@ class StoiqoPromptGeneratorNode:
         top_p: float = 0.90,
         top_k: int = 50,
         repetition_penalty: float = 1.15,
+        preset: str = None,
         # Backward-compatibility alias inputs
         config: dict = None,
         multi_image: dict = None,
@@ -390,7 +414,7 @@ class StoiqoPromptGeneratorNode:
         subject_text = (text_input or kwargs.get("text") or "").strip()
         mods = (custom_modifications or user_directives or "").strip()
         chosen_style = prompt_style or artistic_style or "Auto-Detect / Preserve Original"
-        chosen_type = prompt_type or "Detailed Narrative (Long)"
+        chosen_type = prompt_type or "Detailed Narrative"
 
         active_char = character if character is not None else character_context
         active_mi = multi_image if multi_image is not None else multi_image_context
@@ -418,22 +442,8 @@ class StoiqoPromptGeneratorNode:
 
         active_node_name = "PromptGenerator"
         with NodeTelemetryTimer(node_id=unique_id, node_name=active_node_name) as timer:
-            # 1. Resolve Config and Settings (including integrated preset values)
+            # 1. Resolve Config and Formats
             cfg = dict(config) if isinstance(config, dict) else {}
-            if preset in self.PRESET_VALUES and preset != "Custom (Manual Tuning)" and not cfg:
-                pv = self.PRESET_VALUES[preset]
-                default_temp = pv["temperature"]
-                default_tokens = pv["max_new_tokens"]
-                default_top_p = pv["top_p"]
-                default_top_k = pv["top_k"]
-                default_rep_pen = pv["repetition_penalty"]
-            else:
-                default_temp = temperature if temperature is not None else 0.65
-                default_tokens = max_new_tokens if max_new_tokens is not None else 1024
-                default_top_p = top_p if top_p is not None else 0.90
-                default_top_k = top_k if top_k is not None else 50
-                default_rep_pen = repetition_penalty if repetition_penalty is not None else 1.15
-
             style = style_directives if isinstance(style_directives, dict) else {}
             sampling = sampling_options if isinstance(sampling_options, dict) else {}
 
@@ -445,12 +455,6 @@ class StoiqoPromptGeneratorNode:
                 k in str(resolved_prompt_type) for k in ("Artifact", "Negative Prompt", "Flaw")
             )
             negative_prefix = cfg.get("negative_prompt_prefix") or style.get("negative_prompt_prefix", "") or negative_prompt_prefix or ""
-
-            active_temperature = float(cfg.get("temperature", sampling.get("temperature", default_temp)))
-            active_top_p = float(cfg.get("top_p", sampling.get("top_p", default_top_p)))
-            active_top_k = int(cfg.get("top_k", sampling.get("top_k", default_top_k)))
-            active_repetition_penalty = float(cfg.get("repetition_penalty", sampling.get("repetition_penalty", default_rep_pen)))
-            active_max_new_tokens = int(cfg.get("max_new_tokens", sampling.get("max_new_tokens", default_tokens)))
             target_megapixel = float(cfg.get("target_megapixel", sampling.get("target_megapixel", 1.0)))
             active_seed = int(cfg.get("seed", sampling.get("seed", seed)))
 
@@ -488,7 +492,11 @@ class StoiqoPromptGeneratorNode:
                 else:
                     per_image_mpx = max(0.35, min(target_megapixel, 1.5 / batch_size))
                     imgs = [tensor_to_pil(t, target_megapixel=per_image_mpx)[0] for t in tensors]
-                    context_directive = f"\n[MULTI-IMAGE CROSS-GENERATION DIRECTIVE]: Apply {active_fusion_mode} across the {batch_size} provided reference images."
+                    directive_desc = self.FUSION_DIRECTIVES.get(
+                        str(active_fusion_mode),
+                        f"Apply {active_fusion_mode} across the {batch_size} provided reference images."
+                    )
+                    context_directive = f"\n[MULTI-IMAGE CROSS-GENERATION DIRECTIVE]: {directive_desc}"
                     jobs.append((imgs, True, active_seed))
 
             has_image = bool(jobs)
@@ -496,7 +504,7 @@ class StoiqoPromptGeneratorNode:
             if not has_image:
                 jobs.append((None, False, active_seed))
 
-            # System prompt selection
+            # 3. Resolve Cognitive Persona & System Prompt
             cfg_sys_choice = cfg.get("system_prompt") or style.get("system_prompt") or system_prompt
             cfg_custom_sys = cfg.get("custom_system_prompt") or style.get("custom_system_prompt") or custom_system_prompt or ""
 
@@ -504,7 +512,7 @@ class StoiqoPromptGeneratorNode:
                 if is_multi_image:
                     active_system_prompt_choice = "Multi-Image Synthesis Engine"
                 elif has_image:
-                    active_system_prompt_choice = "Generative Captioning (Single Image)"
+                    active_system_prompt_choice = "Generative Vision Engine"
                 else:
                     active_system_prompt_choice = "Text-to-Prompt Expansion Engine"
             else:
@@ -513,6 +521,32 @@ class StoiqoPromptGeneratorNode:
             active_system_prompt = resolve_system_prompt(
                 active_system_prompt_choice, cfg_custom_sys, has_image=has_image, is_multi_image=is_multi_image
             )
+
+            # 4. Calibrate Sampling Settings from Cognitive Persona Defaults
+            persona_defaults = self.PERSONA_SAMPLING_DEFAULTS.get(
+                active_system_prompt_choice,
+                self.PERSONA_SAMPLING_DEFAULTS["Generative Vision Engine"]
+            )
+            default_temp = persona_defaults["temperature"]
+            default_tokens = persona_defaults["max_new_tokens"]
+            default_top_p = persona_defaults["top_p"]
+            default_top_k = persona_defaults["top_k"]
+            default_rep_pen = persona_defaults["repetition_penalty"]
+
+            # Backward-compatibility: if legacy preset argument is passed
+            if preset and preset in self.PERSONA_SAMPLING_DEFAULTS and preset != "Custom (Manual Tuning)":
+                pv = self.PERSONA_SAMPLING_DEFAULTS[preset]
+                default_temp = pv["temperature"]
+                default_tokens = pv["max_new_tokens"]
+                default_top_p = pv["top_p"]
+                default_top_k = pv["top_k"]
+                default_rep_pen = pv["repetition_penalty"]
+
+            active_temperature = float(cfg.get("temperature", sampling.get("temperature", temperature if temperature is not None else default_temp)))
+            active_top_p = float(cfg.get("top_p", sampling.get("top_p", top_p if top_p is not None else default_top_p)))
+            active_top_k = int(cfg.get("top_k", sampling.get("top_k", top_k if top_k is not None else default_top_k)))
+            active_repetition_penalty = float(cfg.get("repetition_penalty", sampling.get("repetition_penalty", repetition_penalty if repetition_penalty is not None else default_rep_pen)))
+            active_max_new_tokens = int(cfg.get("max_new_tokens", sampling.get("max_new_tokens", max_new_tokens if max_new_tokens is not None else default_tokens)))
 
             is_manual_custom = (
                 active_system_prompt_choice == "✏️ Custom (Manual Override)"
@@ -574,15 +608,30 @@ class StoiqoPromptGeneratorNode:
                 effective_directives = "Generate a visually stunning, cinematic scene with intricate details."
 
             # 4. Construct Task Prompt
-            input_for_task = effective_directives
             if has_image:
-                # If image is provided, visual subject is the image; text is the modifications to apply
+                # If image is provided, visual subject is the image; text is the modifications and style transformation
                 img_directives = []
+                if resolved_artistic_style and resolved_artistic_style != "Auto-Detect / Preserve Original":
+                    img_directives.append(
+                        f"Transform and reimagine the visual scene, subject, pose, action, and setting from this image into '{resolved_artistic_style}'. "
+                        f"Do NOT describe or caption the image as a photograph. "
+                        f"Generate <PROMPT>, <TAGS>, and <NEGATIVE> natively as an authentic {resolved_artistic_style} visual representation."
+                    )
+                else:
+                    img_directives.append("Analyze, describe and visually enhance this image.")
+
                 if subject_text:
                     img_directives.append(f"Subject Reference: {subject_text}")
                 if mods:
                     img_directives.append(f"Modifications to Apply: {mods}")
-                input_for_task = "\n".join(img_directives) if img_directives else "Describe and enhance this image."
+                input_for_task = "\n".join(img_directives)
+            else:
+                input_for_task = effective_directives
+                if not input_for_task:
+                    if resolved_artistic_style and resolved_artistic_style != "Auto-Detect / Preserve Original":
+                        input_for_task = f"Generate a visually stunning, compositionally rich scene in the style of '{resolved_artistic_style}'."
+                    else:
+                        input_for_task = "Generate a visually stunning, cinematic scene with intricate details."
 
             task_prompt = build_task_prompt(
                 prompt_type=resolved_prompt_type,
@@ -721,6 +770,7 @@ class StoiqoPromptGeneratorNode:
                         is_audit_active=enable_audit,
                         negative_prompt_prefix=negative_prefix,
                         prompt_type=resolved_prompt_type,
+                        artistic_style=resolved_artistic_style,
                         seed=job_seed,
                     )
 

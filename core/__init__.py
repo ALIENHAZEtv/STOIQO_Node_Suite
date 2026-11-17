@@ -35,6 +35,7 @@ from .image import (
     STYLE_PROMPTS,
     ARTISTIC_STYLES,
     ARTISTIC_STYLE_DIRECTIVES,
+    NON_PHOTOGRAPHIC_STYLES,
     resolve_artistic_style,
 )
 from .music import (
@@ -118,6 +119,7 @@ __all__ = [
     "resolve_prompt_type",
     "ARTISTIC_STYLES",
     "ARTISTIC_STYLE_DIRECTIVES",
+    "NON_PHOTOGRAPHIC_STYLES",
     "resolve_artistic_style",
     "CAPTION_STYLES",
     "STYLE_PROMPTS",

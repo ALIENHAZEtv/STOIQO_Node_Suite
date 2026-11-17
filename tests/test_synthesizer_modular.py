@@ -53,15 +53,16 @@ class TestAllInOneGenerator(unittest.TestCase):
         node = synth_mod.StoiqoPromptGeneratorNode()
         req = node.INPUT_TYPES()["required"]
         opt = node.INPUT_TYPES()["optional"]
+        self.assertIn("system_prompt", req)
         self.assertIn("prompt_type", req)
         self.assertIn("prompt_style", req)
         self.assertIn("custom_modifications", req)
-        self.assertIn("seed", req)
+        self.assertIn("seed", opt)
         self.assertIn("text_input", opt)
         self.assertIn("image_input", opt)
         self.assertIn("model", opt)
         self.assertIn("character", opt)
-        self.assertIn("preset", opt)
+        self.assertNotIn("preset", opt)
         self.assertIn("fusion_mode", opt)
 
 

@@ -171,7 +171,7 @@ class StoiqoUniversalModelLoaderNode:
                     "STRING",
                     {
                         "default": "",
-                        "placeholder": "Active for [Special] Custom Model or API Endpoint (e.g. http://localhost:11434/v1#qwen2.5-vl:7b)",
+                        "placeholder": "Active for [Special] Custom Model or API Endpoint (e.g. http://127.0.0.1:42030/v1#qwen2.5-vl:7b)",
                         "tooltip": "Absolute folder path on disk or remote API endpoint URL.",
                     },
                 ),

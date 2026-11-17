@@ -1,9 +1,13 @@
 """
-[STOIQO] Image Prompt Engine Package
-Exposes Layer 1 (System Prompts), Layer 2 (Prompt Types), and Layer 3 (Artistic Styles).
+[STOIQO] Image Prompt Engine Package (Drop-in Modular Architecture)
+Exposes dynamically loaded Layer 1 (Personas), Layer 2 (Prompt Types), and Layer 3 (Artistic Styles).
 """
 
-from .system_prompts import (
+from .loader import (
+    reload_image_definitions,
+    parse_markdown_with_frontmatter,
+    SHARED_OUTPUT_CONTRACT,
+    SYSTEM_PERSONAS,
     SYSTEM_PROMPT_PRESETS,
     CUSTOM_SYSTEM_PROMPT_KEY,
     SYSTEM_PROMPT_CHOICES,
@@ -12,23 +16,29 @@ from .system_prompts import (
     BASE_TEXT_EXPANSION_PROMPT,
     BASE_MULTI_IMAGE_PROMPT,
     LEGACY_SYSTEM_PROMPT_ALIASES,
+    PERSONA_SAMPLING_DEFAULTS,
     resolve_system_prompt,
     build_dynamic_system_prompt,
-)
-from .prompt_types import (
     PROMPT_TYPES,
     PROMPT_TYPE_DIRECTIVES,
+    LEGACY_PROMPT_TYPE_ALIASES,
     resolve_prompt_type,
-    CAPTION_STYLES,
-    STYLE_PROMPTS,
-)
-from .styles import (
     ARTISTIC_STYLES,
     ARTISTIC_STYLE_DIRECTIVES,
+    NON_PHOTOGRAPHIC_STYLES,
+    LEGACY_ARTISTIC_STYLE_ALIASES,
     resolve_artistic_style,
 )
 
+# Compatibility aliases
+CAPTION_STYLES = PROMPT_TYPES
+STYLE_PROMPTS = ARTISTIC_STYLE_DIRECTIVES
+
 __all__ = [
+    "reload_image_definitions",
+    "parse_markdown_with_frontmatter",
+    "SHARED_OUTPUT_CONTRACT",
+    "SYSTEM_PERSONAS",
     "SYSTEM_PROMPT_PRESETS",
     "CUSTOM_SYSTEM_PROMPT_KEY",
     "SYSTEM_PROMPT_CHOICES",
@@ -37,14 +47,17 @@ __all__ = [
     "BASE_TEXT_EXPANSION_PROMPT",
     "BASE_MULTI_IMAGE_PROMPT",
     "LEGACY_SYSTEM_PROMPT_ALIASES",
+    "PERSONA_SAMPLING_DEFAULTS",
     "resolve_system_prompt",
     "build_dynamic_system_prompt",
     "PROMPT_TYPES",
     "PROMPT_TYPE_DIRECTIVES",
+    "LEGACY_PROMPT_TYPE_ALIASES",
     "resolve_prompt_type",
     "CAPTION_STYLES",
     "STYLE_PROMPTS",
     "ARTISTIC_STYLES",
     "ARTISTIC_STYLE_DIRECTIVES",
+    "NON_PHOTOGRAPHIC_STYLES",
     "resolve_artistic_style",
 ]

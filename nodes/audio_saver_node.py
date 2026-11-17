@@ -31,7 +31,7 @@ except ImportError:
     class _MockFolderPaths:
         @staticmethod
         def get_output_directory():
-            return "./output"
+            return os.path.join(tempfile.gettempdir(), "stoiqo_test_output")
         @staticmethod
         def get_temp_directory():
             return tempfile.gettempdir()

@@ -981,15 +981,15 @@ class TestUtilityNodes(unittest.TestCase):
         mgr = ModelManager()
         resolved = mgr.resolve_model_repo(
             model_preset=API_ENDPOINT_KEY,
-            local_model_path="http://localhost:11434/v1#qwen2.5-vl:7b"
+            local_model_path="http://127.0.0.1:42030/v1#qwen2.5-vl:7b"
         )
         self.assertTrue(resolved.startswith("api://"))
-        self.assertIn("localhost:11434/v1", resolved)
+        self.assertIn("127.0.0.1:42030/v1", resolved)
 
         mgr.load_model(resolved, "none", "sdpa")
         self.assertTrue(getattr(mgr, "is_api_endpoint", False))
         self.assertEqual(mgr.model, "API_CLIENT")
-        self.assertEqual(mgr.api_base_url, "http://localhost:11434/v1")
+        self.assertEqual(mgr.api_base_url, "http://127.0.0.1:42030/v1")
         self.assertEqual(mgr.api_model_name, "qwen2.5-vl:7b")
 
     def test_turbo_sampler_freeu_v2_rescaling(self):

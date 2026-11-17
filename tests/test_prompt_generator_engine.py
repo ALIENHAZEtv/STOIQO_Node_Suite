@@ -10,6 +10,7 @@ Validates:
 import unittest
 import sys
 import os
+import torch
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root not in sys.path:
@@ -82,6 +83,51 @@ class TestPromptGeneratorEngine(unittest.TestCase):
         self.assertIn("beautiful", tags)
         self.assertIn("blue eyes", tags)
         self.assertIn("blonde hair", tags)
+
+    def test_artistic_medium_enforcement_and_photographic_suppression(self):
+        from core.text_processing import build_task_prompt, post_process_caption
+        from core.image.system_prompts import build_dynamic_system_prompt
+
+        # 1. Test task prompt injection for Anime & Manga
+        task_anime = build_task_prompt(
+            prompt_type="Detailed Narrative",
+            artistic_style="Anime & Manga (2D Cel-shaded)",
+            input_text="a girl in a coffee shop",
+        )
+        self.assertIn("MANDATORY ARTISTIC MEDIUM & STYLE", task_anime)
+        self.assertIn("STRICT PROHIBITION", task_anime)
+        self.assertIn("Anime & Manga (2D Cel-shaded)", task_anime)
+        self.assertIn("Do NOT generate a photograph", task_anime)
+
+        # 2. Test dynamic system prompt override for Oil Painting
+        sys_oil = build_dynamic_system_prompt(
+            base_system_prompt="Base System Persona\n# REQUIRED OUTPUT CONTRACT",
+            prompt_type="Detailed Narrative",
+            artistic_style="Oil Painting & Classical Fine Art",
+        )
+        self.assertIn("INVIOLABLE MEDIUM OVERRIDE & PROHIBITIONS", sys_oil)
+        self.assertIn("Oil Painting / Classical Canvas Fine Art", sys_oil)
+
+        # 3. Test that image task prompt incorporates style transformation objective
+        from nodes.prompt_generator_node import StoiqoPromptGeneratorNode
+        gen = StoiqoPromptGeneratorNode()
+        dummy_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
+
+        captured_task_prompt = []
+        class MockTransformVLM:
+            def generate_single(self, task_prompt, **kwargs):
+                captured_task_prompt.append(task_prompt)
+                return "<PROMPT>2D anime girl playing soccer</PROMPT><TAGS>anime, 1girl, soccer</TAGS><NEGATIVE>photorealistic</NEGATIVE>"
+
+        gen.generate_prompt(
+            prompt_style="Anime & Manga (2D Cel-shaded)",
+            image_input=dummy_tensor,
+            model=MockTransformVLM(),
+        )
+        self.assertTrue(len(captured_task_prompt) > 0)
+        self.assertIn("Transform and reimagine the visual scene", captured_task_prompt[0])
+        self.assertIn("Anime & Manga (2D Cel-shaded)", captured_task_prompt[0])
+        self.assertIn("Do NOT describe or caption the image as a photograph", captured_task_prompt[0])
 
     def test_prompt_generator_caching_and_low_vram_offload(self):
         from nodes.prompt_generator_node import StoiqoPromptGeneratorNode, _PROMPT_CACHE

@@ -382,15 +382,17 @@ class StoiqoTextConcatenateNode:
                 }],
                 "slot_values": [slot_values]
             }
-            if timer and inject_telemetry:
-                timer.__exit__(None, None, None)
-                timer = None
-                inject_telemetry(ui_payload, timer)
-
-            return {
+            res_dict = {
                 "ui": ui_payload,
                 "result": (result, word_count, char_count, est_token_count)
             }
+            if timer and inject_telemetry:
+                stats = timer.get_stats()
+                timer.__exit__(None, None, None)
+                timer = None
+                return inject_telemetry(res_dict, stats)
+
+            return res_dict
         finally:
             if timer:
                 timer.__exit__(None, None, None)

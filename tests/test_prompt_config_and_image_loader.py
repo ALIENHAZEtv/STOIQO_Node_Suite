@@ -14,11 +14,13 @@ class TestPromptConfigAndImageLoader(unittest.TestCase):
         req = gen_node.INPUT_TYPES()["required"]
         opt = gen_node.INPUT_TYPES()["optional"]
 
-        # Only minimal parameters in required
+        # The 3 layers + custom modifications in required
+        self.assertIn("system_prompt", req)
+        self.assertEqual(req["system_prompt"][1]["default"], "Auto-Detect / Balanced")
         self.assertIn("prompt_type", req)
+        self.assertEqual(req["prompt_type"][1]["default"], "Detailed Narrative")
         self.assertIn("prompt_style", req)
         self.assertIn("custom_modifications", req)
-        self.assertIn("seed", req)
         self.assertEqual(len(req), 4)
 
         # External sockets and integrated ⚙ settings
@@ -26,9 +28,9 @@ class TestPromptConfigAndImageLoader(unittest.TestCase):
         self.assertIn("image_input", opt)
         self.assertIn("model", opt)
         self.assertIn("character", opt)
-        self.assertIn("preset", opt)
+        self.assertIn("seed", opt)
+        self.assertNotIn("preset", opt)
         self.assertIn("fusion_mode", opt)
-        self.assertIn("system_prompt", opt)
         self.assertIn("temperature", opt)
         self.assertIn("max_new_tokens", opt)
 
