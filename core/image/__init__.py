@@ -29,6 +29,13 @@ from .loader import (
     LEGACY_ARTISTIC_STYLE_ALIASES,
     resolve_artistic_style,
 )
+from .crud_api import (
+    list_definitions,
+    get_definition,
+    save_definition,
+    delete_definition,
+    CORE_PROTECTED,
+)
 
 # Compatibility aliases
 CAPTION_STYLES = PROMPT_TYPES
@@ -60,4 +67,9 @@ __all__ = [
     "ARTISTIC_STYLE_DIRECTIVES",
     "NON_PHOTOGRAPHIC_STYLES",
     "resolve_artistic_style",
+    "list_definitions",
+    "get_definition",
+    "save_definition",
+    "delete_definition",
+    "CORE_PROTECTED",
 ]

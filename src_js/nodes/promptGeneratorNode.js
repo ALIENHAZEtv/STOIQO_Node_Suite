@@ -1,10 +1,12 @@
 import { app } from "../../../scripts/app.js";
+import { openPromptStudioModal } from "../utils/promptStudioModal.js";
 
 /**
- * [STOIQO] Prompt Generator — Mode HUD Badge
+ * [STOIQO] Prompt Generator — Mode HUD Badge & Canvas Studio Controls
  * 
  * Displays a persistent, dynamic HUD status bar directly inside the
- * StoiqoPromptGeneratorNode card.
+ * StoiqoPromptGeneratorNode card, and integrates real-time CRUD controls
+ * for Cognitive Personas (Layer 1), Structural Formats (Layer 2), and Artistic Styles (Layer 3).
  * 
  * Operating Modes:
  *   📝 TEXT EXPANSION       — No image connected, generating rich visual concept from text directives
@@ -16,6 +18,7 @@ import { app } from "../../../scripts/app.js";
  *   - Updates instantly when the "image" input wire is connected/disconnected.
  *   - Displays active Prompt Type and Artistic Style from node dropdowns.
  *   - Receives post-execution runtime telemetry & verified image count from Python.
+ *   - Real-time sync with Prompt Studio modal for creating, editing, and deleting definitions.
  */
 
 const TARGET_NODE_NAMES = [
@@ -238,6 +241,19 @@ function ensureHUDWidget(node) {
     }
 }
 
+function ensureStudioButton(node) {
+    if (!node || !node.widgets) return;
+    const hasStudioBtn = node.widgets.some(w => w._isStoiqoStudioBtn);
+    if (!hasStudioBtn) {
+        const studioBtn = node.addWidget("button", "🎨 Manage Styles & Personas...", null, () => {
+            openPromptStudioModal({ node, kind: "styles" });
+        });
+        studioBtn._isStoiqoStudioBtn = true;
+        studioBtn.serialize = false;
+        studioBtn.options = { serialize: false };
+    }
+}
+
 export function setupPromptGeneratorNode(nodeType, nodeData, app) {
     if (!TARGET_NODE_NAMES.includes(nodeData.name)) return;
 
@@ -251,6 +267,7 @@ export function setupPromptGeneratorNode(nodeType, nodeData, app) {
         }
 
         ensureHUDWidget(this);
+        ensureStudioButton(this);
 
         // React immediately when connections change (e.g. image wire plugged or unplugged)
         const origOnConnectionsChange = this.onConnectionsChange;
@@ -265,9 +282,36 @@ export function setupPromptGeneratorNode(nodeType, nodeData, app) {
     nodeType.prototype.onConfigure = function() {
         if (origOnConfigure) origOnConfigure.apply(this, arguments);
         ensureHUDWidget(this);
+        ensureStudioButton(this);
     };
 
-    // 3. Hook onExecuted (receive runtime telemetry & mode payload from Python)
+    // 3. Right-Click Context Menu Options
+    const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
+    nodeType.prototype.getExtraMenuOptions = function(_, options) {
+        if (origGetExtraMenuOptions) origGetExtraMenuOptions.apply(this, arguments);
+
+        options.push(
+            null, // Menu divider
+            {
+                content: "🎨 Edit Active Style (✏️)...",
+                callback: () => openPromptStudioModal({ node: this, kind: "styles" }),
+            },
+            {
+                content: "➕ Create New Style (➕)...",
+                callback: () => openPromptStudioModal({ node: this, kind: "styles" }),
+            },
+            {
+                content: "🧠 Edit Active Persona (✏️)...",
+                callback: () => openPromptStudioModal({ node: this, kind: "personas" }),
+            },
+            {
+                content: "📐 Edit Active Format (✏️)...",
+                callback: () => openPromptStudioModal({ node: this, kind: "types" }),
+            }
+        );
+    };
+
+    // 4. Hook onExecuted (receive runtime telemetry & mode payload from Python)
     const origOnExecuted = nodeType.prototype.onExecuted;
     nodeType.prototype.onExecuted = function(message) {
         if (origOnExecuted) origOnExecuted.apply(this, arguments);
@@ -277,4 +321,45 @@ export function setupPromptGeneratorNode(nodeType, nodeData, app) {
             if (this.setDirtyCanvas) this.setDirtyCanvas(true, false);
         }
     };
+
+    // 5. Global Real-time Sync across all Prompt Generator nodes on canvas
+    window.addEventListener("stoiqo-definitions-updated", (e) => {
+        const { kind, choices, newlySelectedName } = e.detail || {};
+        if (!app.graph) return;
+        const nodes = app.graph.findNodesByType(nodeData.name);
+        if (!nodes || !nodes.length) return;
+
+        nodes.forEach(n => {
+            if (!n.widgets) return;
+            if (kind === "styles") {
+                const w = n.widgets.find(x => x.name === "prompt_style" || x.name === "artistic_style");
+                if (w && choices && choices.artistic_styles) {
+                    w.options.values = choices.artistic_styles;
+                    if (newlySelectedName && choices.artistic_styles.includes(newlySelectedName)) {
+                        w.value = newlySelectedName;
+                        if (w.callback) w.callback(newlySelectedName);
+                    }
+                }
+            } else if (kind === "personas") {
+                const w = n.widgets.find(x => x.name === "system_prompt");
+                if (w && choices && choices.system_personas) {
+                    w.options.values = choices.system_personas;
+                    if (newlySelectedName && choices.system_personas.includes(newlySelectedName)) {
+                        w.value = newlySelectedName;
+                        if (w.callback) w.callback(newlySelectedName);
+                    }
+                }
+            } else if (kind === "types") {
+                const w = n.widgets.find(x => x.name === "prompt_type");
+                if (w && choices && choices.prompt_types) {
+                    w.options.values = choices.prompt_types;
+                    if (newlySelectedName && choices.prompt_types.includes(newlySelectedName)) {
+                        w.value = newlySelectedName;
+                        if (w.callback) w.callback(newlySelectedName);
+                    }
+                }
+            }
+            if (n.setDirtyCanvas) n.setDirtyCanvas(true, true);
+        });
+    });
 }

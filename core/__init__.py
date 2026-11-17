@@ -94,6 +94,8 @@ from .universal_loader import (
     MODEL_TYPE_OVERRIDE_OPTIONS,
 )
 
+from .routes import register_stoiqo_routes
+
 KREA2_PROMPT_IMAGE = SYSTEM_PROMPT_PRESETS["Generative Prompt"]
 KREA2_PROMPT_TEXT = BASE_TEXT_EXPANSION_PROMPT
 KREA2_PROMPT_MULTI_IMAGE = BASE_MULTI_IMAGE_PROMPT
@@ -172,6 +174,7 @@ __all__ = [
     "NodeTelemetryTimer",
     "inject_telemetry",
     "TelemetryResult",
+    "register_stoiqo_routes",
 ]
 
 

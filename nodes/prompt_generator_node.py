@@ -56,7 +56,9 @@ try:
         SYSTEM_PROMPT_CHOICES,
         PROMPT_TYPES,
         ARTISTIC_STYLES,
+        register_stoiqo_routes,
     )
+    from ..core.image import loader as img_loader
 except (ImportError, ValueError):
     from core import (
         build_task_prompt,
@@ -71,7 +73,15 @@ except (ImportError, ValueError):
         SYSTEM_PROMPT_CHOICES,
         PROMPT_TYPES,
         ARTISTIC_STYLES,
+        register_stoiqo_routes,
     )
+    try:
+        from core.image import loader as img_loader
+    except ImportError:
+        img_loader = None
+
+# Automatically register /stoiqo REST routes with PromptServer
+register_stoiqo_routes()
 
 
 class StoiqoPromptGeneratorNode:
@@ -190,9 +200,9 @@ class StoiqoPromptGeneratorNode:
 
     @classmethod
     def INPUT_TYPES(cls):
-        sys_personas = cls.SYSTEM_PERSONAS if cls.SYSTEM_PERSONAS else ["Auto-Detect / Balanced"]
-        p_types = PROMPT_TYPES if PROMPT_TYPES else ["Detailed Narrative"]
-        a_styles = ARTISTIC_STYLES if ARTISTIC_STYLES else ["Auto-Detect / Preserve Original"]
+        sys_personas = img_loader.SYSTEM_PERSONAS if (img_loader and img_loader.SYSTEM_PERSONAS) else (cls.SYSTEM_PERSONAS if cls.SYSTEM_PERSONAS else ["Auto-Detect / Balanced"])
+        p_types = img_loader.PROMPT_TYPES if (img_loader and img_loader.PROMPT_TYPES) else (PROMPT_TYPES if PROMPT_TYPES else ["Detailed Narrative"])
+        a_styles = img_loader.ARTISTIC_STYLES if (img_loader and img_loader.ARTISTIC_STYLES) else (ARTISTIC_STYLES if ARTISTIC_STYLES else ["Auto-Detect / Preserve Original"])
 
         return {
             "required": {
