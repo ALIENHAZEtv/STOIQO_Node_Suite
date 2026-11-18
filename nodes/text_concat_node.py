@@ -80,6 +80,8 @@ class StoiqoTextConcatenateNode:
                         "tooltip": "First text block (e.g. Master Subject, Base Caption, or Style).",
                     },
                 ),
+            },
+            "optional": {
                 "text_2": (
                     "STRING",
                     {
@@ -88,8 +90,6 @@ class StoiqoTextConcatenateNode:
                         "tooltip": "Second text block (e.g. Environment, Details, or Quality Modifiers).",
                     },
                 ),
-            },
-            "optional": {
                 "text_3": (
                     "STRING",
                     {
@@ -215,8 +215,8 @@ class StoiqoTextConcatenateNode:
     def concatenate(
         self,
         text_1,
-        text_2,
-        separator,
+        text_2="",
+        separator=SEPARATOR_CHOICES[0],
         text_3="",
         text_4="",
         text_5="",

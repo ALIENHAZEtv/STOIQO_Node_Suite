@@ -3415,7 +3415,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
   const DEFAULT_BOX_HEIGHT = 56;
   const HEIGHT_PRESETS = [44, 72, 120, 200];
   function swapSlots(node, slotA, slotB) {
-    const visibleCount = node._stoiqoVisibleSlots || 2;
+    const visibleCount = node._stoiqoVisibleSlots || 1;
     if (slotA < 1 || slotA > visibleCount || slotB < 1 || slotB > visibleCount) return;
     if (slotA === slotB) return;
     const nameA = `text_${slotA}`;
@@ -3526,11 +3526,11 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       return void 0;
     }
     computeSize(width) {
-      const isVisible = this.slotIndex <= (this.node._stoiqoVisibleSlots || 2);
+      const isVisible = this.slotIndex <= (this.node._stoiqoVisibleSlots || 1);
       return isVisible ? [width, 20] : [0, -4];
     }
     draw(ctx, node, width, posY, height) {
-      const isVisible = this.slotIndex <= (node._stoiqoVisibleSlots || 2);
+      const isVisible = this.slotIndex <= (node._stoiqoVisibleSlots || 1);
       if (!isVisible) return;
       this.hitAreas = [];
       const nodeW = node && node.size ? node.size[0] : width;
@@ -3577,7 +3577,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       ctx.font = "8px 'JetBrains Mono', monospace";
       ctx.fillStyle = "#64748b";
       ctx.fillText(`${currentH}px`, nextLeftX, barY + barH / 2 + 0.5);
-      const visibleSlots = node._stoiqoVisibleSlots || 2;
+      const visibleSlots = node._stoiqoVisibleSlots || 1;
       const canMoveUp = this.slotIndex > 1;
       const canMoveDown = this.slotIndex < visibleSlots;
       let rightX = pad + barW - 4;
@@ -3796,12 +3796,12 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
   }
   function initConcatNode(node) {
     if (!node || !node.widgets) return;
-    node.size = node.size || [MIN_WIDTH3, 360];
+    node.size = node.size || [MIN_WIDTH3, 260];
     if (node.size[0] < MIN_WIDTH3) node.size[0] = MIN_WIDTH3;
     node.properties = node.properties || {};
     node.properties.box_heights = node.properties.box_heights || {};
-    let initialVisible = 2;
-    for (let i = 3; i <= MAX_SLOTS; i++) {
+    let initialVisible = 1;
+    for (let i = 2; i <= MAX_SLOTS; i++) {
       const wName = `text_${i}`;
       const w = node.widgets.find((x) => x.name === wName);
       const inputSlot = node.inputs ? node.inputs.find((inp) => inp.name === wName) : null;
@@ -3821,9 +3821,8 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       }
     }
     configureTextBoxWidget(node, node.widgets.find((w) => w.name === "text_1"), true);
-    configureTextBoxWidget(node, node.widgets.find((w) => w.name === "text_2"), true);
     function refreshSlots() {
-      const visibleCount = node._stoiqoVisibleSlots || 2;
+      const visibleCount = node._stoiqoVisibleSlots || 1;
       for (let i = 1; i <= MAX_SLOTS; i++) {
         const isVisible = i <= visibleCount;
         const hdr = node.widgets.find((x) => x.name === `_stoiqo_slot_hdr_${i}`);
@@ -3866,7 +3865,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
         node._stoiqoAddBtn.name = canAdd ? `[+] Aggiungi Box Testo (${visibleCount}/${MAX_SLOTS})` : `[\u2713] Maximum ${MAX_SLOTS} Boxes Reached`;
       }
       if (node._stoiqoRemBtn) {
-        const canRemove = visibleCount > 2;
+        const canRemove = visibleCount > 1;
         node._stoiqoRemBtn.hidden = !canRemove;
         node._stoiqoRemBtn.computeSize = canRemove ? function(w) {
           return [w, 24];
@@ -3876,7 +3875,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       }
       if (typeof node.computeSize === "function") {
         const sz = node.computeSize();
-        node.setSize([Math.max(node.size[0] || 0, MIN_WIDTH3), Math.max(Math.ceil(sz[1]), 220)]);
+        node.setSize([Math.max(node.size[0] || 0, MIN_WIDTH3), Math.max(Math.ceil(sz[1]), 180)]);
       }
       node.setDirtyCanvas(true, true);
       if (app6.graph && app6.graph.setDirtyCanvas) {
@@ -3898,7 +3897,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
       addBtn.serialize = false;
       node._stoiqoAddBtn = addBtn;
       addBtn.draw = function(ctx, n, width, posY, height) {
-        const canAdd = (node._stoiqoVisibleSlots || 2) < MAX_SLOTS;
+        const canAdd = (node._stoiqoVisibleSlots || 1) < MAX_SLOTS;
         const pad = 12;
         const btnW = width - pad * 2;
         const btnH = 24;
@@ -3928,7 +3927,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
         "[-] Rimuovi Ultimo Box Testo",
         null,
         function() {
-          if (node._stoiqoVisibleSlots > 2) {
+          if (node._stoiqoVisibleSlots > 1) {
             const wName = `text_${node._stoiqoVisibleSlots}`;
             const w = node.widgets.find((x) => x.name === wName);
             if (w) w.value = "";
@@ -4029,7 +4028,7 @@ function setupConcatNode(nodeType, nodeData, appInstance) {
         const m = inpName && inpName.match(/^text_(\d+)$/);
         if (m) {
           const slotNum = parseInt(m[1], 10);
-          if (slotNum > (node._stoiqoVisibleSlots || 2)) {
+          if (slotNum > (node._stoiqoVisibleSlots || 1)) {
             node._stoiqoVisibleSlots = slotNum;
             refreshSlots();
           }

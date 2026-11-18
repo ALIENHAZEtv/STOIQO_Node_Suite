@@ -7,7 +7,7 @@ import { app } from "../../../scripts/app.js";
  * - Reorderable Slots: Move boxes UP (▲) or DOWN (▼) with instant text, height, and wire link swapping!
  * - Interactive Slot Headers: Sleek OLED dark header per slot with status dot, height badge, and quick actions
  * - Dynamic Slots with Native LiteGraph Button Widgets (100% click reliability)
- * - Starts compact with 2 text slots, expandable up to 8 slots
+ * - Starts compact with 1 text slot, expandable up to 8 slots
  * - Instant collapse / expansion with smooth node re-sizing
  * - Persistent Text Display: incoming connected texts stay visible in the node!
  * - Clean HUD Token & Word Counter
@@ -28,7 +28,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
 
     // ── Helper: Swap Slots (Text values, heights, and link wires) ────────────
     function swapSlots(node, slotA, slotB) {
-        const visibleCount = node._stoiqoVisibleSlots || 2;
+        const visibleCount = node._stoiqoVisibleSlots || 1;
         if (slotA < 1 || slotA > visibleCount || slotB < 1 || slotB > visibleCount) return;
         if (slotA === slotB) return;
 
@@ -163,12 +163,12 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
         }
 
         computeSize(width) {
-            const isVisible = this.slotIndex <= (this.node._stoiqoVisibleSlots || 2);
+            const isVisible = this.slotIndex <= (this.node._stoiqoVisibleSlots || 1);
             return isVisible ? [width, 20] : [0, -4];
         }
 
         draw(ctx, node, width, posY, height) {
-            const isVisible = this.slotIndex <= (node._stoiqoVisibleSlots || 2);
+            const isVisible = this.slotIndex <= (node._stoiqoVisibleSlots || 1);
             if (!isVisible) return;
 
             this.hitAreas = [];
@@ -230,7 +230,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
             ctx.fillText(`${currentH}px`, nextLeftX, barY + barH / 2 + 0.5);
 
             // Action Buttons
-            const visibleSlots = node._stoiqoVisibleSlots || 2;
+            const visibleSlots = node._stoiqoVisibleSlots || 1;
             const canMoveUp = this.slotIndex > 1;
             const canMoveDown = this.slotIndex < visibleSlots;
 
@@ -473,15 +473,15 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
         if (!node || !node.widgets) return;
 
         // Ensure minimum dimensions
-        node.size = node.size || [MIN_WIDTH, 360];
+        node.size = node.size || [MIN_WIDTH, 260];
         if (node.size[0] < MIN_WIDTH) node.size[0] = MIN_WIDTH;
 
         node.properties = node.properties || {};
         node.properties.box_heights = node.properties.box_heights || {};
 
         // Determine currently needed visible slots
-        let initialVisible = 2;
-        for (let i = 3; i <= MAX_SLOTS; i++) {
+        let initialVisible = 1;
+        for (let i = 2; i <= MAX_SLOTS; i++) {
             const wName = `text_${i}`;
             const w = node.widgets.find((x) => x.name === wName);
             const inputSlot = node.inputs ? node.inputs.find((inp) => inp.name === wName) : null;
@@ -503,12 +503,11 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
             }
         }
 
-        // Configure text_1 and text_2
+        // Configure text_1
         configureTextBoxWidget(node, node.widgets.find((w) => w.name === "text_1"), true);
-        configureTextBoxWidget(node, node.widgets.find((w) => w.name === "text_2"), true);
 
         function refreshSlots() {
-            const visibleCount = node._stoiqoVisibleSlots || 2;
+            const visibleCount = node._stoiqoVisibleSlots || 1;
 
             // Apply visibility and sizing to slots 1..8 and headers
             for (let i = 1; i <= MAX_SLOTS; i++) {
@@ -556,7 +555,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
 
             // Update Remove button visibility
             if (node._stoiqoRemBtn) {
-                const canRemove = visibleCount > 2;
+                const canRemove = visibleCount > 1;
                 node._stoiqoRemBtn.hidden = !canRemove;
                 node._stoiqoRemBtn.computeSize = canRemove
                     ? function (w) { return [w, 24]; }
@@ -566,7 +565,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
             // Resize node smoothly
             if (typeof node.computeSize === "function") {
                 const sz = node.computeSize();
-                node.setSize([Math.max(node.size[0] || 0, MIN_WIDTH), Math.max(Math.ceil(sz[1]), 220)]);
+                node.setSize([Math.max(node.size[0] || 0, MIN_WIDTH), Math.max(Math.ceil(sz[1]), 180)]);
             }
 
             node.setDirtyCanvas(true, true);
@@ -592,7 +591,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
             node._stoiqoAddBtn = addBtn;
 
             addBtn.draw = function (ctx, n, width, posY, height) {
-                const canAdd = (node._stoiqoVisibleSlots || 2) < MAX_SLOTS;
+                const canAdd = (node._stoiqoVisibleSlots || 1) < MAX_SLOTS;
                 const pad = 12;
                 const btnW = width - pad * 2;
                 const btnH = 24;
@@ -627,7 +626,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
                 "[-] Rimuovi Ultimo Box Testo",
                 null,
                 function () {
-                    if (node._stoiqoVisibleSlots > 2) {
+                    if (node._stoiqoVisibleSlots > 1) {
                         const wName = `text_${node._stoiqoVisibleSlots}`;
                         const w = node.widgets.find((x) => x.name === wName);
                         if (w) w.value = "";
@@ -742,7 +741,7 @@ export function setupConcatNode(nodeType, nodeData, appInstance) {
                 const m = inpName && inpName.match(/^text_(\d+)$/);
                 if (m) {
                     const slotNum = parseInt(m[1], 10);
-                    if (slotNum > (node._stoiqoVisibleSlots || 2)) {
+                    if (slotNum > (node._stoiqoVisibleSlots || 1)) {
                         node._stoiqoVisibleSlots = slotNum;
                         refreshSlots();
                     }
