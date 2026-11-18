@@ -41,7 +41,6 @@ CORE_PROTECTED = {
     "Structured Categories",
     "Booru / Comma-Separated Tags",
     "Tags & Keywords",
-    "Cinematic Video Script",
     "Photorealistic (Modern Digital RAW)",
     "Analog Film (35mm Vintage Stock)",
     "Cinematic Still (Anamorphic Movie)",

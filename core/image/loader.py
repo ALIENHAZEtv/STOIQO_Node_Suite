@@ -243,7 +243,6 @@ def reload_image_definitions():
         "None (Freeform / No Format Directive)": "None (Freeform / No Format Directive)",
         "Detailed Narrative (Long)": "Detailed Narrative",
         "Short Summary (Concise)": "Short Summary",
-        "Custom Directives Only": "Structured Categories",
     }
 
     for _, fm, body in types_raw:
