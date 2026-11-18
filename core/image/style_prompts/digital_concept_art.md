@@ -1,5 +1,6 @@
 ---
 name: "Digital Concept Art & Illustration"
+category: "Digital Art"
 aliases:
   - "Digital Concept Art"
   - "Digital Concept Art (ArtStation)"

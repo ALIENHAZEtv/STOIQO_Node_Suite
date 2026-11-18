@@ -1,5 +1,6 @@
 ---
 name: "Photorealistic (Modern Digital RAW)"
+category: "Photo"
 aliases:
   - "Photorealistic & Cinematic"
   - "Photorealistic"

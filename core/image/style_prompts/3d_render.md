@@ -1,5 +1,6 @@
 ---
 name: "3D Digital Render & CGI (PBR)"
+category: "Digital Art"
 aliases:
   - "3D Digital Render & CGI"
   - "3D CGI & Octane Render"

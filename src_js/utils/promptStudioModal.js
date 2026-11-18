@@ -619,9 +619,9 @@ async function switchTab(kind, targetItemName = null) {
         if (fallbackChoices.length > 0) {
             currentItemList = fallbackChoices.map((name, idx) => ({
                 name,
-                category: name.includes("//") ? name.split("//")[0].trim() : (idx < 10 ? "Core" : "Generale"),
+                category: name.includes("//") ? name.split("//")[0].trim() : (currentKind === "styles" ? "Stili Generali" : "Core Essenziale"),
                 order: idx,
-                is_core: idx < 10,
+                is_core: currentKind === "styles" ? false : idx < 7,
                 filename: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.md`,
             }));
             populateDropdown(currentItemList, targetItemName);
@@ -704,11 +704,11 @@ function populateDropdown(items, targetItemName = null, filterQuery = "") {
         return;
     }
 
-    // Group items by category (e.g. Core, Anime, Photography, etc.)
+    // Group items by category (e.g. Photo, Anime, Comics, etc.)
     const groups = {};
     for (const item of filtered) {
-        let cat = item.category ? item.category.trim() : (item.is_core ? "Core Presets" : "Stili Generali");
-        if (!cat) cat = "Stili Generali";
+        let cat = item.category ? item.category.trim() : (currentKind === "styles" ? "Stili Generali" : (item.is_core ? "Core Essenziale" : "Custom"));
+        if (!cat) cat = currentKind === "styles" ? "Stili Generali" : "Custom";
         if (!groups[cat]) groups[cat] = [];
         groups[cat].push(item);
     }
@@ -721,7 +721,13 @@ function populateDropdown(items, targetItemName = null, filterQuery = "") {
         for (const item of catItems) {
             const opt = document.createElement("option");
             opt.value = item.name;
-            opt.textContent = `${item.is_core ? "🔒" : "✨"} ${item.name}`;
+            // Layer 1 & 2: lucchetto 🔒 su quelli proprietari essenziali, ✨ su custom
+            // Layer 3 (Stili): tutti allo stesso livello, nessun lucchetto!
+            if (currentKind === "styles") {
+                opt.textContent = item.name;
+            } else {
+                opt.textContent = `${item.is_core ? "🔒" : "✨"} ${item.name}`;
+            }
             optgroup.appendChild(opt);
 
             if (targetItemName && (item.name === targetItemName || item.aliases?.includes(targetItemName))) {
@@ -786,10 +792,15 @@ function populateForm(data) {
 
     const isCore = Boolean(data.is_core);
     const badge = modalContainer.querySelector("#stoiqo-item-badge");
-    badge.textContent = isCore ? "PRESET CORE (MODIFICABILE)" : "STILE UTENTE (MODIFICABILE)";
-    badge.className = `stoiqo-item-type-tag ${isCore ? "core" : "custom"}`;
-
-    modalContainer.querySelector("#stoiqo-btn-del").disabled = isCore;
+    if (currentKind === "styles") {
+        badge.textContent = "🎨 STILE";
+        badge.className = "stoiqo-item-type-tag custom";
+        modalContainer.querySelector("#stoiqo-btn-del").disabled = false;
+    } else {
+        badge.textContent = isCore ? "🔒 PROPRIETARIO (BLOCCATO)" : "✨ CUSTOM (MODIFICABILE)";
+        badge.className = `stoiqo-item-type-tag ${isCore ? "core" : "custom"}`;
+        modalContainer.querySelector("#stoiqo-btn-del").disabled = isCore;
+    }
 
     const kindFolder = currentKind === "styles" ? "style_prompts" : (currentKind === "personas" ? "main_prompts" : "type_prompts");
     modalContainer.querySelector("#stoiqo-footer-info").textContent = 

@@ -65,9 +65,19 @@ class TestPromptEngineCRUD(unittest.TestCase):
         res = get_definition("styles", "Anime & Manga (2D Cel-shaded)")
         self.assertEqual(res["status"], "ok")
         self.assertEqual(res["name"], "Anime & Manga (2D Cel-shaded)")
-        self.assertTrue(res["is_core"])
+        # In Layer 3, all styles are at the same level (no locks / is_core=False)
+        self.assertFalse(res["is_core"])
         self.assertIn("prohibited", res["frontmatter"])
         self.assertIn("AESTHETIC INJECTION", res["body"])
+
+        # In Layer 1 and Layer 2, our items are locked essentials (is_core=True)
+        res_persona = get_definition("personas", "Generative Vision Engine")
+        self.assertEqual(res_persona["status"], "ok")
+        self.assertTrue(res_persona["is_core"])
+
+        res_type = get_definition("types", "Detailed Narrative")
+        self.assertEqual(res_type["status"], "ok")
+        self.assertTrue(res_type["is_core"])
 
         # Not found test
         res_none = get_definition("styles", "NonExistentStyle_12345")
@@ -112,10 +122,14 @@ class TestPromptEngineCRUD(unittest.TestCase):
         get_updated = get_definition("styles", test_style_name)
         self.assertIn("Intense volumetric fog", get_updated["body"])
 
-        # 3. Core Protection Test: Attempt to delete core preset should be rejected
-        del_core = delete_definition("styles", "Photorealistic (Modern Digital RAW)")
-        self.assertEqual(del_core["status"], "error")
-        self.assertIn("protected", del_core["message"].lower())
+        # 3. Core Protection Test: Attempt to delete core persona/type should be rejected
+        del_core_persona = delete_definition("personas", "Generative Vision Engine")
+        self.assertEqual(del_core_persona["status"], "error")
+        self.assertIn("protected", del_core_persona["message"].lower())
+
+        del_core_type = delete_definition("types", "Detailed Narrative")
+        self.assertEqual(del_core_type["status"], "error")
+        self.assertIn("protected", del_core_type["message"].lower())
 
         # 4. Delete Custom Style
         del_res = delete_definition("styles", test_style_name)

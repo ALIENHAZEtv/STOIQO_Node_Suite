@@ -1,5 +1,6 @@
 ---
 name: "Oil Painting & Classical Fine Art"
+category: "Painting"
 aliases:
   - "Oil Painting & Fine Art"
   - "Oil Painting"

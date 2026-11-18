@@ -1,5 +1,6 @@
 ---
 name: "Cinematic Still (Anamorphic Movie)"
+category: "Photo"
 aliases:
   - "Cinematic"
   - "Anamorphic Movie"

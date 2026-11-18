@@ -1,5 +1,6 @@
 ---
 name: "Analog Film (35mm Vintage Stock)"
+category: "Photo"
 aliases:
   - "Vintage Film (35mm Analog, Grain)"
   - "Vintage Film"

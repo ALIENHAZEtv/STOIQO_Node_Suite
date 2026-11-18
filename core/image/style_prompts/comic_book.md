@@ -1,5 +1,6 @@
 ---
 name: "Comic Book & Graphic Novel (Ink & Halftone)"
+category: "Comics"
 aliases:
   - "Comic Book & Graphic Novel"
   - "Comic Book"

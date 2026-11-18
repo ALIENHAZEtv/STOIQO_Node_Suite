@@ -1,5 +1,6 @@
 ---
 name: "Pencil Sketch & Charcoal Drawing"
+category: "Drawing"
 aliases:
   - "Pencil Sketch & Traditional Ink"
   - "Pencil Sketch"

@@ -25,10 +25,10 @@ from .loader import (
 
 logger = logging.getLogger(__name__)
 
-# Protected core definitions that cannot be deleted or overwritten as custom
+# Protected core definitions (Layer 1 and Layer 2) that cannot be deleted or overwritten as custom
 CORE_PROTECTED = {
     "_contract.md",
-    # Layer 1 Personas
+    # Layer 1 Personas (Lucchetto 🔒 & Bloccati)
     "Auto-Detect / Balanced",
     "None (Raw / No System Prompt)",
     "Generative Vision Engine",
@@ -37,26 +37,13 @@ CORE_PROTECTED = {
     "SeedVR2 Upscale Guide",
     "Multi-Image Synthesis Engine",
     "Custom (Manual Override)",
-    # Layer 2 Structural Types
+    # Layer 2 Structural Types (Lucchetto 🔒 & Bloccati)
     "Detailed Narrative",
     "Structured Categories",
     "Short Summary",
     "Tags & Keywords",
     "Booru Tags (Danbooru)",
     "None (Freeform / No Format Directive)",
-    # Layer 3 Foundational Core Styles
-    "Auto-Detect / Preserve Original",
-    "None (No Style Injection)",
-    "Photorealistic (Modern Digital RAW)",
-    "Analog Film (35mm Vintage Stock)",
-    "Cinematic Still (Anamorphic Movie)",
-    "Studio Portrait & Editorial Fashion",
-    "Anime & Manga (2D Cel-shaded)",
-    "Comic Book & Graphic Novel (Ink & Halftone)",
-    "Pencil Sketch & Charcoal Drawing",
-    "3D Digital Render & CGI (PBR)",
-    "Digital Concept Art & Illustration",
-    "Oil Painting & Classical Fine Art",
 }
 
 
@@ -104,6 +91,7 @@ def _find_file_by_name(directory: str, target_name: str) -> Optional[Tuple[str, 
 def list_definitions(kind: str) -> List[Dict[str, Any]]:
     """Returns all definitions for a given layer kind."""
     target_dir = _resolve_kind_dir(kind)
+    is_styles = target_dir == STYLES_DIR
     items = []
     if not os.path.isdir(target_dir):
         return items
@@ -116,7 +104,8 @@ def list_definitions(kind: str) -> List[Dict[str, Any]]:
         name = fm.get("name", fn.replace(".md", ""))
         category = fm.get("category", "")
         order = fm.get("order", 999)
-        is_core = name in CORE_PROTECTED or fn in CORE_PROTECTED or order < 50
+        # Styles are all at the same level (no locks, all freely manageable)
+        is_core = False if is_styles else (name in CORE_PROTECTED or fn in CORE_PROTECTED or order < 50)
         items.append({
             "name": name,
             "category": category,
@@ -133,6 +122,7 @@ def list_definitions(kind: str) -> List[Dict[str, Any]]:
 def get_definition(kind: str, name: str) -> Dict[str, Any]:
     """Retrieves full definition (frontmatter + body) by name."""
     target_dir = _resolve_kind_dir(kind)
+    is_styles = target_dir == STYLES_DIR
     match = _find_file_by_name(target_dir, name)
     if not match:
         return {
@@ -142,7 +132,7 @@ def get_definition(kind: str, name: str) -> Dict[str, Any]:
 
     fp, fm, body = match
     fn = os.path.basename(fp)
-    is_core = name in CORE_PROTECTED or fn in CORE_PROTECTED or fm.get("order", 999) < 50
+    is_core = False if is_styles else (name in CORE_PROTECTED or fn in CORE_PROTECTED or fm.get("order", 999) < 50)
 
     return {
         "status": "ok",
@@ -253,15 +243,18 @@ def save_definition(
 
 
 def delete_definition(kind: str, name: str) -> Dict[str, Any]:
-    """Deletes a custom definition markdown file, protecting core presets."""
+    """Deletes a custom definition markdown file, protecting core personas and types."""
     name = name.strip()
-    if name in CORE_PROTECTED:
+    target_dir = _resolve_kind_dir(kind)
+    is_styles = target_dir == STYLES_DIR
+
+    # Personas and Types are strictly protected against deletion
+    if not is_styles and name in CORE_PROTECTED:
         return {
             "status": "error",
             "message": f"'{name}' is a core protected template and cannot be deleted.",
         }
 
-    target_dir = _resolve_kind_dir(kind)
     match = _find_file_by_name(target_dir, name)
     if not match:
         return {
@@ -271,7 +264,7 @@ def delete_definition(kind: str, name: str) -> Dict[str, Any]:
 
     fp, fm, _ = match
     fn = os.path.basename(fp)
-    if fn in CORE_PROTECTED or fm.get("order", 999) < 50:
+    if not is_styles and (fn in CORE_PROTECTED or fm.get("order", 999) < 50):
         return {
             "status": "error",
             "message": f"'{name}' is a core protected template and cannot be deleted.",

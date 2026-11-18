@@ -1,5 +1,6 @@
 ---
 name: "Studio Portrait & Editorial Fashion"
+category: "Photo"
 aliases:
   - "Studio Portrait"
   - "Editorial Fashion"

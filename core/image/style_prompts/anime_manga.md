@@ -1,5 +1,6 @@
 ---
 name: "Anime & Manga (2D Cel-shaded)"
+category: "Anime"
 aliases:
   - "Anime & Manga (2D / Cel-shaded)"
   - "Anime"
