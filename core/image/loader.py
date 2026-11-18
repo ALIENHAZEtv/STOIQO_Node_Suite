@@ -120,7 +120,9 @@ def reload_image_definitions():
     global LEGACY_ARTISTIC_STYLE_ALIASES
 
     # 1. Load Shared Output Contract
-    contract_file = os.path.join(PERSONAS_DIR, "_contract.md")
+    contract_file = os.path.join(IMAGE_DIR, "_contract.md")
+    if not os.path.isfile(contract_file):
+        contract_file = os.path.join(PERSONAS_DIR, "_contract.md")
     if os.path.isfile(contract_file):
         with open(contract_file, "r", encoding="utf-8") as f:
             SHARED_OUTPUT_CONTRACT = f.read().strip()
