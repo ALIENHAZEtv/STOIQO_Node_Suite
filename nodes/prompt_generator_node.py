@@ -629,12 +629,11 @@ class StoiqoPromptGeneratorNode:
                 img_directives = []
                 if resolved_artistic_style and resolved_artistic_style != "Auto-Detect / Preserve Original" and not str(resolved_artistic_style).startswith("None") and resolved_artistic_style != "None":
                     img_directives.append(
-                        f"Transform and reimagine the visual scene, subject, pose, action, and setting from this image into '{resolved_artistic_style}'. "
-                        f"Do NOT describe or caption the image as a photograph. "
-                        f"Generate <PROMPT>, <TAGS>, and <NEGATIVE> natively as an authentic {resolved_artistic_style} visual representation."
+                        f"Translate and reimagine the visual subject, action, clothing, and scene from this reference image into an authentic '{resolved_artistic_style}' representation. "
+                        f"Override any conflicting medium traits of the reference image, generating <PROMPT>, <TAGS>, and <NEGATIVE> natively reflecting {resolved_artistic_style} craft and visual conventions."
                     )
                 else:
-                    img_directives.append("Analyze, describe and visually enhance this image.")
+                    img_directives.append("Analyze, describe, and visually enhance the scene from this reference image.")
 
                 if subject_text:
                     img_directives.append(f"Subject Reference: {subject_text}")

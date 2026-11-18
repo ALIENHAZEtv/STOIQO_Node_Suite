@@ -67,8 +67,10 @@ def build_task_prompt(
         else:
             parts.append(
                 f"🎨 MANDATORY ARTISTIC STYLE:\n"
-                f"The entire output must strictly follow the visual aesthetic of '{resolved_s}'. "
-                f"Seamlessly infuse its defining characteristics directly into the scene description and tags."
+                f"The entire output must strictly follow the visual aesthetic of '{resolved_s}'.\n"
+                f"- If the reference image is an illustration, anime, sketch, or render, translate and transmute the depicted subject and scene into authentic real-world photography and physical reality.\n"
+                f"- PROHIBITION: Do NOT use drawing, anime, cartoon, or illustration terminology.\n"
+                f"- Seamlessly infuse '{resolved_s}' optical characteristics directly into the scene description and tags."
             )
 
     if directives and directives.strip():

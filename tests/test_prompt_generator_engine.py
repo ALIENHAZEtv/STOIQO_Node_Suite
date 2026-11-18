@@ -126,9 +126,9 @@ class TestPromptGeneratorEngine(unittest.TestCase):
             model=MockTransformVLM(),
         )
         self.assertTrue(len(captured_task_prompt) > 0)
-        self.assertIn("Transform and reimagine the visual scene", captured_task_prompt[0])
+        self.assertIn("Translate and reimagine the visual subject", captured_task_prompt[0])
         self.assertIn("Anime & Manga (2D Cel-shaded)", captured_task_prompt[0])
-        self.assertIn("Do NOT describe or caption the image as a photograph", captured_task_prompt[0])
+        self.assertIn("Override any conflicting medium traits", captured_task_prompt[0])
 
     def test_prompt_generator_caching_and_low_vram_offload(self):
         from nodes.prompt_generator_node import StoiqoPromptGeneratorNode, _PROMPT_CACHE
