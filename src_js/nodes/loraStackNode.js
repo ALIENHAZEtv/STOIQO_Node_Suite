@@ -1,5 +1,6 @@
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
+import { openSearchablePicker } from "../utils/searchablePickerModal.js";
 
 /**
  * [STOIQO] LoRA Stack — canvas UI
@@ -363,7 +364,7 @@ class StoiqoLoraStackWidget {
                             this.pickLora(ev, (picked) => {
                                 lora.name = picked;
                                 this.sync();
-                            });
+                            }, lora.name);
                         }
                     },
                 });
@@ -412,7 +413,7 @@ class StoiqoLoraStackWidget {
                     this.pickLora(e, (picked) => {
                         lora.name = picked;
                         this.sync();
-                    });
+                    }, lora.name);
                 },
             },
             {
@@ -489,60 +490,29 @@ class StoiqoLoraStackWidget {
         new LG.ContextMenu(items, { event, title: baseName(lora.name) });
     }
 
-    async pickLora(event, onPick) {
-        const list = await fetchLoraList(true);
+    async pickLora(event, onPick, currentName = "") {
+        const list = await fetchLoraList(false);
         const LG = window.LiteGraph;
-        if (!LG || !LG.ContextMenu) return;
 
-        if (!list.length) {
-            new LG.ContextMenu([{ content: "No LoRAs found in models/loras", disabled: true }], { event });
-            return;
-        }
-
-        const choose = (v) => {
-            if (v && typeof v.value === "string") onPick(v.value);
-        };
-
-        const hasFolders = list.some(n => /[\\/]/.test(n));
-        if (!hasFolders) {
-            new LG.ContextMenu(
-                list.map(n => ({ content: baseName(n), value: n })),
-                { event, title: "LoRA", callback: choose }
-            );
-            return;
-        }
-
-        // Group by sub-folder: root files first, then one submenu per folder.
-        const groups = new Map();
-        const rootFiles = [];
-        for (const n of list) {
-            const parts = n.split(/[\\/]/);
-            if (parts.length === 1) {
-                rootFiles.push(n);
-            } else {
-                const folder = parts.slice(0, -1).join("/");
-                if (!groups.has(folder)) groups.set(folder, []);
-                groups.get(folder).push(n);
+        if (!list || !list.length) {
+            if (LG && LG.ContextMenu) {
+                new LG.ContextMenu([{ content: "Nessuna LoRA trovata in models/loras", disabled: true }], { event });
             }
+            return;
         }
 
-        const items = [];
-        for (const [folder, files] of [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-            items.push({
-                content: `📁 ${folder}`,
-                has_submenu: true,
-                callback: (_value, _options, e, menu) => {
-                    new LG.ContextMenu(
-                        files.map(n => ({ content: baseName(n), value: n })),
-                        { event: e, parentMenu: menu, callback: choose }
-                    );
-                    return true;
-                },
-            });
-        }
-        rootFiles.forEach(n => items.push({ content: baseName(n), value: n }));
-
-        new LG.ContextMenu(items, { event, title: "LoRA", callback: choose });
+        openSearchablePicker({
+            title: "Scegli LoRA",
+            icon: "⚡",
+            items: list,
+            current: currentName,
+            onRefresh: async () => {
+                return await fetchLoraList(true);
+            },
+            onPick: (chosen) => {
+                if (chosen) onPick(chosen);
+            },
+        });
     }
 
     mouse(event, pos, node) {

@@ -1,5 +1,6 @@
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
+import { openSearchablePicker } from "../utils/searchablePickerModal.js";
 
 /**
  * [STOIQO] Universal Model Loader Stack — Canvas UI
@@ -317,70 +318,39 @@ class ModelStackWidget {
     }
 
     async pickModel(ev, targetModel) {
-        const list = await fetchModelList(true);
+        const list = await fetchModelList(false);
         const LG   = window.LiteGraph;
-        if (!LG || !LG.ContextMenu) return;
 
-        if (!list.length) {
-            new LG.ContextMenu(
-                [{ content: "No models found in ComfyUI directories", disabled: true }],
-                { event: ev }
-            );
+        if (!list || !list.length) {
+            if (LG && LG.ContextMenu) {
+                new LG.ContextMenu(
+                    [{ content: "Nessun modello trovato nelle cartelle di ComfyUI", disabled: true }],
+                    { event: ev }
+                );
+            }
             return;
         }
 
-        const onPick = (chosen) => {
-            if (!chosen || typeof chosen.value !== "string") return;
-            if (targetModel) {
-                targetModel.name = chosen.value;
-            } else {
-                const nm = newModel(chosen.value);
-                this.models.push(nm);
-                this.enforceSingleActive(nm);
-            }
-            this.sync();
-        };
-
-        // Raggruppa per sub-cartella (stesso pattern LoRA stack)
-        const hasFolders = list.some(n => /[\\\/]/.test(n));
-        if (!hasFolders) {
-            new LG.ContextMenu(
-                list.map(n => ({ content: baseName(n), value: n })),
-                { event: ev, title: "Modello", callback: onPick }
-            );
-            return;
-        }
-
-        const groups    = new Map();
-        const rootFiles = [];
-        for (const n of list) {
-            const parts = n.split(/[\\\/]/);
-            if (parts.length === 1) {
-                rootFiles.push(n);
-            } else {
-                const folder = parts.slice(0, -1).join("/");
-                if (!groups.has(folder)) groups.set(folder, []);
-                groups.get(folder).push(n);
-            }
-        }
-
-        const items = [];
-        for (const [folder, files] of [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-            items.push({
-                content: `📁 ${folder}`,
-                has_submenu: true,
-                callback: (_value, _options, e, menu) => {
-                    new LG.ContextMenu(
-                        files.map(n => ({ content: baseName(n), value: n })),
-                        { event: e, parentMenu: menu, callback: onPick }
-                    );
-                    return true;
-                },
-            });
-        }
-        rootFiles.forEach(n => items.push({ content: baseName(n), value: n }));
-
-        new LG.ContextMenu(items, { event: ev, title: "Model", callback: onPick });
+        openSearchablePicker({
+            title: "Scegli Modello (Checkpoints / GGUF / Diffusion)",
+            icon: "📦",
+            items: list,
+            current: targetModel ? targetModel.name : "",
+            onRefresh: async () => {
+                return await fetchModelList(true);
+            },
+            onPick: (chosen) => {
+                if (!chosen) return;
+                if (targetModel) {
+                    targetModel.name = chosen;
+                } else {
+                    const nm = newModel(chosen);
+                    this.models.push(nm);
+                    this.enforceSingleActive(nm);
+                }
+                this.sync();
+            },
+        });
     }
 
     pickFrom(ev, title, options, current, onChoose) {
