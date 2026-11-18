@@ -31,13 +31,14 @@ from core.music import (
 class TestModularPackages(unittest.TestCase):
 
     def test_image_package_exports(self):
-        self.assertIn("Generative Prompt", SYSTEM_PROMPT_PRESETS)
-        self.assertIn("Krea 2 Turbo Prompt", SYSTEM_PROMPT_PRESETS)
-        self.assertIn("MiniMax Video Prompt", SYSTEM_PROMPT_PRESETS)
+        self.assertIn("Generative Vision Engine", SYSTEM_PROMPT_PRESETS)
+        self.assertIn("Cinematic & Video Director", SYSTEM_PROMPT_PRESETS)
+        self.assertIn("Dataset & LoRA Annotator", SYSTEM_PROMPT_PRESETS)
         self.assertIn("SeedVR2 Upscale Guide", SYSTEM_PROMPT_PRESETS)
+        self.assertIn("Multi-Image Synthesis Engine", SYSTEM_PROMPT_PRESETS)
         self.assertIn("Detailed Narrative", PROMPT_TYPES)
         self.assertIn("Photorealistic (Modern Digital RAW)", ARTISTIC_STYLES)
-        res_sys = resolve_system_prompt("Krea 2 Turbo Prompt", has_image=True)
+        res_sys = resolve_system_prompt("Generative Vision Engine", has_image=True)
         self.assertTrue(len(res_sys) > 50)
 
     def test_music_package_exports(self):

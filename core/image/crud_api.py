@@ -25,26 +25,32 @@ from .loader import (
 
 logger = logging.getLogger(__name__)
 
-# Protected core definitions that cannot be deleted
+# Protected core definitions that cannot be deleted or overwritten as custom
 CORE_PROTECTED = {
     "_contract.md",
+    # Layer 1 Personas
     "Auto-Detect / Balanced",
-    "Auto-Detect / Preserve Original",
+    "None (Raw / No System Prompt)",
     "Generative Vision Engine",
-    "Multi-Image Synthesis Engine",
     "Cinematic & Video Director",
     "Dataset & LoRA Annotator",
     "SeedVR2 Upscale Guide",
+    "Multi-Image Synthesis Engine",
     "Custom (Manual Override)",
+    # Layer 2 Structural Types
     "Detailed Narrative",
-    "Short Summary",
     "Structured Categories",
-    "Booru / Comma-Separated Tags",
+    "Short Summary",
     "Tags & Keywords",
+    "Booru Tags (Danbooru)",
+    "None (Freeform / No Format Directive)",
+    # Layer 3 Foundational Core Styles
+    "Auto-Detect / Preserve Original",
+    "None (No Style Injection)",
     "Photorealistic (Modern Digital RAW)",
     "Analog Film (35mm Vintage Stock)",
     "Cinematic Still (Anamorphic Movie)",
-    "Studio Portrait (Professional Editorial)",
+    "Studio Portrait & Editorial Fashion",
     "Anime & Manga (2D Cel-shaded)",
     "Comic Book & Graphic Novel (Ink & Halftone)",
     "Pencil Sketch & Charcoal Drawing",
