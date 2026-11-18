@@ -199,7 +199,7 @@ def reload_image_definitions():
             "repetition_penalty": float(fm.get("repetition_penalty", 1.15)),
         }
 
-        if name == "Text-to-Prompt Expansion Engine":
+        if name == "Generative Vision Engine":
             t_exp = composed
         elif name == "Multi-Image Synthesis Engine":
             m_img = composed
@@ -208,6 +208,20 @@ def reload_image_definitions():
             if alias:
                 new_aliases[alias] = name
                 new_presets[alias] = composed
+
+    # Ensure backward-compatibility mappings for deprecated/absorbed personas
+    legacy_fallbacks = {
+        "Text-to-Prompt Expansion Engine": "Generative Vision Engine",
+        "Krea 2 Turbo Prompt": "Generative Vision Engine",
+        "Minimalist & Literal": "Generative Vision Engine",
+        "Minimal Prompt": "Generative Vision Engine",
+        "Literal & Essential Describer": "Generative Vision Engine",
+    }
+    for old_name, mapped_name in legacy_fallbacks.items():
+        if old_name not in new_aliases:
+            new_aliases[old_name] = mapped_name
+        if old_name not in new_presets and mapped_name in new_presets:
+            new_presets[old_name] = new_presets[mapped_name]
 
     new_personas.append("Custom (Manual Override)")
 
@@ -372,8 +386,6 @@ def resolve_system_prompt(
             return user_custom_text
 
     # Explicit direct requests
-    if system_prompt == "Text-to-Prompt Expansion Engine":
-        return TEXT_EXPANSION_SYSTEM_PROMPT
     if system_prompt == "Multi-Image Synthesis Engine":
         return MULTI_IMAGE_SYSTEM_PROMPT
 
@@ -381,14 +393,12 @@ def resolve_system_prompt(
     if is_multi_image:
         return MULTI_IMAGE_SYSTEM_PROMPT
 
-    # Typology 1: Text-Only
-    if not has_image:
-        return TEXT_EXPANSION_SYSTEM_PROMPT
-
-    # Typology 2: 1 Image
     target_key = LEGACY_SYSTEM_PROMPT_ALIASES.get(system_prompt, system_prompt)
     if target_key not in SYSTEM_PROMPT_PRESETS and system_prompt_preset:
         target_key = LEGACY_SYSTEM_PROMPT_ALIASES.get(system_prompt_preset, system_prompt_preset)
+
+    if target_key == "Auto-Detect / Balanced" or not target_key:
+        return TEXT_EXPANSION_SYSTEM_PROMPT if not has_image else SYSTEM_PROMPT_PRESETS.get("Generative Vision Engine", "")
 
     return SYSTEM_PROMPT_PRESETS.get(target_key, SYSTEM_PROMPT_PRESETS.get("Generative Vision Engine", TEXT_EXPANSION_SYSTEM_PROMPT))
 

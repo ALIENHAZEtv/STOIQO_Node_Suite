@@ -48,10 +48,11 @@ class TestPromptEngineCRUD(unittest.TestCase):
 
         # 2. Personas list contains core personas
         personas = list_definitions("personas")
-        self.assertGreaterEqual(len(personas), 7)
+        self.assertGreaterEqual(len(personas), 5)
         persona_names = [p["name"] for p in personas]
         self.assertIn("Generative Vision Engine", persona_names)
-        self.assertIn("Text-to-Prompt Expansion Engine", persona_names)
+        self.assertIn("Cinematic & Video Director", persona_names)
+        self.assertIn("Multi-Image Synthesis Engine", persona_names)
 
         # 3. Types list contains structural formats
         p_types = list_definitions("types")
