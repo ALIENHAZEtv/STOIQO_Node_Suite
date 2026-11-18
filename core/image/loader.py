@@ -301,11 +301,18 @@ def reload_image_definitions():
         new_styles.append(name)
         new_style_directives[name] = body
 
-        if "medium_type" in fm or "prohibited" in fm:
+        category = str(fm.get("category", "")).strip()
+        prohibited = str(fm.get("prohibited", "")).strip()
+        medium_type_str = str(fm.get("medium_type", "")).strip()
+        is_photo = (category == "Photo") or ("photograph" in medium_type_str.lower())
+
+        # Only genuinely non-photographic media (Anime, Painting, Sketch, etc.)
+        # with actual prohibited camera/lens terms are registered for photo suppression
+        if prohibited and not is_photo:
             new_non_photo[name] = {
                 "medium_label": str(fm.get("medium_label", name)),
-                "medium_type": str(fm.get("medium_type", "")),
-                "prohibited": str(fm.get("prohibited", "")),
+                "medium_type": medium_type_str,
+                "prohibited": prohibited,
                 "replacement": str(fm.get("replacement", "")),
                 "tag_injection": str(fm.get("tag_injection", "")),
                 "negative_injection": str(fm.get("negative_injection", "")),
