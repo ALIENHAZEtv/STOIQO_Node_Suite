@@ -205,15 +205,14 @@ class TestDropInAndNoneGuarantees(unittest.TestCase):
             self.assertIn("Unit Test Vaporwave Glitch", loader.ARTISTIC_STYLES)
             self.assertIn("Unit Test Vaporwave Glitch", loader.ARTISTIC_STYLE_DIRECTIVES)
 
-            # Test non-photographic prohibition injection
+            # Test Layer 3 aesthetic injection
             fused = build_dynamic_system_prompt(
                 base_system_prompt="BASE SYSTEM PROMPT\n# REQUIRED OUTPUT CONTRACT\nEmit XML.",
                 prompt_type="None (Freeform / No Format Directive)",
                 artistic_style="Unit Test Vaporwave Glitch",
             )
             self.assertIn("# LAYER 3 — VISUAL AESTHETIC INJECTION", fused)
-            self.assertIn("INVIOLABLE MEDIUM OVERRIDE & PROHIBITIONS", fused)
-            self.assertIn("pixel dithering, neon scanlines", fused)
+            self.assertIn("Infuse vivid pastel pink", fused)
 
         finally:
             if os.path.isfile(test_file):

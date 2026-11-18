@@ -23,7 +23,6 @@ from core.image.loader import (
     SYSTEM_PERSONAS,
     PROMPT_TYPES,
     ARTISTIC_STYLES,
-    NON_PHOTOGRAPHIC_STYLES,
     build_dynamic_system_prompt,
 )
 
@@ -108,10 +107,10 @@ class TestPromptEngineCRUD(unittest.TestCase):
         self.assertFalse(get_res["is_core"])
         self.assertEqual(get_res["frontmatter"]["medium_type"], "Synthwave Digital Illustration")
 
-        # Verify dynamic medium override in fusion engine
+        # Verify dynamic Layer 3 injection in fusion engine
         fused = build_dynamic_system_prompt("Base Prompt", artistic_style=test_style_name)
-        self.assertIn("Synthwave Digital Illustration", fused)
-        self.assertIn("camera lenses", fused)
+        self.assertIn("# LAYER 3 — VISUAL AESTHETIC INJECTION", fused)
+        self.assertIn("Glowing neon gridlines", fused)
 
         # 2. Update (Edit existing)
         updated_body = test_body + "\nADDITIONAL DIRECTIVE: Intense volumetric fog."

@@ -12,9 +12,9 @@ import re
 import random
 
 try:
-    from .image.style_guidelines import NON_PHOTOGRAPHIC_STYLES, LEGACY_ARTISTIC_STYLE_ALIASES
+    from .image.style_guidelines import LEGACY_ARTISTIC_STYLE_ALIASES
 except (ImportError, ValueError):
-    from core.image.style_guidelines import NON_PHOTOGRAPHIC_STYLES, LEGACY_ARTISTIC_STYLE_ALIASES
+    from core.image.style_guidelines import LEGACY_ARTISTIC_STYLE_ALIASES
 
 
 def clean_llm_output(text):
@@ -54,24 +54,11 @@ def build_task_prompt(
 
     if artistic_style and artistic_style != "Auto-Detect / Preserve Original" and not str(artistic_style).startswith("None") and artistic_style != "None":
         resolved_s = LEGACY_ARTISTIC_STYLE_ALIASES.get(artistic_style, artistic_style)
-        if resolved_s in NON_PHOTOGRAPHIC_STYLES:
-            style_spec = NON_PHOTOGRAPHIC_STYLES[resolved_s]
-            parts.append(
-                f"🎨 MANDATORY ARTISTIC MEDIUM & STYLE (SUPREME PRIORITY):\n"
-                f"The entire output must strictly represent '{resolved_s}' ({style_spec['medium_label']}).\n"
-                f"- STRICT PROHIBITION: Do NOT generate a photograph, camera capture, or photographic description. "
-                f"Avoid all camera and lens specifications ({style_spec['prohibited']}).\n"
-                f"- ARTISTIC EXECUTION: Depict the subject, lighting, and scene exclusively through {style_spec['replacement']}.\n"
-                f"- If reference image is provided, transform the visual subject and scene into this artistic medium."
-            )
-        else:
-            parts.append(
-                f"🎨 MANDATORY ARTISTIC STYLE:\n"
-                f"The entire output must strictly follow the visual aesthetic of '{resolved_s}'.\n"
-                f"- If the reference image is an illustration, anime, sketch, or render, translate and transmute the depicted subject and scene into authentic real-world photography and physical reality.\n"
-                f"- PROHIBITION: Do NOT use drawing, anime, cartoon, or illustration terminology.\n"
-                f"- Seamlessly infuse '{resolved_s}' optical characteristics directly into the scene description and tags."
-            )
+        parts.append(
+            f"🎨 MANDATORY ARTISTIC STYLE:\n"
+            f"The entire output must strictly embody the visual aesthetic and medium of '{resolved_s}'.\n"
+            f"Enforce the specific visual traits, medium characteristics, and aesthetic directives defined for this style."
+        )
 
     if directives and directives.strip():
         parts.append(

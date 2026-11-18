@@ -95,19 +95,17 @@ class TestPromptGeneratorEngine(unittest.TestCase):
             artistic_style="Anime & Manga (2D Cel-shaded)",
             input_text="a girl in a coffee shop",
         )
-        self.assertIn("MANDATORY ARTISTIC MEDIUM & STYLE", task_anime)
-        self.assertIn("STRICT PROHIBITION", task_anime)
+        self.assertIn("MANDATORY ARTISTIC STYLE", task_anime)
         self.assertIn("Anime & Manga (2D Cel-shaded)", task_anime)
-        self.assertIn("Do NOT generate a photograph", task_anime)
 
-        # 2. Test dynamic system prompt override for Oil Painting
+        # 2. Test dynamic system prompt injection for Oil Painting
         sys_oil = build_dynamic_system_prompt(
             base_system_prompt="Base System Persona\n# REQUIRED OUTPUT CONTRACT",
             prompt_type="Detailed Narrative",
             artistic_style="Oil Painting & Classical Fine Art",
         )
-        self.assertIn("INVIOLABLE MEDIUM OVERRIDE & PROHIBITIONS", sys_oil)
-        self.assertIn("Oil Painting / Classical Canvas Fine Art", sys_oil)
+        self.assertIn("# LAYER 3 — VISUAL AESTHETIC INJECTION", sys_oil)
+        self.assertIn("AESTHETIC INJECTION", sys_oil)
 
         # 3. Test that image task prompt incorporates style transformation objective
         from nodes.prompt_generator_node import StoiqoPromptGeneratorNode

@@ -100,7 +100,6 @@ LEGACY_PROMPT_TYPE_ALIASES: Dict[str, str] = {}
 
 ARTISTIC_STYLES: List[str] = []
 ARTISTIC_STYLE_DIRECTIVES: Dict[str, str] = {}
-NON_PHOTOGRAPHIC_STYLES: Dict[str, Dict[str, str]] = {}
 LEGACY_ARTISTIC_STYLE_ALIASES: Dict[str, str] = {}
 
 
@@ -116,7 +115,7 @@ def reload_image_definitions():
     global TEXT_EXPANSION_SYSTEM_PROMPT, MULTI_IMAGE_SYSTEM_PROMPT
     global BASE_TEXT_EXPANSION_PROMPT, BASE_MULTI_IMAGE_PROMPT, SYSTEM_PROMPT_CHOICES
     global PROMPT_TYPES, PROMPT_TYPE_DIRECTIVES, LEGACY_PROMPT_TYPE_ALIASES
-    global ARTISTIC_STYLES, ARTISTIC_STYLE_DIRECTIVES, NON_PHOTOGRAPHIC_STYLES
+    global ARTISTIC_STYLES, ARTISTIC_STYLE_DIRECTIVES
     global LEGACY_ARTISTIC_STYLE_ALIASES
 
     # 1. Load Shared Output Contract
@@ -279,7 +278,6 @@ def reload_image_definitions():
         "None": "",
         "Auto-Detect / Preserve Original": "",
     }
-    new_non_photo = {}
     new_style_aliases = {
         "None": "None (No Style Injection)",
         "None (No Style Injection)": "None (No Style Injection)",
@@ -301,23 +299,6 @@ def reload_image_definitions():
         new_styles.append(name)
         new_style_directives[name] = body
 
-        category = str(fm.get("category", "")).strip()
-        prohibited = str(fm.get("prohibited", "")).strip()
-        medium_type_str = str(fm.get("medium_type", "")).strip()
-        is_photo = (category == "Photo") or ("photograph" in medium_type_str.lower())
-
-        # Only genuinely non-photographic media (Anime, Painting, Sketch, etc.)
-        # with actual prohibited camera/lens terms are registered for photo suppression
-        if prohibited and not is_photo:
-            new_non_photo[name] = {
-                "medium_label": str(fm.get("medium_label", name)),
-                "medium_type": medium_type_str,
-                "prohibited": prohibited,
-                "replacement": str(fm.get("replacement", "")),
-                "tag_injection": str(fm.get("tag_injection", "")),
-                "negative_injection": str(fm.get("negative_injection", "")),
-            }
-
         for alias in fm.get("aliases", []):
             if alias:
                 new_style_aliases[alias] = name
@@ -333,7 +314,6 @@ def reload_image_definitions():
 
     ARTISTIC_STYLES = new_styles
     ARTISTIC_STYLE_DIRECTIVES = new_style_directives
-    NON_PHOTOGRAPHIC_STYLES = new_non_photo
     LEGACY_ARTISTIC_STYLE_ALIASES = new_style_aliases
 
 
@@ -426,18 +406,9 @@ def build_dynamic_system_prompt(
             f"# LAYER 2 — STRUCTURAL OUTPUT FORMAT\n{type_directive}"
         )
     if style_directive:
-        style_layer = f"# LAYER 3 — VISUAL AESTHETIC INJECTION\n{style_directive}"
-        if resolved_style in NON_PHOTOGRAPHIC_STYLES:
-            medium_info = NON_PHOTOGRAPHIC_STYLES[resolved_style]
-            supremacy = (
-                f"\n\n# ⚠️ INVIOLABLE MEDIUM OVERRIDE & PROHIBITIONS:\n"
-                f"The selected artistic style is strictly '{resolved_style}' ({medium_info['medium_type']}).\n"
-                f"- This visual medium strictly SUPERSEDES all photographic, lens, and camera instructions from preceding layers.\n"
-                f"- STRICT PROHIBITION: Never output photographic camera specifications ({medium_info['prohibited']}).\n"
-                f"- ARTISTIC EXECUTION: Represent all visual elements purely through {medium_info['replacement']}."
-            )
-            style_layer += supremacy
-        injected_layers.append(style_layer)
+        injected_layers.append(
+            f"# LAYER 3 — VISUAL AESTHETIC INJECTION\n{style_directive}"
+        )
 
     anchor = "# REQUIRED OUTPUT CONTRACT"
     if anchor in base_system_prompt:

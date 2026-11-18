@@ -25,7 +25,6 @@ from .loader import (
     resolve_prompt_type,
     ARTISTIC_STYLES,
     ARTISTIC_STYLE_DIRECTIVES,
-    NON_PHOTOGRAPHIC_STYLES,
     LEGACY_ARTISTIC_STYLE_ALIASES,
     resolve_artistic_style,
 )
@@ -65,7 +64,6 @@ __all__ = [
     "STYLE_PROMPTS",
     "ARTISTIC_STYLES",
     "ARTISTIC_STYLE_DIRECTIVES",
-    "NON_PHOTOGRAPHIC_STYLES",
     "resolve_artistic_style",
     "list_definitions",
     "get_definition",
