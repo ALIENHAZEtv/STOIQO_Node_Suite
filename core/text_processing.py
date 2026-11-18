@@ -52,7 +52,7 @@ def build_task_prompt(
     if input_text and input_text.strip():
         parts.append(f"SOURCE CONCEPT:\n{input_text.strip()}\n")
 
-    if artistic_style and artistic_style != "Auto-Detect / Preserve Original":
+    if artistic_style and artistic_style != "Auto-Detect / Preserve Original" and not str(artistic_style).startswith("None") and artistic_style != "None":
         resolved_s = LEGACY_ARTISTIC_STYLE_ALIASES.get(artistic_style, artistic_style)
         if resolved_s in NON_PHOTOGRAPHIC_STYLES:
             style_spec = NON_PHOTOGRAPHIC_STYLES[resolved_s]

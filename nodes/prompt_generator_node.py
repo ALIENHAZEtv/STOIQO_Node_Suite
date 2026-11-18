@@ -558,12 +558,18 @@ class StoiqoPromptGeneratorNode:
             active_repetition_penalty = float(cfg.get("repetition_penalty", sampling.get("repetition_penalty", repetition_penalty if repetition_penalty is not None else default_rep_pen)))
             active_max_new_tokens = int(cfg.get("max_new_tokens", sampling.get("max_new_tokens", max_new_tokens if max_new_tokens is not None else default_tokens)))
 
+            is_none_system = (
+                active_system_prompt_choice == "None"
+                or str(active_system_prompt_choice).startswith("None")
+            )
             is_manual_custom = (
                 active_system_prompt_choice == "✏️ Custom (Manual Override)"
                 or "Custom" in str(active_system_prompt_choice)
                 or bool(cfg_custom_sys.strip())
             )
-            if not is_manual_custom:
+            if is_none_system:
+                active_system_prompt = ""
+            elif not is_manual_custom:
                 active_system_prompt = build_dynamic_system_prompt(
                     base_system_prompt=active_system_prompt,
                     prompt_type=resolved_prompt_type,
@@ -621,7 +627,7 @@ class StoiqoPromptGeneratorNode:
             if has_image:
                 # If image is provided, visual subject is the image; text is the modifications and style transformation
                 img_directives = []
-                if resolved_artistic_style and resolved_artistic_style != "Auto-Detect / Preserve Original":
+                if resolved_artistic_style and resolved_artistic_style != "Auto-Detect / Preserve Original" and not str(resolved_artistic_style).startswith("None") and resolved_artistic_style != "None":
                     img_directives.append(
                         f"Transform and reimagine the visual scene, subject, pose, action, and setting from this image into '{resolved_artistic_style}'. "
                         f"Do NOT describe or caption the image as a photograph. "
@@ -638,7 +644,7 @@ class StoiqoPromptGeneratorNode:
             else:
                 input_for_task = effective_directives
                 if not input_for_task:
-                    if resolved_artistic_style and resolved_artistic_style != "Auto-Detect / Preserve Original":
+                    if resolved_artistic_style and resolved_artistic_style != "Auto-Detect / Preserve Original" and not str(resolved_artistic_style).startswith("None") and resolved_artistic_style != "None":
                         input_for_task = f"Generate a visually stunning, compositionally rich scene in the style of '{resolved_artistic_style}'."
                     else:
                         input_for_task = "Generate a visually stunning, cinematic scene with intricate details."

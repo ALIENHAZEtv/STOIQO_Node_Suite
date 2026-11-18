@@ -143,15 +143,26 @@ def reload_image_definitions():
 
     personas_raw.sort(key=lambda x: x[0])
 
-    new_personas = ["Auto-Detect / Balanced"]
-    new_presets = {}
+    new_personas = ["Auto-Detect / Balanced", "None (Raw / No System Prompt)"]
+    new_presets = {
+        "None (Raw / No System Prompt)": "",
+    }
     new_aliases = {
         "Auto-Detect / Balanced": "Auto-Detect / Balanced",
+        "None": "None (Raw / No System Prompt)",
+        "None (Raw / No System Prompt)": "None (Raw / No System Prompt)",
         "Custom": CUSTOM_SYSTEM_PROMPT_KEY,
         "Custom (Manual Override)": CUSTOM_SYSTEM_PROMPT_KEY,
     }
     new_sampling = {
         "Auto-Detect / Balanced": {
+            "temperature": 0.65,
+            "max_new_tokens": 1024,
+            "top_p": 0.90,
+            "top_k": 50,
+            "repetition_penalty": 1.15,
+        },
+        "None (Raw / No System Prompt)": {
             "temperature": 0.65,
             "max_new_tokens": 1024,
             "top_p": 0.90,
@@ -219,8 +230,13 @@ def reload_image_definitions():
     types_raw.sort(key=lambda x: x[0])
 
     new_types = []
-    new_type_directives = {}
+    new_type_directives = {
+        "None (Freeform / No Format Directive)": "",
+        "None": "",
+    }
     new_type_aliases = {
+        "None": "None (Freeform / No Format Directive)",
+        "None (Freeform / No Format Directive)": "None (Freeform / No Format Directive)",
         "Detailed Narrative (Long)": "Detailed Narrative",
         "Short Summary (Concise)": "Short Summary",
         "Custom Directives Only": "Structured Categories",
@@ -233,6 +249,10 @@ def reload_image_definitions():
         for alias in fm.get("aliases", []):
             if alias:
                 new_type_aliases[alias] = name
+
+    # Add None option
+    if "None (Freeform / No Format Directive)" not in new_types:
+        new_types.append("None (Freeform / No Format Directive)")
 
     PROMPT_TYPES = new_types
     PROMPT_TYPE_DIRECTIVES = new_type_directives
@@ -251,9 +271,15 @@ def reload_image_definitions():
     styles_raw.sort(key=lambda x: x[0])
 
     new_styles = []
-    new_style_directives = {}
+    new_style_directives = {
+        "None (No Style Injection)": "",
+        "None": "",
+        "Auto-Detect / Preserve Original": "",
+    }
     new_non_photo = {}
     new_style_aliases = {
+        "None": "None (No Style Injection)",
+        "None (No Style Injection)": "None (No Style Injection)",
         "Photorealistic & Cinematic": "Photorealistic (Modern Digital RAW)",
         "Vintage Film (35mm Analog, Grain)": "Analog Film (35mm Vintage Stock)",
         "Anime & Manga (2D / Cel-shaded)": "Anime & Manga (2D Cel-shaded)",
@@ -286,6 +312,15 @@ def reload_image_definitions():
             if alias:
                 new_style_aliases[alias] = name
 
+    # Add None option
+    if "None (No Style Injection)" not in new_styles:
+        # Place right after Auto-Detect if present, otherwise at top
+        if "Auto-Detect / Preserve Original" in new_styles:
+            auto_idx = new_styles.index("Auto-Detect / Preserve Original")
+            new_styles.insert(auto_idx + 1, "None (No Style Injection)")
+        else:
+            new_styles.insert(0, "None (No Style Injection)")
+
     ARTISTIC_STYLES = new_styles
     ARTISTIC_STYLE_DIRECTIVES = new_style_directives
     NON_PHOTOGRAPHIC_STYLES = new_non_photo
@@ -308,11 +343,15 @@ def resolve_system_prompt(
     """
     Single Source of Truth (SSOT) for resolving the active system prompt.
     Automatically dispatches according to the 3 input typologies:
+    - None Option -> Empty string (No System Prompt)
     - Typology 1: Text-Only (has_image=False) -> TEXT_EXPANSION_SYSTEM_PROMPT
     - Typology 2: 1 Image (has_image=True, is_multi_image=False) -> Selected Persona
     - Typology 3: 2 or 3 Images (is_multi_image=True) -> MULTI_IMAGE_SYSTEM_PROMPT
     - Manual Custom Override -> custom_system_prompt
     """
+    if system_prompt == "None" or str(system_prompt).startswith("None"):
+        return ""
+
     is_custom = (
         system_prompt == CUSTOM_SYSTEM_PROMPT_KEY
         or system_prompt == "Custom"
@@ -360,16 +399,25 @@ def build_dynamic_system_prompt(
     Fuses the base VLM system persona (Layer 1) with the structural prompt_type directive
     (Layer 2) and the artistic_style aesthetic injection (Layer 3) into a single cohesive prompt.
     """
+    if not base_system_prompt:
+        return ""
+
     resolved_type = LEGACY_PROMPT_TYPE_ALIASES.get(prompt_type, prompt_type)
     resolved_style = LEGACY_ARTISTIC_STYLE_ALIASES.get(artistic_style, artistic_style)
 
-    type_directive = PROMPT_TYPE_DIRECTIVES.get(resolved_type, "")
-    if not type_directive and ("STRUCTURAL FORMAT" in str(prompt_type) or len(str(prompt_type)) > 50):
-        type_directive = prompt_type
+    if not resolved_type or resolved_type == "None" or str(resolved_type).startswith("None"):
+        type_directive = ""
+    else:
+        type_directive = PROMPT_TYPE_DIRECTIVES.get(resolved_type, "")
+        if not type_directive and ("STRUCTURAL FORMAT" in str(prompt_type) or len(str(prompt_type)) > 50):
+            type_directive = prompt_type
 
-    style_directive = ARTISTIC_STYLE_DIRECTIVES.get(resolved_style, "")
-    if not style_directive and ("AESTHETIC INJECTION" in str(artistic_style) or len(str(artistic_style)) > 50):
-        style_directive = artistic_style
+    if not resolved_style or resolved_style == "None" or str(resolved_style).startswith("None") or resolved_style == "Auto-Detect / Preserve Original":
+        style_directive = ""
+    else:
+        style_directive = ARTISTIC_STYLE_DIRECTIVES.get(resolved_style, "")
+        if not style_directive and ("AESTHETIC INJECTION" in str(artistic_style) or len(str(artistic_style)) > 50):
+            style_directive = artistic_style
 
     if not type_directive and not style_directive:
         return base_system_prompt
@@ -404,9 +452,13 @@ def build_dynamic_system_prompt(
 
 
 def resolve_prompt_type(prompt_type: str) -> str:
+    if not prompt_type or prompt_type == "None" or str(prompt_type).startswith("None"):
+        return ""
     resolved_key = LEGACY_PROMPT_TYPE_ALIASES.get(prompt_type, prompt_type)
     return PROMPT_TYPE_DIRECTIVES.get(resolved_key, PROMPT_TYPE_DIRECTIVES.get("Detailed Narrative", ""))
 
 
 def resolve_artistic_style(artistic_style: str) -> str:
+    if not artistic_style or artistic_style == "None" or str(artistic_style).startswith("None"):
+        return "None"
     return LEGACY_ARTISTIC_STYLE_ALIASES.get(artistic_style, artistic_style)
