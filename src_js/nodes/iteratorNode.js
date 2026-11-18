@@ -1,5 +1,70 @@
 import { api } from "../../../scripts/api.js";
 
+class StoiqoIteratorHUDWidget {
+    constructor(node) {
+        this.node = node;
+        this.type = "custom";
+        this.name = "_stoiqo_iterator_hud";
+        this.serialize = false;
+        this.options = { serialize: false };
+    }
+
+    serializeValue() {
+        return undefined;
+    }
+
+    isVisible() {
+        return Boolean(this.node?.properties?._stoiqo_progress && !this.node?.flags?.collapsed);
+    }
+
+    computeSize(width) {
+        if (!this.isVisible()) return [0, -4];
+        return [width, 28];
+    }
+
+    draw(ctx, node, width, y) {
+        if (!this.isVisible()) return;
+        const prog = node?.properties?._stoiqo_progress;
+        const fname = node?.properties?._stoiqo_filename;
+        const badgeH = 22;
+        const badgeY = y + 3;
+        const badgeX = 10;
+        const nodeW = (node && node.size) ? node.size[0] : width;
+        const badgeW = nodeW - 20;
+
+        ctx.save();
+        ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+        ctx.strokeStyle = "#2dd4bf";
+        ctx.lineWidth = 1;
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+            ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+        }
+
+        ctx.font = "bold 9.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, monospace";
+        ctx.textBaseline = "middle";
+
+        ctx.fillStyle = "#2dd4bf";
+        const pText = `📁 ${prog}`;
+        ctx.fillText(pText, badgeX + 8, badgeY + badgeH / 2);
+        const pW = ctx.measureText(pText).width;
+
+        if (fname) {
+            ctx.fillStyle = "#94a3b8";
+            const maxChars = Math.max(15, Math.floor((badgeW - pW - 30) / 6.5));
+            const truncFname = fname.length > maxChars ? "…" + fname.slice(-maxChars) : fname;
+            ctx.fillText(`• ${truncFname}`, badgeX + pW + 16, badgeY + badgeH / 2);
+        }
+
+        ctx.restore();
+    }
+}
+
 export function setupIteratorNode(nodeType, nodeData, app) {
     const targetNames = [
         "StoiqoSmartFolderImageIterator",
@@ -37,55 +102,11 @@ export function setupIteratorNode(nodeType, nodeData, app) {
                 if (message.filename && message.filename[0]) {
                     this.properties._stoiqo_filename = String(message.filename[0]);
                 }
+                if (typeof this.setSize === "function" && typeof this.computeSize === "function") {
+                    const sz = this.computeSize();
+                    this.setSize([Math.max(MIN_NODE_WIDTH, this.size ? this.size[0] : sz[0]), Math.max(this.size ? this.size[1] : sz[1], sz[1])]);
+                }
                 this.setDirtyCanvas(true, true);
-            }
-        };
-
-        // Render progress telemetry pill on foreground
-        const origDrawFg = nodeType.prototype.onDrawForeground;
-        nodeType.prototype.onDrawForeground = function(ctx) {
-            if (origDrawFg) origDrawFg.apply(this, arguments);
-
-            const prog = this.properties?._stoiqo_progress;
-            const fname = this.properties?._stoiqo_filename;
-            if (prog && !this.flags?.collapsed) {
-                ctx.save();
-                const badgeH = 20;
-                const badgeY = this.size[1] - badgeH - 6;
-                const badgeX = 10;
-                const badgeW = this.size[0] - 20;
-
-                ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-                ctx.strokeStyle = "#2dd4bf";
-                ctx.lineWidth = 1;
-                if (ctx.roundRect) {
-                    ctx.beginPath();
-                    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
-                    ctx.fill();
-                    ctx.stroke();
-                } else {
-                    ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
-                    ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
-                }
-
-                ctx.font = "bold 9.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, monospace";
-                ctx.textBaseline = "middle";
-
-                // Progress tag (Teal)
-                ctx.fillStyle = "#2dd4bf";
-                const pText = `📁 ${prog}`;
-                ctx.fillText(pText, badgeX + 8, badgeY + badgeH / 2);
-                const pW = ctx.measureText(pText).width;
-
-                // File name tag (Slate)
-                if (fname) {
-                    ctx.fillStyle = "#94a3b8";
-                    const maxChars = Math.max(15, Math.floor((badgeW - pW - 30) / 6.5));
-                    const truncFname = fname.length > maxChars ? "…" + fname.slice(-maxChars) : fname;
-                    ctx.fillText(`• ${truncFname}`, badgeX + pW + 16, badgeY + badgeH / 2);
-                }
-
-                ctx.restore();
             }
         };
 
@@ -192,6 +213,26 @@ export function setupIteratorNode(nodeType, nodeData, app) {
                         node.widgets.splice(curIdx, 1);
                         node.widgets.splice(browseIdx + 1, 0, refreshBtn);
                     }
+                }
+            }
+
+            // Setup Progress Telemetry HUD Widget (deduplicated)
+            const existingHuds = node.widgets.filter(w => w.name === "_stoiqo_iterator_hud");
+            for (const extra of existingHuds.slice(1)) {
+                node.widgets.splice(node.widgets.indexOf(extra), 1);
+            }
+            let iterHud = existingHuds[0];
+            if (!iterHud) {
+                iterHud = new StoiqoIteratorHUDWidget(node);
+                node.widgets.push(iterHud);
+            }
+            if (refreshBtn && iterHud) {
+                const curIdx = node.widgets.indexOf(iterHud);
+                const refIdx = node.widgets.indexOf(refreshBtn);
+                if (curIdx !== -1 && refIdx !== -1 && curIdx !== refIdx + 1) {
+                    node.widgets.splice(curIdx, 1);
+                    const newTarget = (curIdx < refIdx + 1) ? refIdx : refIdx + 1;
+                    node.widgets.splice(newTarget, 0, iterHud);
                 }
             }
         }

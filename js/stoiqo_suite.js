@@ -342,7 +342,23 @@ function setupShowPromptNode(nodeType, nodeData, app11) {
       let viewerWidget = existingViewers[0];
       if (!viewerWidget) {
         viewerWidget = createPromptViewerWidget(node);
-        node.widgets.push(viewerWidget);
+        node.widgets.unshift(viewerWidget);
+      } else {
+        const curIdx = node.widgets.indexOf(viewerWidget);
+        if (curIdx > 0) {
+          node.widgets.splice(curIdx, 1);
+          node.widgets.unshift(viewerWidget);
+        }
+      }
+      if (typeof node.computeSize === "function") {
+        const sz = node.computeSize();
+        const w = Math.max(node.size ? node.size[0] : SHOW_MIN_WIDTH, SHOW_MIN_WIDTH, Math.ceil(sz[0] || 0));
+        const h = Math.max(node.size ? node.size[1] : SHOW_MIN_HEIGHT, SHOW_MIN_HEIGHT, Math.ceil(sz[1] || 0));
+        if (typeof node.setSize === "function") {
+          node.setSize([w, h]);
+        } else {
+          node.size = [w, h];
+        }
       }
       node.setDirtyCanvas(true, true);
     };
@@ -1751,6 +1767,9 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
         return void 0;
       }
       computeSize(width) {
+        if (this.node && this.node.size && this.node.size[1] > 360) {
+          return [width, Math.max(460, this.node.size[1] - 80)];
+        }
         return [width, 460];
       }
       computeLayoutSize() {
@@ -1900,7 +1919,8 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
       }
       draw(ctx, node, width, posY, height) {
         const nodeW = width || (node.size ? node.size[0] : MIN_WIDTH3);
-        const slotH = typeof height === "number" && height > 0 ? height : 460;
+        const nodeH = node && node.size ? node.size[1] : 560;
+        const slotH = Math.max(280, nodeH - posY - 16);
         const vY = posY + 6;
         const vW = nodeW - 24;
         const vX = 12;
@@ -2087,7 +2107,7 @@ function setupImageCompareNode(nodeType, nodeData, app11) {
           });
           currentTopY += chipBarH + 4;
         }
-        const vH = Math.max(260, Math.min(slotH - (currentTopY - vY) - 12, 1600));
+        const vH = Math.max(240, Math.min(slotH - (currentTopY - vY) - 10, 1600));
         this.viewportRect = { x: vX, y: currentTopY, w: vW, h: vH };
         const vp = this.viewportRect;
         ctx.fillStyle = "#090d14";
@@ -2904,6 +2924,61 @@ function setupDatasetNode(nodeType, nodeData, app11) {
 
 // src_js/nodes/iteratorNode.js
 import { api as api6 } from "../../../scripts/api.js";
+var StoiqoIteratorHUDWidget = class {
+  constructor(node) {
+    this.node = node;
+    this.type = "custom";
+    this.name = "_stoiqo_iterator_hud";
+    this.serialize = false;
+    this.options = { serialize: false };
+  }
+  serializeValue() {
+    return void 0;
+  }
+  isVisible() {
+    return Boolean(this.node?.properties?._stoiqo_progress && !this.node?.flags?.collapsed);
+  }
+  computeSize(width) {
+    if (!this.isVisible()) return [0, -4];
+    return [width, 28];
+  }
+  draw(ctx, node, width, y) {
+    if (!this.isVisible()) return;
+    const prog = node?.properties?._stoiqo_progress;
+    const fname = node?.properties?._stoiqo_filename;
+    const badgeH = 22;
+    const badgeY = y + 3;
+    const badgeX = 10;
+    const nodeW = node && node.size ? node.size[0] : width;
+    const badgeW = nodeW - 20;
+    ctx.save();
+    ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+    ctx.strokeStyle = "#2dd4bf";
+    ctx.lineWidth = 1;
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+      ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+    }
+    ctx.font = "bold 9.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, monospace";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#2dd4bf";
+    const pText = `\u{1F4C1} ${prog}`;
+    ctx.fillText(pText, badgeX + 8, badgeY + badgeH / 2);
+    const pW = ctx.measureText(pText).width;
+    if (fname) {
+      ctx.fillStyle = "#94a3b8";
+      const maxChars = Math.max(15, Math.floor((badgeW - pW - 30) / 6.5));
+      const truncFname = fname.length > maxChars ? "\u2026" + fname.slice(-maxChars) : fname;
+      ctx.fillText(`\u2022 ${truncFname}`, badgeX + pW + 16, badgeY + badgeH / 2);
+    }
+    ctx.restore();
+  }
+};
 function setupIteratorNode(nodeType, nodeData, app11) {
   const targetNames = [
     "StoiqoSmartFolderImageIterator",
@@ -3006,6 +3081,24 @@ function setupIteratorNode(nodeType, nodeData, app11) {
           }
         }
       }
+      const existingHuds = node.widgets.filter((w) => w.name === "_stoiqo_iterator_hud");
+      for (const extra of existingHuds.slice(1)) {
+        node.widgets.splice(node.widgets.indexOf(extra), 1);
+      }
+      let iterHud = existingHuds[0];
+      if (!iterHud) {
+        iterHud = new StoiqoIteratorHUDWidget(node);
+        node.widgets.push(iterHud);
+      }
+      if (refreshBtn && iterHud) {
+        const curIdx = node.widgets.indexOf(iterHud);
+        const refIdx = node.widgets.indexOf(refreshBtn);
+        if (curIdx !== -1 && refIdx !== -1 && curIdx !== refIdx + 1) {
+          node.widgets.splice(curIdx, 1);
+          const newTarget = curIdx < refIdx + 1 ? refIdx : refIdx + 1;
+          node.widgets.splice(newTarget, 0, iterHud);
+        }
+      }
     };
     const MIN_NODE_WIDTH = 460;
     const onNodeCreated = nodeType.prototype.onNodeCreated;
@@ -3035,45 +3128,11 @@ function setupIteratorNode(nodeType, nodeData, app11) {
         if (message.filename && message.filename[0]) {
           this.properties._stoiqo_filename = String(message.filename[0]);
         }
+        if (typeof this.setSize === "function" && typeof this.computeSize === "function") {
+          const sz = this.computeSize();
+          this.setSize([Math.max(MIN_NODE_WIDTH, this.size ? this.size[0] : sz[0]), Math.max(this.size ? this.size[1] : sz[1], sz[1])]);
+        }
         this.setDirtyCanvas(true, true);
-      }
-    };
-    const origDrawFg = nodeType.prototype.onDrawForeground;
-    nodeType.prototype.onDrawForeground = function(ctx) {
-      if (origDrawFg) origDrawFg.apply(this, arguments);
-      const prog = this.properties?._stoiqo_progress;
-      const fname = this.properties?._stoiqo_filename;
-      if (prog && !this.flags?.collapsed) {
-        ctx.save();
-        const badgeH = 20;
-        const badgeY = this.size[1] - badgeH - 6;
-        const badgeX = 10;
-        const badgeW = this.size[0] - 20;
-        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-        ctx.strokeStyle = "#2dd4bf";
-        ctx.lineWidth = 1;
-        if (ctx.roundRect) {
-          ctx.beginPath();
-          ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
-          ctx.fill();
-          ctx.stroke();
-        } else {
-          ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
-          ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
-        }
-        ctx.font = "bold 9.5px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, monospace";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = "#2dd4bf";
-        const pText = `\u{1F4C1} ${prog}`;
-        ctx.fillText(pText, badgeX + 8, badgeY + badgeH / 2);
-        const pW = ctx.measureText(pText).width;
-        if (fname) {
-          ctx.fillStyle = "#94a3b8";
-          const maxChars = Math.max(15, Math.floor((badgeW - pW - 30) / 6.5));
-          const truncFname = fname.length > maxChars ? "\u2026" + fname.slice(-maxChars) : fname;
-          ctx.fillText(`\u2022 ${truncFname}`, badgeX + pW + 16, badgeY + badgeH / 2);
-        }
-        ctx.restore();
       }
     };
   }
@@ -4940,10 +4999,7 @@ function setupPipelineNodes(nodeType, nodeData, appInstance) {
   const nodeName = nodeData.name;
   const config = CONFIGURATIONS[nodeName];
   if (!config) return;
-  const origOnNodeCreated = nodeType.prototype.onNodeCreated;
-  nodeType.prototype.onNodeCreated = function() {
-    if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
-    const node = this;
+  function applyPipelineNodeLayout(node) {
     if (!node || !node.widgets) return;
     node.widgets = node.widgets.filter((w) => !w.isStoiqoDivider);
     if (config.minWidth && node.size && node.size[0] < config.minWidth) {
@@ -4978,58 +5034,38 @@ function setupPipelineNodes(nodeType, nodeData, appInstance) {
         node.widgets.splice(synIdx, 1);
       }
     }
-    if (nodeName === "StoiqoStyleDirectivesNode") {
-      const updateCustomPromptVisibility = () => {
-        const sys = node.widgets.find((w) => w.name === "system_prompt");
-        const custom = node.widgets.find((w) => w.name === "custom_system_prompt");
-        if (!custom) return;
-        if (!custom._stoiqoOrig) {
-          custom._stoiqoOrig = { computeSize: custom.computeSize, draw: custom.draw };
-        }
-        const show = !!sys && String(sys.value || "").includes("Custom");
-        custom.hidden = !show;
-        custom.computeSize = show ? custom._stoiqoOrig.computeSize : () => [0, -4];
-        custom.draw = show ? custom._stoiqoOrig.draw : () => {
-        };
-        if (custom.inputEl) {
-          custom.inputEl.hidden = !show;
-          custom.inputEl.style.display = show ? "" : "none";
-        }
-        if (typeof node.computeSize === "function") {
-          const computed = node.computeSize();
-          node.size[1] = Math.max(Math.ceil(computed[1]), 60);
-        }
-        node.setDirtyCanvas?.(true, true);
-      };
-      const sysWidget = node.widgets.find((w) => w.name === "system_prompt");
-      if (sysWidget && !sysWidget._stoiqoHooked) {
-        sysWidget._stoiqoHooked = true;
-        const origCb = sysWidget.callback;
-        sysWidget.callback = function() {
-          if (origCb) origCb.apply(this, arguments);
-          updateCustomPromptVisibility();
-        };
-      }
-      node._stoiqoUpdateCustomPrompt = updateCustomPromptVisibility;
-      setTimeout(updateCustomPromptVisibility, 50);
-    }
     if (nodeName === "StoiqoAudioSaverNode") {
       createAudioPlayerWidget(node, null);
     }
     if (nodeName === "StoiqoVideoSaverNode") {
       createVideoPlayerWidget(node, null);
     }
+    if (typeof node.computeSize === "function") {
+      const computed = node.computeSize();
+      const minW = config.minWidth || 360;
+      const w = Math.max(node.size ? node.size[0] : minW, minW, Math.ceil(computed[0] || 0));
+      const h = Math.max(node.size ? node.size[1] : 60, 60, Math.ceil(computed[1] || 0));
+      if (typeof node.setSize === "function") {
+        node.setSize([w, h]);
+      } else {
+        node.size = [w, h];
+      }
+    }
     if (node.setDirtyCanvas) {
       node.setDirtyCanvas(true, true);
     }
-  };
-  if (nodeName === "StoiqoStyleDirectivesNode") {
-    const origOnConfigure = nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure = function() {
-      if (origOnConfigure) origOnConfigure.apply(this, arguments);
-      if (this._stoiqoUpdateCustomPrompt) setTimeout(this._stoiqoUpdateCustomPrompt, 50);
-    };
   }
+  const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+  nodeType.prototype.onNodeCreated = function() {
+    if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+    applyPipelineNodeLayout(this);
+  };
+  const origOnConfigure = nodeType.prototype.onConfigure;
+  nodeType.prototype.onConfigure = function() {
+    if (origOnConfigure) origOnConfigure.apply(this, arguments);
+    applyPipelineNodeLayout(this);
+    if (this._stoiqoUpdateCustomPrompt) setTimeout(this._stoiqoUpdateCustomPrompt, 50);
+  };
   if (nodeName === "StoiqoPromptGeneratorNode") {
     const origOnExecuted = nodeType.prototype.onExecuted;
     nodeType.prototype.onExecuted = function(message) {
@@ -7083,32 +7119,66 @@ function ensureHUDWidget(node) {
   let hud = existing[0];
   if (!hud) {
     hud = new StoiqoPromptHUDWidget(node);
-    node.widgets.push(hud);
-    if (node.setDirtyCanvas) node.setDirtyCanvas(true, true);
+    node.widgets.unshift(hud);
+  } else {
+    const curIdx = node.widgets.indexOf(hud);
+    if (curIdx > 0) {
+      node.widgets.splice(curIdx, 1);
+      node.widgets.unshift(hud);
+    }
   }
+  node._stoiqo_mode_hud = hud;
 }
 function ensureStudioButton(node) {
   if (!node || !node.widgets) return;
-  const hasStudioBtn = node.widgets.some((w) => w._isStoiqoStudioBtn);
-  if (!hasStudioBtn) {
-    const studioBtn = node.addWidget("button", "\u{1F3A8} Gestione Stili & Prompt (Studio)...", null, () => {
+  let studioBtn = node.widgets.find((w) => w._isStoiqoStudioBtn);
+  if (!studioBtn) {
+    studioBtn = node.addWidget("button", "\u{1F3A8} Gestione Stili & Prompt (Studio)...", null, () => {
       openPromptStudioModal({ node, kind: "styles" });
     });
     studioBtn._isStoiqoStudioBtn = true;
     studioBtn.serialize = false;
     studioBtn.options = { serialize: false };
   }
+  const curIdx = node.widgets.indexOf(studioBtn);
+  const drawerIdx = node.widgets.findIndex((w) => w.name === "_stoiqo_settings_drawer");
+  const styleIdx = node.widgets.findIndex((w) => w.name === "prompt_style" || w.name === "artistic_style");
+  let targetIdx = -1;
+  if (drawerIdx !== -1) {
+    targetIdx = drawerIdx;
+  } else if (styleIdx !== -1) {
+    targetIdx = styleIdx + 1;
+  }
+  if (targetIdx !== -1 && curIdx !== targetIdx && curIdx !== -1) {
+    node.widgets.splice(curIdx, 1);
+    const newTarget = curIdx < targetIdx ? targetIdx - 1 : targetIdx;
+    node.widgets.splice(newTarget, 0, studioBtn);
+  }
 }
 function setupPromptGeneratorNode(nodeType, nodeData, app11) {
   if (!TARGET_NODE_NAMES.includes(nodeData.name)) return;
+  const MIN_WIDTH3 = 420;
+  const MIN_HEIGHT = 280;
+  function applyPromptNodeSizing(node) {
+    if (!node) return;
+    if (typeof node.computeSize === "function") {
+      const sz = node.computeSize();
+      const w = Math.max(node.size ? node.size[0] : MIN_WIDTH3, MIN_WIDTH3, Math.ceil(sz[0] || 0));
+      const h = Math.max(node.size ? node.size[1] : MIN_HEIGHT, MIN_HEIGHT, Math.ceil(sz[1] || 0));
+      if (typeof node.setSize === "function") {
+        node.setSize([w, h]);
+      } else {
+        node.size = [w, h];
+      }
+    }
+    node.setDirtyCanvas?.(true, true);
+  }
   const origOnNodeCreated = nodeType.prototype.onNodeCreated;
   nodeType.prototype.onNodeCreated = function() {
     if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
-    if (this.size && this.size[0] < 380) {
-      this.size[0] = 380;
-    }
     ensureHUDWidget(this);
     ensureStudioButton(this);
+    applyPromptNodeSizing(this);
     const origOnConnectionsChange = this.onConnectionsChange;
     this.onConnectionsChange = function(type, index, isConnected, link_info) {
       if (origOnConnectionsChange) origOnConnectionsChange.apply(this, arguments);
@@ -7120,6 +7190,7 @@ function setupPromptGeneratorNode(nodeType, nodeData, app11) {
     if (origOnConfigure) origOnConfigure.apply(this, arguments);
     ensureHUDWidget(this);
     ensureStudioButton(this);
+    applyPromptNodeSizing(this);
   };
   const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
   nodeType.prototype.getExtraMenuOptions = function(_, options) {
@@ -7459,18 +7530,31 @@ function setupSeedNode(nodeType, nodeData, appInstance) {
     }
     node._stoiqo_seed_hud = hud;
   }
+  function applySeedNodeSizing(node) {
+    if (!node) return;
+    if (typeof node.computeSize === "function") {
+      const sz = node.computeSize();
+      const w = Math.max(node.size ? node.size[0] : 380, 380, Math.ceil(sz[0] || 0));
+      const h = Math.max(node.size ? node.size[1] : 260, 260, Math.ceil(sz[1] || 0));
+      if (typeof node.setSize === "function") {
+        node.setSize([w, h]);
+      } else {
+        node.size = [w, h];
+      }
+    }
+    node.setDirtyCanvas?.(true, true);
+  }
   const origOnNodeCreated = nodeType.prototype.onNodeCreated;
   nodeType.prototype.onNodeCreated = function() {
     if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
-    if (!this.size || this.size[0] < 380) {
-      this.size = [380, Math.max(this.size ? this.size[1] : 200, 220)];
-    }
     ensureSeedHUD(this);
+    applySeedNodeSizing(this);
   };
   const origOnConfigure = nodeType.prototype.onConfigure;
   nodeType.prototype.onConfigure = function() {
     if (origOnConfigure) origOnConfigure.apply(this, arguments);
     ensureSeedHUD(this);
+    applySeedNodeSizing(this);
   };
   const origOnExecuted = nodeType.prototype.onExecuted;
   nodeType.prototype.onExecuted = function(message) {
@@ -7803,6 +7887,47 @@ var NODE_UX_SPECS = {
     }
   }
 };
+var KNOWN_MULTILINE_WIDGET_NAMES = /* @__PURE__ */ new Set([
+  "template",
+  "custom_system_prompt",
+  "custom_modifications",
+  "blacklist_tags",
+  "lyrics",
+  "style",
+  "motion_prompt",
+  "physical_dna",
+  "outfit_and_gear",
+  "negative_constraints",
+  "user_prompt",
+  "custom_json_data",
+  "custom_directives",
+  "positive",
+  "negative",
+  "idea",
+  "custom_lyrics"
+]);
+function isWidgetMultiline(w) {
+  if (!w) return false;
+  if (w.options && (w.options.multiline || w.options.multiline === true)) return true;
+  if (w.type === "customtext") return true;
+  if (w.inputEl && w.inputEl.tagName === "TEXTAREA") return true;
+  if (KNOWN_MULTILINE_WIDGET_NAMES.has(w.name)) return true;
+  return false;
+}
+function getMultilineTargetHeight(w) {
+  if (w._boxHeight && w._boxHeight > 30) return w._boxHeight;
+  if (w.inputEl && parseInt(w.inputEl.style.height, 10) > 30) {
+    return parseInt(w.inputEl.style.height, 10);
+  }
+  if (w.name === "template") return 56;
+  if (w.name === "custom_system_prompt") return 52;
+  if (w.name === "custom_modifications") return 64;
+  if (w.name === "blacklist_tags") return 50;
+  if (w.name === "lyrics") return 68;
+  if (w.name === "motion_prompt") return 56;
+  if (w.name === "idea") return 76;
+  return 56;
+}
 function setWidgetVisibility(w, visible) {
   if (!w) return;
   if (!w._stoiqoSavedOrig) {
@@ -7815,6 +7940,9 @@ function setWidgetVisibility(w, visible) {
     w.hidden = false;
     if (w._stoiqoSavedOrig.computeSize) {
       w.computeSize = w._stoiqoSavedOrig.computeSize;
+    } else if (isWidgetMultiline(w)) {
+      const h = getMultilineTargetHeight(w);
+      w.computeSize = (width) => [width, h];
     } else {
       delete w.computeSize;
     }
@@ -7826,6 +7954,11 @@ function setWidgetVisibility(w, visible) {
     if (w.inputEl) {
       w.inputEl.hidden = false;
       w.inputEl.style.display = "";
+      if (isWidgetMultiline(w)) {
+        const h = getMultilineTargetHeight(w);
+        w.inputEl.style.height = `${h}px`;
+        w.inputEl.style.boxSizing = "border-box";
+      }
     }
   } else {
     w.hidden = true;
@@ -8010,10 +8143,12 @@ function applyNodeUXSpec(node, spec) {
     }
     if (typeof node.computeSize === "function") {
       const computed = node.computeSize();
-      if (resizeHeight) {
-        node.size[1] = Math.max(60, Math.ceil(computed[1]));
+      const minW = node.size && node.size[0] ? Math.max(node.size[0], 360) : 360;
+      const targetH = resizeHeight ? Math.max(60, Math.ceil(computed[1])) : Math.max(node.size ? node.size[1] : 60, Math.ceil(computed[1]));
+      if (typeof node.setSize === "function") {
+        node.setSize([minW, targetH]);
       } else {
-        node.size[1] = Math.max(node.size[1] || 60, Math.ceil(computed[1]));
+        node.size = [minW, targetH];
       }
     }
     node.setDirtyCanvas?.(true, true);

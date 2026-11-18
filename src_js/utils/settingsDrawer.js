@@ -280,6 +280,50 @@ export const NODE_UX_SPECS = {
     },
 };
 
+const KNOWN_MULTILINE_WIDGET_NAMES = new Set([
+    "template",
+    "custom_system_prompt",
+    "custom_modifications",
+    "blacklist_tags",
+    "lyrics",
+    "style",
+    "motion_prompt",
+    "physical_dna",
+    "outfit_and_gear",
+    "negative_constraints",
+    "user_prompt",
+    "custom_json_data",
+    "custom_directives",
+    "positive",
+    "negative",
+    "idea",
+    "custom_lyrics",
+]);
+
+function isWidgetMultiline(w) {
+    if (!w) return false;
+    if (w.options && (w.options.multiline || w.options.multiline === true)) return true;
+    if (w.type === "customtext") return true;
+    if (w.inputEl && w.inputEl.tagName === "TEXTAREA") return true;
+    if (KNOWN_MULTILINE_WIDGET_NAMES.has(w.name)) return true;
+    return false;
+}
+
+function getMultilineTargetHeight(w) {
+    if (w._boxHeight && w._boxHeight > 30) return w._boxHeight;
+    if (w.inputEl && parseInt(w.inputEl.style.height, 10) > 30) {
+        return parseInt(w.inputEl.style.height, 10);
+    }
+    if (w.name === "template") return 56;
+    if (w.name === "custom_system_prompt") return 52;
+    if (w.name === "custom_modifications") return 64;
+    if (w.name === "blacklist_tags") return 50;
+    if (w.name === "lyrics") return 68;
+    if (w.name === "motion_prompt") return 56;
+    if (w.name === "idea") return 76;
+    return 56;
+}
+
 function setWidgetVisibility(w, visible) {
     if (!w) return;
     if (!w._stoiqoSavedOrig) {
@@ -293,17 +337,27 @@ function setWidgetVisibility(w, visible) {
         w.hidden = false;
         if (w._stoiqoSavedOrig.computeSize) {
             w.computeSize = w._stoiqoSavedOrig.computeSize;
+        } else if (isWidgetMultiline(w)) {
+            const h = getMultilineTargetHeight(w);
+            w.computeSize = (width) => [width, h];
         } else {
             delete w.computeSize;
         }
+
         if (w._stoiqoSavedOrig.draw) {
             w.draw = w._stoiqoSavedOrig.draw;
         } else {
             delete w.draw;
         }
+
         if (w.inputEl) {
             w.inputEl.hidden = false;
             w.inputEl.style.display = "";
+            if (isWidgetMultiline(w)) {
+                const h = getMultilineTargetHeight(w);
+                w.inputEl.style.height = `${h}px`;
+                w.inputEl.style.boxSizing = "border-box";
+            }
         }
     } else {
         w.hidden = true;
@@ -513,10 +567,14 @@ export function applyNodeUXSpec(node, spec) {
 
         if (typeof node.computeSize === "function") {
             const computed = node.computeSize();
-            if (resizeHeight) {
-                node.size[1] = Math.max(60, Math.ceil(computed[1]));
+            const minW = (node.size && node.size[0]) ? Math.max(node.size[0], 360) : 360;
+            const targetH = resizeHeight
+                ? Math.max(60, Math.ceil(computed[1]))
+                : Math.max(node.size ? node.size[1] : 60, Math.ceil(computed[1]));
+            if (typeof node.setSize === "function") {
+                node.setSize([minW, targetH]);
             } else {
-                node.size[1] = Math.max(node.size[1] || 60, Math.ceil(computed[1]));
+                node.size = [minW, targetH];
             }
         }
         node.setDirtyCanvas?.(true, true);

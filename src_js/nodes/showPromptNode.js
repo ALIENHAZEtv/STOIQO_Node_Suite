@@ -397,7 +397,7 @@ export function setupShowPromptNode(nodeType, nodeData, app) {
                 node.widgets.splice(legacyBtnIdx, 1);
             }
 
-            // 2. Attach or reposition the interactive Prompt Viewer Widget (deduplicated)
+            // 2. Attach or reposition the interactive Prompt Viewer Widget at index 0 (top of node)
             const existingViewers = node.widgets.filter(w => w.name === "prompt_viewer_hud");
             for (const extra of existingViewers.slice(1)) {
                 node.widgets.splice(node.widgets.indexOf(extra), 1);
@@ -405,7 +405,24 @@ export function setupShowPromptNode(nodeType, nodeData, app) {
             let viewerWidget = existingViewers[0];
             if (!viewerWidget) {
                 viewerWidget = createPromptViewerWidget(node);
-                node.widgets.push(viewerWidget);
+                node.widgets.unshift(viewerWidget);
+            } else {
+                const curIdx = node.widgets.indexOf(viewerWidget);
+                if (curIdx > 0) {
+                    node.widgets.splice(curIdx, 1);
+                    node.widgets.unshift(viewerWidget);
+                }
+            }
+
+            if (typeof node.computeSize === "function") {
+                const sz = node.computeSize();
+                const w = Math.max(node.size ? node.size[0] : SHOW_MIN_WIDTH, SHOW_MIN_WIDTH, Math.ceil(sz[0] || 0));
+                const h = Math.max(node.size ? node.size[1] : SHOW_MIN_HEIGHT, SHOW_MIN_HEIGHT, Math.ceil(sz[1] || 0));
+                if (typeof node.setSize === "function") {
+                    node.setSize([w, h]);
+                } else {
+                    node.size = [w, h];
+                }
             }
 
             node.setDirtyCanvas(true, true);

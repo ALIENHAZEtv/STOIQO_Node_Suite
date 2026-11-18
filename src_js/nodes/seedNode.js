@@ -313,21 +313,33 @@ export function setupSeedNode(nodeType, nodeData, appInstance) {
         node._stoiqo_seed_hud = hud;
     }
 
+    function applySeedNodeSizing(node) {
+        if (!node) return;
+        if (typeof node.computeSize === "function") {
+            const sz = node.computeSize();
+            const w = Math.max(node.size ? node.size[0] : 380, 380, Math.ceil(sz[0] || 0));
+            const h = Math.max(node.size ? node.size[1] : 260, 260, Math.ceil(sz[1] || 0));
+            if (typeof node.setSize === "function") {
+                node.setSize([w, h]);
+            } else {
+                node.size = [w, h];
+            }
+        }
+        node.setDirtyCanvas?.(true, true);
+    }
+
     const origOnNodeCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function () {
         if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
-
-        if (!this.size || this.size[0] < 380) {
-            this.size = [380, Math.max(this.size ? this.size[1] : 200, 220)];
-        }
-
         ensureSeedHUD(this);
+        applySeedNodeSizing(this);
     };
 
     const origOnConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function () {
         if (origOnConfigure) origOnConfigure.apply(this, arguments);
         ensureSeedHUD(this);
+        applySeedNodeSizing(this);
     };
 
     const origOnExecuted = nodeType.prototype.onExecuted;

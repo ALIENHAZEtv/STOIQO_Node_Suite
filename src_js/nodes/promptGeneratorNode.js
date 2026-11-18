@@ -236,38 +236,75 @@ function ensureHUDWidget(node) {
     let hud = existing[0];
     if (!hud) {
         hud = new StoiqoPromptHUDWidget(node);
-        node.widgets.push(hud);
-        if (node.setDirtyCanvas) node.setDirtyCanvas(true, true);
+        node.widgets.unshift(hud);
+    } else {
+        const curIdx = node.widgets.indexOf(hud);
+        if (curIdx > 0) {
+            node.widgets.splice(curIdx, 1);
+            node.widgets.unshift(hud);
+        }
     }
+    node._stoiqo_mode_hud = hud;
 }
 
 function ensureStudioButton(node) {
     if (!node || !node.widgets) return;
-    const hasStudioBtn = node.widgets.some(w => w._isStoiqoStudioBtn);
-    if (!hasStudioBtn) {
-        const studioBtn = node.addWidget("button", "🎨 Gestione Stili & Prompt (Studio)...", null, () => {
+    let studioBtn = node.widgets.find(w => w._isStoiqoStudioBtn);
+    if (!studioBtn) {
+        studioBtn = node.addWidget("button", "🎨 Gestione Stili & Prompt (Studio)...", null, () => {
             openPromptStudioModal({ node, kind: "styles" });
         });
         studioBtn._isStoiqoStudioBtn = true;
         studioBtn.serialize = false;
         studioBtn.options = { serialize: false };
     }
+
+    // Reposition Studio Button to sit right before the Advanced Settings drawer or after prompt_style
+    const curIdx = node.widgets.indexOf(studioBtn);
+    const drawerIdx = node.widgets.findIndex(w => w.name === "_stoiqo_settings_drawer");
+    const styleIdx = node.widgets.findIndex(w => w.name === "prompt_style" || w.name === "artistic_style");
+    let targetIdx = -1;
+    if (drawerIdx !== -1) {
+        targetIdx = drawerIdx;
+    } else if (styleIdx !== -1) {
+        targetIdx = styleIdx + 1;
+    }
+    if (targetIdx !== -1 && curIdx !== targetIdx && curIdx !== -1) {
+        node.widgets.splice(curIdx, 1);
+        const newTarget = (curIdx < targetIdx) ? targetIdx - 1 : targetIdx;
+        node.widgets.splice(newTarget, 0, studioBtn);
+    }
 }
 
 export function setupPromptGeneratorNode(nodeType, nodeData, app) {
     if (!TARGET_NODE_NAMES.includes(nodeData.name)) return;
+
+    const MIN_WIDTH = 420;
+    const MIN_HEIGHT = 280;
+
+    function applyPromptNodeSizing(node) {
+        if (!node) return;
+        if (typeof node.computeSize === "function") {
+            const sz = node.computeSize();
+            const w = Math.max(node.size ? node.size[0] : MIN_WIDTH, MIN_WIDTH, Math.ceil(sz[0] || 0));
+            const h = Math.max(node.size ? node.size[1] : MIN_HEIGHT, MIN_HEIGHT, Math.ceil(sz[1] || 0));
+            if (typeof node.setSize === "function") {
+                node.setSize([w, h]);
+            } else {
+                node.size = [w, h];
+            }
+        }
+        node.setDirtyCanvas?.(true, true);
+    }
 
     // 1. Hook onNodeCreated
     const origOnNodeCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function() {
         if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
 
-        if (this.size && this.size[0] < 380) {
-            this.size[0] = 380;
-        }
-
         ensureHUDWidget(this);
         ensureStudioButton(this);
+        applyPromptNodeSizing(this);
 
         // React immediately when connections change (e.g. image wire plugged or unplugged)
         const origOnConnectionsChange = this.onConnectionsChange;
@@ -283,6 +320,7 @@ export function setupPromptGeneratorNode(nodeType, nodeData, app) {
         if (origOnConfigure) origOnConfigure.apply(this, arguments);
         ensureHUDWidget(this);
         ensureStudioButton(this);
+        applyPromptNodeSizing(this);
     };
 
     // 3. Right-Click Context Menu Options

@@ -76,6 +76,9 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                 }
 
                 computeSize(width) {
+                    if (this.node && this.node.size && this.node.size[1] > 360) {
+                        return [width, Math.max(460, this.node.size[1] - 80)];
+                    }
                     return [width, 460];
                 }
 
@@ -230,7 +233,8 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
 
                 draw(ctx, node, width, posY, height) {
                     const nodeW = width || (node.size ? node.size[0] : MIN_WIDTH);
-                    const slotH = (typeof height === "number" && height > 0) ? height : 460;
+                    const nodeH = (node && node.size) ? node.size[1] : 560;
+                    const slotH = Math.max(280, nodeH - posY - 16);
                     const vY = posY + 6;
                     const vW = nodeW - 24;
                     const vX = 12;
@@ -449,7 +453,7 @@ export function setupImageCompareNode(nodeType, nodeData, app) {
                     }
 
                     // ── 3. Viewport Canvas Setup ──────────────────────────────
-                    const vH = Math.max(260, Math.min(slotH - (currentTopY - vY) - 12, 1600));
+                    const vH = Math.max(240, Math.min(slotH - (currentTopY - vY) - 10, 1600));
                     this.viewportRect = { x: vX, y: currentTopY, w: vW, h: vH };
                     const vp = this.viewportRect;
 

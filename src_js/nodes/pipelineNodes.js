@@ -71,11 +71,7 @@ export function setupPipelineNodes(nodeType, nodeData, appInstance) {
     const config = CONFIGURATIONS[nodeName];
     if (!config) return;
 
-    const origOnNodeCreated = nodeType.prototype.onNodeCreated;
-    nodeType.prototype.onNodeCreated = function() {
-        if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
-
-        const node = this;
+    function applyPipelineNodeLayout(node) {
         if (!node || !node.widgets) return;
 
         // Clean out any leftover divider widgets
@@ -119,41 +115,6 @@ export function setupPipelineNodes(nodeType, nodeData, appInstance) {
             }
         }
 
-        if (nodeName === "StoiqoStyleDirectivesNode") {
-            const updateCustomPromptVisibility = () => {
-                const sys = node.widgets.find(w => w.name === "system_prompt");
-                const custom = node.widgets.find(w => w.name === "custom_system_prompt");
-                if (!custom) return;
-                if (!custom._stoiqoOrig) {
-                    custom._stoiqoOrig = { computeSize: custom.computeSize, draw: custom.draw };
-                }
-                const show = !!sys && String(sys.value || "").includes("Custom");
-                custom.hidden = !show;
-                custom.computeSize = show ? custom._stoiqoOrig.computeSize : () => [0, -4];
-                custom.draw = show ? custom._stoiqoOrig.draw : () => {};
-                if (custom.inputEl) {
-                    custom.inputEl.hidden = !show;
-                    custom.inputEl.style.display = show ? "" : "none";
-                }
-                if (typeof node.computeSize === "function") {
-                    const computed = node.computeSize();
-                    node.size[1] = Math.max(Math.ceil(computed[1]), 60);
-                }
-                node.setDirtyCanvas?.(true, true);
-            };
-            const sysWidget = node.widgets.find(w => w.name === "system_prompt");
-            if (sysWidget && !sysWidget._stoiqoHooked) {
-                sysWidget._stoiqoHooked = true;
-                const origCb = sysWidget.callback;
-                sysWidget.callback = function() {
-                    if (origCb) origCb.apply(this, arguments);
-                    updateCustomPromptVisibility();
-                };
-            }
-            node._stoiqoUpdateCustomPrompt = updateCustomPromptVisibility;
-            setTimeout(updateCustomPromptVisibility, 50);
-        }
-
         if (nodeName === "StoiqoAudioSaverNode") {
             createAudioPlayerWidget(node, null);
         }
@@ -162,18 +123,37 @@ export function setupPipelineNodes(nodeType, nodeData, appInstance) {
             createVideoPlayerWidget(node, null);
         }
 
+        if (typeof node.computeSize === "function") {
+            const computed = node.computeSize();
+            const minW = config.minWidth || 360;
+            const w = Math.max(node.size ? node.size[0] : minW, minW, Math.ceil(computed[0] || 0));
+            const h = Math.max(node.size ? node.size[1] : 60, 60, Math.ceil(computed[1] || 0));
+            if (typeof node.setSize === "function") {
+                node.setSize([w, h]);
+            } else {
+                node.size = [w, h];
+            }
+        }
+
         if (node.setDirtyCanvas) {
             node.setDirtyCanvas(true, true);
         }
+    }
+
+    const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+    nodeType.prototype.onNodeCreated = function() {
+        if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+        applyPipelineNodeLayout(this);
     };
 
-    if (nodeName === "StoiqoStyleDirectivesNode") {
-        const origOnConfigure = nodeType.prototype.onConfigure;
-        nodeType.prototype.onConfigure = function() {
-            if (origOnConfigure) origOnConfigure.apply(this, arguments);
-            if (this._stoiqoUpdateCustomPrompt) setTimeout(this._stoiqoUpdateCustomPrompt, 50);
-        };
-    }
+    const origOnConfigure = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function() {
+        if (origOnConfigure) origOnConfigure.apply(this, arguments);
+        applyPipelineNodeLayout(this);
+        if (this._stoiqoUpdateCustomPrompt) setTimeout(this._stoiqoUpdateCustomPrompt, 50);
+    };
+
+
 
     if (nodeName === "StoiqoPromptGeneratorNode") {
         const origOnExecuted = nodeType.prototype.onExecuted;
