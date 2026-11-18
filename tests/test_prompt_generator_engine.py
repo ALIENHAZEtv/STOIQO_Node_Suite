@@ -64,7 +64,8 @@ class TestPromptGeneratorEngine(unittest.TestCase):
         for ptype in PROMPT_TYPES:
             directive = resolve_prompt_type(ptype)
             self.assertIsNotNone(directive)
-            self.assertGreater(len(directive), 10)
+            if not ptype.startswith("None"):
+                self.assertGreater(len(directive), 10)
 
     def test_three_way_parsing(self):
         raw_output = """
@@ -86,7 +87,7 @@ class TestPromptGeneratorEngine(unittest.TestCase):
 
     def test_artistic_medium_enforcement_and_photographic_suppression(self):
         from core.text_processing import build_task_prompt, post_process_caption
-        from core.image.system_prompts import build_dynamic_system_prompt
+        from core.image.main_guidelines import build_dynamic_system_prompt
 
         # 1. Test task prompt injection for Anime & Manga
         task_anime = build_task_prompt(

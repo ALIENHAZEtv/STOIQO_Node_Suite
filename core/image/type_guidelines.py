@@ -1,6 +1,6 @@
 """
-[STOIQO] Layer 2: Prompt Types & Structural Formats
-Re-exports dynamically loaded prompt types from loader.py for 100% backward compatibility.
+[STOIQO] Layer 2: Type Guidelines (Structural Formats & Output Syntax)
+Exposes dynamically loaded prompt formats from loader.py.
 """
 
 from .loader import (

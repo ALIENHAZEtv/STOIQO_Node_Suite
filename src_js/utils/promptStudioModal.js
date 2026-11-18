@@ -791,7 +791,7 @@ function populateForm(data) {
 
     modalContainer.querySelector("#stoiqo-btn-del").disabled = isCore;
 
-    const kindFolder = currentKind === "styles" ? "styles" : (currentKind === "personas" ? "personas" : "types");
+    const kindFolder = currentKind === "styles" ? "style_prompts" : (currentKind === "personas" ? "main_prompts" : "type_prompts");
     modalContainer.querySelector("#stoiqo-footer-info").textContent = 
         `📄 File su disco: core/image/${kindFolder}/${data.filename || "custom.md"}`;
 

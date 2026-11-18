@@ -12,9 +12,9 @@ import re
 import random
 
 try:
-    from .image.styles import NON_PHOTOGRAPHIC_STYLES, LEGACY_ARTISTIC_STYLE_ALIASES
+    from .image.style_guidelines import NON_PHOTOGRAPHIC_STYLES, LEGACY_ARTISTIC_STYLE_ALIASES
 except (ImportError, ValueError):
-    from core.image.styles import NON_PHOTOGRAPHIC_STYLES, LEGACY_ARTISTIC_STYLE_ALIASES
+    from core.image.style_guidelines import NON_PHOTOGRAPHIC_STYLES, LEGACY_ARTISTIC_STYLE_ALIASES
 
 
 def clean_llm_output(text):

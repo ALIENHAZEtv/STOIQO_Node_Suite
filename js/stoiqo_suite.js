@@ -6784,7 +6784,7 @@ function populateForm(data) {
   badge.textContent = isCore ? "PRESET CORE (MODIFICABILE)" : "STILE UTENTE (MODIFICABILE)";
   badge.className = `stoiqo-item-type-tag ${isCore ? "core" : "custom"}`;
   modalContainer.querySelector("#stoiqo-btn-del").disabled = isCore;
-  const kindFolder = currentKind === "styles" ? "styles" : currentKind === "personas" ? "personas" : "types";
+  const kindFolder = currentKind === "styles" ? "style_prompts" : currentKind === "personas" ? "main_prompts" : "type_prompts";
   modalContainer.querySelector("#stoiqo-footer-info").textContent = `\u{1F4C4} File su disco: core/image/${kindFolder}/${data.filename || "custom.md"}`;
   if (currentKind === "styles") {
     const medEl = modalContainer.querySelector("#stoiqo-style-medium-type");

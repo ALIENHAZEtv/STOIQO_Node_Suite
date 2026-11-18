@@ -1,6 +1,6 @@
 """
-[STOIQO] Layer 1: Cognitive Personas & System Prompts
-Re-exports dynamically loaded personas from loader.py for 100% backward compatibility.
+[STOIQO] Layer 1: Main Guidelines (Cognitive Personas & System Directives)
+Exposes dynamically loaded main guidelines from loader.py.
 """
 
 from .loader import (

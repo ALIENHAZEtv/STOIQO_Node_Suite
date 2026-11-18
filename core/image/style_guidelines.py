@@ -1,6 +1,6 @@
 """
-[STOIQO] Layer 3: Artistic Styles & Medium Supremacy
-Re-exports dynamically loaded styles from loader.py for 100% backward compatibility.
+[STOIQO] Layer 3: Style Guidelines (Artistic Styles & Medium Supremacy)
+Exposes dynamically loaded aesthetic styles from loader.py.
 """
 
 from .loader import (

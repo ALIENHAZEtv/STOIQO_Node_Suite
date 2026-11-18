@@ -18,9 +18,13 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 IMAGE_DIR = os.path.dirname(os.path.abspath(__file__))
-PERSONAS_DIR = os.path.join(IMAGE_DIR, "personas")
-TYPES_DIR = os.path.join(IMAGE_DIR, "types")
-STYLES_DIR = os.path.join(IMAGE_DIR, "styles")
+MAIN_PROMPTS_DIR = os.path.join(IMAGE_DIR, "main_prompts")
+TYPE_PROMPTS_DIR = os.path.join(IMAGE_DIR, "type_prompts")
+STYLE_PROMPTS_DIR = os.path.join(IMAGE_DIR, "style_prompts")
+# Direct aliases
+PERSONAS_DIR = MAIN_PROMPTS_DIR
+TYPES_DIR = TYPE_PROMPTS_DIR
+STYLES_DIR = STYLE_PROMPTS_DIR
 
 
 def parse_markdown_with_frontmatter(file_path: str) -> Tuple[Dict[str, Any], str]:
@@ -144,9 +148,7 @@ def reload_image_definitions():
     personas_raw.sort(key=lambda x: x[0])
 
     new_personas = ["Auto-Detect / Balanced", "None (Raw / No System Prompt)"]
-    new_presets = {
-        "None (Raw / No System Prompt)": "",
-    }
+    new_presets = {}
     new_aliases = {
         "Auto-Detect / Balanced": "Auto-Detect / Balanced",
         "None": "None (Raw / No System Prompt)",

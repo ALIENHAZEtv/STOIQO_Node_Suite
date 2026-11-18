@@ -59,14 +59,14 @@ CORE_PROTECTED = {
 
 def _resolve_kind_dir(kind: str) -> str:
     k = kind.lower().strip()
-    if k in ("persona", "personas", "system_prompt", "layer1"):
+    if k in ("main_prompts", "main_guidelines", "persona", "personas", "system_prompt", "layer1"):
         return PERSONAS_DIR
-    elif k in ("type", "types", "prompt_type", "layer2"):
+    elif k in ("type_prompts", "type_guidelines", "type", "types", "prompt_type", "layer2"):
         return TYPES_DIR
-    elif k in ("style", "styles", "prompt_style", "artistic_style", "layer3"):
+    elif k in ("style_prompts", "style_guidelines", "style", "styles", "prompt_style", "artistic_style", "layer3"):
         return STYLES_DIR
     else:
-        raise ValueError(f"Unknown definition kind: '{kind}'. Expected 'personas', 'types', or 'styles'.")
+        raise ValueError(f"Unknown definition kind: '{kind}'. Expected 'main_prompts', 'type_prompts', or 'style_prompts'.")
 
 
 def _slugify(text: str) -> str:
