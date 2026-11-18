@@ -209,20 +209,6 @@ def reload_image_definitions():
                 new_aliases[alias] = name
                 new_presets[alias] = composed
 
-    # Ensure backward-compatibility mappings for deprecated/absorbed personas
-    legacy_fallbacks = {
-        "Text-to-Prompt Expansion Engine": "Generative Vision Engine",
-        "Krea 2 Turbo Prompt": "Generative Vision Engine",
-        "Minimalist & Literal": "Generative Vision Engine",
-        "Minimal Prompt": "Generative Vision Engine",
-        "Literal & Essential Describer": "Generative Vision Engine",
-    }
-    for old_name, mapped_name in legacy_fallbacks.items():
-        if old_name not in new_aliases:
-            new_aliases[old_name] = mapped_name
-        if old_name not in new_presets and mapped_name in new_presets:
-            new_presets[old_name] = new_presets[mapped_name]
-
     new_personas.append("Custom (Manual Override)")
 
     SYSTEM_PERSONAS = new_personas
@@ -385,22 +371,14 @@ def resolve_system_prompt(
         if user_custom_text:
             return user_custom_text
 
-    # Explicit direct requests
-    if system_prompt == "Multi-Image Synthesis Engine":
-        return MULTI_IMAGE_SYSTEM_PROMPT
-
-    # Typology 3: Multi-Image
-    if is_multi_image:
-        return MULTI_IMAGE_SYSTEM_PROMPT
+    if is_multi_image or system_prompt == "Multi-Image Synthesis Engine":
+        return SYSTEM_PROMPT_PRESETS.get("Multi-Image Synthesis Engine", "")
 
     target_key = LEGACY_SYSTEM_PROMPT_ALIASES.get(system_prompt, system_prompt)
-    if target_key not in SYSTEM_PROMPT_PRESETS and system_prompt_preset:
-        target_key = LEGACY_SYSTEM_PROMPT_ALIASES.get(system_prompt_preset, system_prompt_preset)
-
     if target_key == "Auto-Detect / Balanced" or not target_key:
-        return TEXT_EXPANSION_SYSTEM_PROMPT if not has_image else SYSTEM_PROMPT_PRESETS.get("Generative Vision Engine", "")
+        target_key = "Generative Vision Engine"
 
-    return SYSTEM_PROMPT_PRESETS.get(target_key, SYSTEM_PROMPT_PRESETS.get("Generative Vision Engine", TEXT_EXPANSION_SYSTEM_PROMPT))
+    return SYSTEM_PROMPT_PRESETS.get(target_key, SYSTEM_PROMPT_PRESETS.get("Generative Vision Engine", ""))
 
 
 # ── DYNAMIC 3-LAYER FUSION ENGINE ────────────────────────────────────────────

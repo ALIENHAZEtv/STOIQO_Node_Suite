@@ -2,14 +2,7 @@
 name: "Generative Vision Engine"
 aliases:
   - "Generative Prompt"
-  - "Generative Captioning (Single Image)"
   - "Visual Prompt Synthesizer"
-  - "Visual Prompt Engineer"
-  - "Art Critic & Visual Auditor"
-  - "Visual Flaw & Quality Auditor"
-  - "Text-to-Prompt Expansion Engine"
-  - "Krea 2 Turbo Prompt"
-  - "Minimalist & Literal"
 temperature: 0.65
 max_new_tokens: 1024
 top_p: 0.90

@@ -45,7 +45,7 @@ class TestPromptGeneratorEngine(unittest.TestCase):
     def test_ssot_dispatch_logic(self):
         self.assertEqual(
             resolve_system_prompt("Generative Prompt", has_image=False),
-            TEXT_EXPANSION_SYSTEM_PROMPT,
+            SYSTEM_PROMPT_PRESETS["Generative Prompt"],
         )
         self.assertEqual(
             resolve_system_prompt("Generative Prompt", has_image=True, is_multi_image=False),
@@ -53,7 +53,7 @@ class TestPromptGeneratorEngine(unittest.TestCase):
         )
         self.assertEqual(
             resolve_system_prompt("Generative Prompt", has_image=True, is_multi_image=True),
-            MULTI_IMAGE_SYSTEM_PROMPT,
+            SYSTEM_PROMPT_PRESETS["Multi-Image Synthesis Engine"],
         )
         self.assertEqual(
             resolve_system_prompt(CUSTOM_SYSTEM_PROMPT_KEY, custom_system_prompt="Custom Prompt"),
