@@ -362,7 +362,7 @@ class StoiqoVideoSaverNode:
                 except Exception:
                     pass
                 try:
-                    if os.path.exists(video_target_path):
+                    if os.path.exists(video_target_path) and os.path.abspath(video_target_path) != os.path.abspath(file_path):
                         os.remove(video_target_path)
                 except Exception:
                     pass

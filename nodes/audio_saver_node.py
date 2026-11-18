@@ -193,6 +193,20 @@ def _save_audio_stream(file_path, audio_np, sample_rate, ext, sub_type, title=""
     except Exception as e:
         logger.warning(f"[Audio Saver] scipy save fallback error: {e}")
 
+    # Strategy D: Python Standard Library 'wave' fallback (Zero Dependencies)
+    try:
+        import wave
+        int_audio = (np.clip(audio_np, -1.0, 1.0) * 32767.0).astype(np.int16)
+        with wave.open(wav_target, "wb") as wf:
+            wf.setnchannels(num_channels)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            wf.writeframes(int_audio.tobytes())
+        if os.path.exists(wav_target) and os.path.getsize(wav_target) > 0:
+            return wav_target, True
+    except Exception as e:
+        logger.warning(f"[Audio Saver] wave stdlib save fallback error: {e}")
+
     return file_path, False
 
 
