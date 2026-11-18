@@ -245,7 +245,7 @@ function ensureStudioButton(node) {
     if (!node || !node.widgets) return;
     const hasStudioBtn = node.widgets.some(w => w._isStoiqoStudioBtn);
     if (!hasStudioBtn) {
-        const studioBtn = node.addWidget("button", "🎨 Manage Styles & Personas...", null, () => {
+        const studioBtn = node.addWidget("button", "🎨 Gestione Stili & Prompt (Studio)...", null, () => {
             openPromptStudioModal({ node, kind: "styles" });
         });
         studioBtn._isStoiqoStudioBtn = true;
@@ -290,23 +290,39 @@ export function setupPromptGeneratorNode(nodeType, nodeData, app) {
     nodeType.prototype.getExtraMenuOptions = function(_, options) {
         if (origGetExtraMenuOptions) origGetExtraMenuOptions.apply(this, arguments);
 
+        const styleW = this.widgets?.find(x => x.name === "prompt_style" || x.name === "artistic_style");
+        const personaW = this.widgets?.find(x => x.name === "system_prompt");
+        const typeW = this.widgets?.find(x => x.name === "prompt_type");
+
+        const curStyle = styleW?.value ? String(styleW.value) : "Stile Attivo";
+        const curPersona = personaW?.value ? String(personaW.value) : "Persona Attiva";
+        const curType = typeW?.value ? String(typeW.value) : "Formato Attivo";
+
+        const shortStyle = curStyle.length > 25 ? curStyle.substring(0, 23) + "…" : curStyle;
+        const shortPersona = curPersona.length > 25 ? curPersona.substring(0, 23) + "…" : curPersona;
+        const shortType = curType.length > 25 ? curType.substring(0, 23) + "…" : curType;
+
         options.push(
             null, // Menu divider
             {
-                content: "🎨 Edit Active Style (✏️)...",
+                content: `🎨 Modifica Stile: "${shortStyle}"`,
+                callback: () => openPromptStudioModal({ node: this, kind: "styles", activeName: curStyle }),
+            },
+            {
+                content: `🧠 Modifica Persona: "${shortPersona}"`,
+                callback: () => openPromptStudioModal({ node: this, kind: "personas", activeName: curPersona }),
+            },
+            {
+                content: `📐 Modifica Formato: "${shortType}"`,
+                callback: () => openPromptStudioModal({ node: this, kind: "types", activeName: curType }),
+            },
+            {
+                content: "➕ Crea Nuovo Stile Personalizzato...",
+                callback: () => openPromptStudioModal({ node: this, kind: "styles", isNew: true }),
+            },
+            {
+                content: "⚙️ STOIQO Prompt Studio (Pannello Completo)...",
                 callback: () => openPromptStudioModal({ node: this, kind: "styles" }),
-            },
-            {
-                content: "➕ Create New Style (➕)...",
-                callback: () => openPromptStudioModal({ node: this, kind: "styles" }),
-            },
-            {
-                content: "🧠 Edit Active Persona (✏️)...",
-                callback: () => openPromptStudioModal({ node: this, kind: "personas" }),
-            },
-            {
-                content: "📐 Edit Active Format (✏️)...",
-                callback: () => openPromptStudioModal({ node: this, kind: "types" }),
             }
         );
     };

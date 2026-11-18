@@ -14,10 +14,18 @@ try:
     from .storage import open_native_folder_dialog
     from .image.crud_api import list_definitions, get_definition, save_definition, delete_definition
     from .image.loader import reload_image_definitions, SYSTEM_PERSONAS, PROMPT_TYPES, ARTISTIC_STYLES
-except ImportError:
-    from storage import open_native_folder_dialog
-    from core.image.crud_api import list_definitions, get_definition, save_definition, delete_definition
-    from core.image.loader import reload_image_definitions, SYSTEM_PERSONAS, PROMPT_TYPES, ARTISTIC_STYLES
+    from .image import loader as img_loader
+except (ImportError, ValueError):
+    try:
+        from core.storage import open_native_folder_dialog
+        from core.image.crud_api import list_definitions, get_definition, save_definition, delete_definition
+        from core.image.loader import reload_image_definitions, SYSTEM_PERSONAS, PROMPT_TYPES, ARTISTIC_STYLES
+        from core.image import loader as img_loader
+    except (ImportError, ValueError):
+        from storage import open_native_folder_dialog
+        from image.crud_api import list_definitions, get_definition, save_definition, delete_definition
+        from image.loader import reload_image_definitions, SYSTEM_PERSONAS, PROMPT_TYPES, ARTISTIC_STYLES
+        from image import loader as img_loader
 
 
 def register_stoiqo_routes():
@@ -136,13 +144,12 @@ def register_stoiqo_routes():
                 @routes.post("/stoiqo/api/prompt_engine/reload")
                 async def api_reload_definitions(request):
                     await asyncio.to_thread(reload_image_definitions)
-                    from .image.loader import SYSTEM_PERSONAS as SP, PROMPT_TYPES as PT, ARTISTIC_STYLES as AS
                     return web.json_response({
                         "status": "ok",
                         "choices": {
-                            "system_personas": SP,
-                            "prompt_types": PT,
-                            "artistic_styles": AS,
+                            "system_personas": getattr(img_loader, "SYSTEM_PERSONAS", []),
+                            "prompt_types": getattr(img_loader, "PROMPT_TYPES", []),
+                            "artistic_styles": getattr(img_loader, "ARTISTIC_STYLES", []),
                         }
                     })
 

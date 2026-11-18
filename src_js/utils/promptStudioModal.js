@@ -168,12 +168,35 @@ function ensureStyles() {
             align-items: center;
             justify-content: space-between;
             gap: 12px;
+            flex-wrap: wrap;
+        }
+        .stoiqo-search-filter-wrap {
+            position: relative;
+            width: 220px;
+            flex-shrink: 0;
+        }
+        .stoiqo-search-input {
+            width: 100%;
+            background: #10141f;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            color: #f1f5f9;
+            padding: 6px 10px;
+            font-size: 12px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .stoiqo-search-input:focus {
+            border-color: #2997ff;
+            background: #141926;
         }
         .stoiqo-selector-group {
             display: flex;
             align-items: center;
             gap: 10px;
             flex: 1;
+            min-width: 280px;
         }
         .stoiqo-item-select {
             background: #131722;
@@ -183,9 +206,23 @@ function ensureStyles() {
             padding: 6px 12px;
             font-size: 13px;
             outline: none;
-            max-width: 380px;
+            max-width: 420px;
             flex: 1;
             cursor: pointer;
+        }
+        .stoiqo-item-select optgroup {
+            background: #0b0f19;
+            color: #58b0ff;
+            font-weight: 700;
+            padding: 4px 6px;
+            font-size: 11.5px;
+        }
+        .stoiqo-item-select option {
+            background: #131722;
+            color: #f1f5f9;
+            font-weight: normal;
+            padding: 3px 6px;
+            font-size: 12.5px;
         }
         .stoiqo-item-select:focus {
             border-color: #2997ff;
@@ -387,7 +424,7 @@ function showToast(message, isError = false) {
     }, 3200);
 }
 
-export function openPromptStudioModal({ node = null, kind = "styles", activeName = null }) {
+export function openPromptStudioModal({ node = null, kind = "styles", activeName = null, isNew = false }) {
     ensureStyles();
     activeNodeRef = node;
     currentKind = kind;
@@ -406,7 +443,11 @@ export function openPromptStudioModal({ node = null, kind = "styles", activeName
     }
 
     modalContainer.classList.add("open");
-    switchTab(kind, activeName);
+    switchTab(kind, activeName).then(() => {
+        if (isNew) {
+            startNewItem();
+        }
+    });
 }
 
 export function closePromptStudioModal() {
@@ -447,14 +488,17 @@ function buildModalDOM() {
             </div>
 
             <div class="stoiqo-subnav-toolbar">
+                <div class="stoiqo-search-filter-wrap">
+                    <input class="stoiqo-input stoiqo-search-input" id="stoiqo-filter-search" placeholder="🔍 Cerca per nome o categoria..." autocomplete="off" />
+                </div>
                 <div class="stoiqo-selector-group">
                     <select class="stoiqo-item-select" id="stoiqo-item-dropdown"></select>
                     <span class="stoiqo-item-type-tag" id="stoiqo-item-badge">CORE</span>
                 </div>
                 <div class="stoiqo-toolbar-actions">
-                    <button class="stoiqo-btn-sm stoiqo-btn-secondary" id="stoiqo-btn-new">➕ New</button>
-                    <button class="stoiqo-btn-sm stoiqo-btn-secondary" id="stoiqo-btn-dup">📋 Duplicate</button>
-                    <button class="stoiqo-btn-sm stoiqo-btn-danger" id="stoiqo-btn-del">🗑️ Delete</button>
+                    <button class="stoiqo-btn-sm stoiqo-btn-secondary" id="stoiqo-btn-new">➕ Nuovo</button>
+                    <button class="stoiqo-btn-sm stoiqo-btn-secondary" id="stoiqo-btn-dup">📋 Duplica</button>
+                    <button class="stoiqo-btn-sm stoiqo-btn-danger" id="stoiqo-btn-del">🗑️ Elimina</button>
                 </div>
             </div>
 
@@ -509,6 +553,10 @@ function buildModalDOM() {
         loadItemDetails(e.target.value);
     });
 
+    modalContainer.querySelector("#stoiqo-filter-search").addEventListener("input", (e) => {
+        populateDropdown(currentItemList, null, e.target.value);
+    });
+
     modalContainer.querySelector("#stoiqo-btn-new").addEventListener("click", () => {
         startNewItem();
     });
@@ -534,6 +582,9 @@ async function switchTab(kind, targetItemName = null) {
     modalContainer.querySelector("#stoiqo-modal-icon").textContent = meta.icon;
     modalContainer.querySelector("#stoiqo-modal-badge").textContent = meta.badge;
 
+    const filterInput = modalContainer.querySelector("#stoiqo-filter-search");
+    if (filterInput) filterInput.value = "";
+
     modalContainer.querySelectorAll(".stoiqo-tab-btn").forEach(btn => {
         btn.classList.toggle("active", btn.getAttribute("data-kind") === kind);
     });
@@ -541,17 +592,43 @@ async function switchTab(kind, targetItemName = null) {
     // Render extra fields for this kind
     renderExtraFields(kind);
 
-    // Fetch item list from server
+    // Fetch item list from server with resilient fallback
     try {
         const resp = await api.fetchApi(`/stoiqo/api/prompt_engine/list?kind=${kind}`);
+        if (!resp.ok) {
+            throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        }
         const data = await resp.json();
         if (data && data.status === "ok" && Array.isArray(data.items)) {
             currentItemList = data.items;
             populateDropdown(currentItemList, targetItemName);
+            return;
         }
     } catch (err) {
-        console.error("[STOIQO Studio] Failed to fetch item list:", err);
-        showToast("Failed to load list from server", true);
+        console.warn("[STOIQO Studio] API route not reached:", err);
+
+        // Fallback: Read choices from active node widgets so user is never blocked
+        let fallbackChoices = [];
+        if (activeNodeRef && activeNodeRef.widgets) {
+            const w = activeNodeRef.widgets.find(item => item.name === meta.widgetName || item.name === meta.fallbackWidgetName);
+            if (w && w.options && Array.isArray(w.options.values)) {
+                fallbackChoices = w.options.values;
+            }
+        }
+
+        if (fallbackChoices.length > 0) {
+            currentItemList = fallbackChoices.map((name, idx) => ({
+                name,
+                category: name.includes("//") ? name.split("//")[0].trim() : (idx < 10 ? "Core" : "Generale"),
+                order: idx,
+                is_core: idx < 10,
+                filename: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.md`,
+            }));
+            populateDropdown(currentItemList, targetItemName);
+            showToast("Server in attesa di riavvio. Riavvia ComfyUI per registrare le nuove route API del backend.", true);
+        } else {
+            showToast("Server in attesa di riavvio: riavvia ComfyUI per sincronizzare il backend.", true);
+        }
     }
 }
 
@@ -606,25 +683,56 @@ function renderExtraFields(kind) {
     }
 }
 
-function populateDropdown(items, targetItemName = null) {
+function populateDropdown(items, targetItemName = null, filterQuery = "") {
     const dropdown = modalContainer.querySelector("#stoiqo-item-dropdown");
     dropdown.innerHTML = "";
 
+    const query = (filterQuery || "").trim().toLowerCase();
+    const filtered = query
+        ? items.filter(it => 
+            (it.name && it.name.toLowerCase().includes(query)) ||
+            (it.category && it.category.toLowerCase().includes(query)) ||
+            (Array.isArray(it.aliases) && it.aliases.some(a => String(a).toLowerCase().includes(query)))
+          )
+        : items;
+
+    if (filtered.length === 0) {
+        const emptyOpt = document.createElement("option");
+        emptyOpt.value = "";
+        emptyOpt.textContent = `Nessun risultato per "${filterQuery}"`;
+        dropdown.appendChild(emptyOpt);
+        return;
+    }
+
+    // Group items by category (e.g. Core, Anime, Photography, etc.)
+    const groups = {};
+    for (const item of filtered) {
+        let cat = item.category ? item.category.trim() : (item.is_core ? "Core Presets" : "Stili Generali");
+        if (!cat) cat = "Stili Generali";
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(item);
+    }
+
     let selectedVal = null;
 
-    items.forEach(item => {
-        const opt = document.createElement("option");
-        opt.value = item.name;
-        opt.textContent = `${item.is_core ? "🔒" : "✨"} ${item.name}`;
-        dropdown.appendChild(opt);
+    for (const [catName, catItems] of Object.entries(groups)) {
+        const optgroup = document.createElement("optgroup");
+        optgroup.label = `${catName} (${catItems.length})`;
+        for (const item of catItems) {
+            const opt = document.createElement("option");
+            opt.value = item.name;
+            opt.textContent = `${item.is_core ? "🔒" : "✨"} ${item.name}`;
+            optgroup.appendChild(opt);
 
-        if (targetItemName && item.name === targetItemName) {
-            selectedVal = item.name;
+            if (targetItemName && (item.name === targetItemName || item.aliases?.includes(targetItemName))) {
+                selectedVal = item.name;
+            }
         }
-    });
+        dropdown.appendChild(optgroup);
+    }
 
-    if (!selectedVal && items.length > 0) {
-        selectedVal = items[0].name;
+    if (!selectedVal && filtered.length > 0) {
+        selectedVal = filtered[0].name;
     }
 
     if (selectedVal) {
@@ -637,16 +745,36 @@ async function loadItemDetails(name) {
     if (!name) return;
     try {
         const resp = await api.fetchApi(`/stoiqo/api/prompt_engine/get?kind=${currentKind}&name=${encodeURIComponent(name)}`);
-        const data = await resp.json();
-        if (data && data.status === "ok") {
-            currentItemData = data;
-            isNewMode = false;
-            originalName = data.name;
-            populateForm(data);
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data && data.status === "ok") {
+                currentItemData = data;
+                isNewMode = false;
+                originalName = data.name;
+                populateForm(data);
+                return;
+            }
         }
     } catch (err) {
-        console.error("[STOIQO Studio] Failed to fetch item details:", err);
+        console.warn("[STOIQO Studio] Failed to fetch item details:", err);
     }
+
+    // Fallback if backend route not reached yet:
+    const item = currentItemList.find(x => x.name === name) || { name };
+    currentItemData = {
+        name: item.name,
+        filename: item.filename || `${name}.md`,
+        is_core: Boolean(item.is_core),
+        frontmatter: {
+            name: item.name,
+            category: item.category || "",
+            order: item.order || 100,
+        },
+        body: `Direttive per ${name}...\n(Riavvia il server ComfyUI per sincronizzare il file da disco).`,
+    };
+    isNewMode = false;
+    originalName = name;
+    populateForm(currentItemData);
 }
 
 function populateForm(data) {
@@ -658,14 +786,14 @@ function populateForm(data) {
 
     const isCore = Boolean(data.is_core);
     const badge = modalContainer.querySelector("#stoiqo-item-badge");
-    badge.textContent = isCore ? "CORE PRESET" : "CUSTOM USER STYLE";
+    badge.textContent = isCore ? "PRESET CORE (MODIFICABILE)" : "STILE UTENTE (MODIFICABILE)";
     badge.className = `stoiqo-item-type-tag ${isCore ? "core" : "custom"}`;
 
     modalContainer.querySelector("#stoiqo-btn-del").disabled = isCore;
 
-    modalContainer.querySelector("#stoiqo-footer-info").textContent = isCore
-        ? "Protected core preset. Modifications will be saved safely."
-        : `File: ${data.filename || "custom"}`;
+    const kindFolder = currentKind === "styles" ? "styles" : (currentKind === "personas" ? "personas" : "types");
+    modalContainer.querySelector("#stoiqo-footer-info").textContent = 
+        `📄 File su disco: core/image/${kindFolder}/${data.filename || "custom.md"}`;
 
     // Populate extra fields
     if (currentKind === "styles") {
