@@ -362,7 +362,10 @@ def resolve_system_prompt(
 
     target_key = LEGACY_SYSTEM_PROMPT_ALIASES.get(system_prompt, system_prompt)
     if target_key == "Auto-Detect / Balanced" or not target_key:
-        target_key = "Generative Vision Engine"
+        if is_multi_image:
+            target_key = "Multi-Image Synthesis Engine"
+        else:
+            target_key = "Generative Vision Engine"
 
     return SYSTEM_PROMPT_PRESETS.get(target_key, SYSTEM_PROMPT_PRESETS.get("Generative Vision Engine", ""))
 

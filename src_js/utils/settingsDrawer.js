@@ -10,12 +10,11 @@ const PERSONA_SAMPLING_VALUES = {
     "Auto-Detect / Balanced": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.90, top_k: 50, repetition_penalty: 1.15 },
     "None (Raw / No System Prompt)": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.90, top_k: 50, repetition_penalty: 1.15 },
     "Generative Vision Engine": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.90, top_k: 50, repetition_penalty: 1.15 },
-    "Text-to-Prompt Expansion Engine": { temperature: 0.70, max_new_tokens: 1024, top_p: 0.90, top_k: 60, repetition_penalty: 1.15 },
     "Multi-Image Synthesis Engine": { temperature: 0.60, max_new_tokens: 1024, top_p: 0.90, top_k: 50, repetition_penalty: 1.15 },
     "Cinematic & Video Director": { temperature: 0.75, max_new_tokens: 1280, top_p: 0.92, top_k: 60, repetition_penalty: 1.12 },
     "Dataset & LoRA Annotator": { temperature: 0.35, max_new_tokens: 512, top_p: 0.85, top_k: 40, repetition_penalty: 1.15 },
-    "Minimalist & Literal": { temperature: 0.20, max_new_tokens: 384, top_p: 0.75, top_k: 25, repetition_penalty: 1.20 },
     "SeedVR2 Upscale Guide": { temperature: 0.25, max_new_tokens: 640, top_p: 0.80, top_k: 30, repetition_penalty: 1.20 },
+    "Custom (Manual Override)": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.90, top_k: 50, repetition_penalty: 1.15 },
 };
 
 function getVal(node, name) {

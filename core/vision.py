@@ -45,7 +45,7 @@ def tensor_to_pil(tensor, target_megapixel=1.0):
     snapped to multiples of 28 pixels as required by Qwen-VL's 2D-RoPE ViT architecture.
     Preserves original aspect ratio without distortion.
     """
-    t = tensor.squeeze(0) if tensor.ndim == 4 else tensor
+    t = tensor[0] if tensor.ndim == 4 else tensor
     arr = (255.0 * t.cpu().numpy()).clip(0, 255).astype(np.uint8)
     img = Image.fromarray(arr)
     if img.mode != "RGB":

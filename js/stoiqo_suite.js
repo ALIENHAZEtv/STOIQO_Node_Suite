@@ -6654,10 +6654,6 @@ function renderExtraFields(kind) {
                     <label class="stoiqo-label">Medium Type</label>
                     <input class="stoiqo-input" id="stoiqo-style-medium-type" placeholder="e.g. 2D Japanese Cel Animation or 35mm Film" />
                 </div>
-                <div class="stoiqo-field-group">
-                    <label class="stoiqo-label">Prohibited Terms (for non-photo)</label>
-                    <input class="stoiqo-input" id="stoiqo-style-prohibited" placeholder="camera lenses, 35mm, RAW photo, realistic skin pores" />
-                </div>
             </div>
             <div class="stoiqo-form-row">
                 <div class="stoiqo-field-group">
@@ -6798,11 +6794,9 @@ function populateForm(data) {
   modalContainer.querySelector("#stoiqo-footer-info").textContent = `\u{1F4C4} File su disco: core/image/${kindFolder}/${data.filename || "custom.md"}`;
   if (currentKind === "styles") {
     const medEl = modalContainer.querySelector("#stoiqo-style-medium-type");
-    const proEl = modalContainer.querySelector("#stoiqo-style-prohibited");
     const tagEl = modalContainer.querySelector("#stoiqo-style-tag-injection");
     const negEl = modalContainer.querySelector("#stoiqo-style-negative-injection");
     if (medEl) medEl.value = fm.medium_type || "";
-    if (proEl) proEl.value = fm.prohibited || "";
     if (tagEl) tagEl.value = fm.tag_injection || "";
     if (negEl) negEl.value = fm.negative_injection || "";
   } else if (currentKind === "personas") {
@@ -6886,11 +6880,9 @@ async function saveCurrentItem() {
   };
   if (currentKind === "styles") {
     const med = modalContainer.querySelector("#stoiqo-style-medium-type")?.value.trim();
-    const pro = modalContainer.querySelector("#stoiqo-style-prohibited")?.value.trim();
     const tag = modalContainer.querySelector("#stoiqo-style-tag-injection")?.value.trim();
     const neg = modalContainer.querySelector("#stoiqo-style-negative-injection")?.value.trim();
     if (med) frontmatter.medium_type = med;
-    if (pro) frontmatter.prohibited = pro;
     if (tag) frontmatter.tag_injection = tag;
     if (neg) frontmatter.negative_injection = neg;
   } else if (currentKind === "personas") {
@@ -7654,12 +7646,11 @@ var PERSONA_SAMPLING_VALUES = {
   "Auto-Detect / Balanced": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 },
   "None (Raw / No System Prompt)": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 },
   "Generative Vision Engine": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 },
-  "Text-to-Prompt Expansion Engine": { temperature: 0.7, max_new_tokens: 1024, top_p: 0.9, top_k: 60, repetition_penalty: 1.15 },
   "Multi-Image Synthesis Engine": { temperature: 0.6, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 },
   "Cinematic & Video Director": { temperature: 0.75, max_new_tokens: 1280, top_p: 0.92, top_k: 60, repetition_penalty: 1.12 },
   "Dataset & LoRA Annotator": { temperature: 0.35, max_new_tokens: 512, top_p: 0.85, top_k: 40, repetition_penalty: 1.15 },
-  "Minimalist & Literal": { temperature: 0.2, max_new_tokens: 384, top_p: 0.75, top_k: 25, repetition_penalty: 1.2 },
-  "SeedVR2 Upscale Guide": { temperature: 0.25, max_new_tokens: 640, top_p: 0.8, top_k: 30, repetition_penalty: 1.2 }
+  "SeedVR2 Upscale Guide": { temperature: 0.25, max_new_tokens: 640, top_p: 0.8, top_k: 30, repetition_penalty: 1.2 },
+  "Custom (Manual Override)": { temperature: 0.65, max_new_tokens: 1024, top_p: 0.9, top_k: 50, repetition_penalty: 1.15 }
 };
 function getVal(node, name) {
   const w = node?.widgets?.find((x) => x.name === name);

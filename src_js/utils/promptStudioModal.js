@@ -641,10 +641,6 @@ function renderExtraFields(kind) {
                     <label class="stoiqo-label">Medium Type</label>
                     <input class="stoiqo-input" id="stoiqo-style-medium-type" placeholder="e.g. 2D Japanese Cel Animation or 35mm Film" />
                 </div>
-                <div class="stoiqo-field-group">
-                    <label class="stoiqo-label">Prohibited Terms (for non-photo)</label>
-                    <input class="stoiqo-input" id="stoiqo-style-prohibited" placeholder="camera lenses, 35mm, RAW photo, realistic skin pores" />
-                </div>
             </div>
             <div class="stoiqo-form-row">
                 <div class="stoiqo-field-group">
@@ -809,11 +805,9 @@ function populateForm(data) {
     // Populate extra fields
     if (currentKind === "styles") {
         const medEl = modalContainer.querySelector("#stoiqo-style-medium-type");
-        const proEl = modalContainer.querySelector("#stoiqo-style-prohibited");
         const tagEl = modalContainer.querySelector("#stoiqo-style-tag-injection");
         const negEl = modalContainer.querySelector("#stoiqo-style-negative-injection");
         if (medEl) medEl.value = fm.medium_type || "";
-        if (proEl) proEl.value = fm.prohibited || "";
         if (tagEl) tagEl.value = fm.tag_injection || "";
         if (negEl) negEl.value = fm.negative_injection || "";
     } else if (currentKind === "personas") {
@@ -912,11 +906,9 @@ async function saveCurrentItem() {
 
     if (currentKind === "styles") {
         const med = modalContainer.querySelector("#stoiqo-style-medium-type")?.value.trim();
-        const pro = modalContainer.querySelector("#stoiqo-style-prohibited")?.value.trim();
         const tag = modalContainer.querySelector("#stoiqo-style-tag-injection")?.value.trim();
         const neg = modalContainer.querySelector("#stoiqo-style-negative-injection")?.value.trim();
         if (med) frontmatter.medium_type = med;
-        if (pro) frontmatter.prohibited = pro;
         if (tag) frontmatter.tag_injection = tag;
         if (neg) frontmatter.negative_injection = neg;
     } else if (currentKind === "personas") {

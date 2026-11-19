@@ -172,7 +172,9 @@ class StoiqoImageLoaderNode:
             if hasattr(folder_paths, "filter_files_content_types"):
                 files = folder_paths.filter_files_content_types(files, ["image"])
         files = sorted(files)
-        files_with_none = ["none"] + files
+        if not files:
+            files = ["none"]
+        files_with_none = ["none"] + [f for f in files if f != "none"]
 
         return {
             "required": {

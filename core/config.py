@@ -69,7 +69,6 @@ def scan_local_vlm_models():
             break
         curr = parent
         for cand in [
-            os.path.join(curr, "ExCathedra", "engines", "comfyui", "ComfyUI"),
             os.path.join(curr, "engines", "comfyui", "ComfyUI"),
             os.path.join(curr, "ComfyUI"),
         ]:

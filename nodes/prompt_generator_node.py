@@ -102,18 +102,18 @@ class StoiqoPromptGeneratorNode:
             "top_k": 50,
             "repetition_penalty": 1.15,
         },
-        "Generative Vision Engine": {
+        "None (Raw / No System Prompt)": {
             "temperature": 0.65,
             "max_new_tokens": 1024,
             "top_p": 0.90,
             "top_k": 50,
             "repetition_penalty": 1.15,
         },
-        "Text-to-Prompt Expansion Engine": {
-            "temperature": 0.70,
+        "Generative Vision Engine": {
+            "temperature": 0.65,
             "max_new_tokens": 1024,
             "top_p": 0.90,
-            "top_k": 60,
+            "top_k": 50,
             "repetition_penalty": 1.15,
         },
         "Multi-Image Synthesis Engine": {
@@ -137,13 +137,6 @@ class StoiqoPromptGeneratorNode:
             "top_k": 40,
             "repetition_penalty": 1.15,
         },
-        "Minimalist & Literal": {
-            "temperature": 0.20,
-            "max_new_tokens": 384,
-            "top_p": 0.75,
-            "top_k": 25,
-            "repetition_penalty": 1.20,
-        },
         "SeedVR2 Upscale Guide": {
             "temperature": 0.25,
             "max_new_tokens": 640,
@@ -166,12 +159,11 @@ class StoiqoPromptGeneratorNode:
 
     SYSTEM_PERSONAS = [
         "Auto-Detect / Balanced",
+        "None (Raw / No System Prompt)",
         "Generative Vision Engine",
-        "Text-to-Prompt Expansion Engine",
         "Multi-Image Synthesis Engine",
         "Cinematic & Video Director",
         "Dataset & LoRA Annotator",
-        "Minimalist & Literal",
         "SeedVR2 Upscale Guide",
         "Custom (Manual Override)",
     ]
@@ -521,10 +513,8 @@ class StoiqoPromptGeneratorNode:
             if not cfg_sys_choice or cfg_sys_choice == "Auto-Detect / Balanced":
                 if is_multi_image:
                     active_system_prompt_choice = "Multi-Image Synthesis Engine"
-                elif has_image:
-                    active_system_prompt_choice = "Generative Vision Engine"
                 else:
-                    active_system_prompt_choice = "Text-to-Prompt Expansion Engine"
+                    active_system_prompt_choice = "Generative Vision Engine"
             else:
                 active_system_prompt_choice = cfg_sys_choice
 
@@ -533,10 +523,11 @@ class StoiqoPromptGeneratorNode:
             )
 
             # 4. Calibrate Sampling Settings from Cognitive Persona Defaults
-            persona_defaults = self.PERSONA_SAMPLING_DEFAULTS.get(
-                active_system_prompt_choice,
-                self.PERSONA_SAMPLING_DEFAULTS["Generative Vision Engine"]
-            )
+            persona_defaults = (
+                img_loader.PERSONA_SAMPLING_DEFAULTS.get(active_system_prompt_choice)
+                if (img_loader and hasattr(img_loader, "PERSONA_SAMPLING_DEFAULTS"))
+                else self.PERSONA_SAMPLING_DEFAULTS.get(active_system_prompt_choice)
+            ) or self.PERSONA_SAMPLING_DEFAULTS.get("Generative Vision Engine", {})
             default_temp = persona_defaults["temperature"]
             default_tokens = persona_defaults["max_new_tokens"]
             default_top_p = persona_defaults["top_p"]
